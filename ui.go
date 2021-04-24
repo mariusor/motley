@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/storage"
 	rw "github.com/mattn/go-runewidth"
@@ -65,7 +66,7 @@ var (
 var (
 	// Color wraps termenv.ColorProfile.Color, which produces a termenv color
 	// for use in termenv styling.
-	Color func(string) te.Color = te.ColorProfile().Color
+	Color = lipgloss.ColorProfile().Color
 
 	// HasDarkBackground stores whether or not the terminal has a dark
 	// background.
@@ -74,24 +75,24 @@ var (
 
 // Colors for dark and light backgrounds.
 var (
-	Indigo       ColorPair = NewColorPair("#7571F9", "#5A56E0")
-	SubtleIndigo           = NewColorPair("#514DC1", "#7D79F6")
-	Cream                  = NewColorPair("#FFFDF5", "#FFFDF5")
-	YellowGreen            = NewColorPair("#ECFD65", "#04B575")
-	Fuschia                = NewColorPair("#EE6FF8", "#EE6FF8")
-	Green                  = NewColorPair("#04B575", "#04B575")
-	Red                    = NewColorPair("#ED567A", "#FF4672")
-	FaintRed               = NewColorPair("#C74665", "#FF6F91")
-	SpinnerColor           = NewColorPair("#747373", "#8E8E8E")
-	NoColor                = NewColorPair("", "")
+	Indigo        = NewColorPair("#7571F9", "#5A56E0")
+	SubtleIndigo  = NewColorPair("#514DC1", "#7D79F6")
+	Cream        = NewColorPair("#FFFDF5", "#FFFDF5")
+	YellowGreen  = NewColorPair("#ECFD65", "#04B575")
+	Fuschia      = NewColorPair("#EE6FF8", "#EE6FF8")
+	Green        = NewColorPair("#04B575", "#04B575")
+	Red          = NewColorPair("#ED567A", "#FF4672")
+	FaintRed     = NewColorPair("#C74665", "#FF6F91")
+	SpinnerColor = NewColorPair("#747373", "#8E8E8E")
+	NoColor      = NewColorPair("", "")
 )
 
 // Functions for styling strings.
 var (
-	IndigoFg       func(string) string = te.Style{}.Foreground(Indigo.Color()).Styled
-	SubtleIndigoFg                     = te.Style{}.Foreground(SubtleIndigo.Color()).Styled
-	RedFg                              = te.Style{}.Foreground(Red.Color()).Styled
-	FaintRedFg                         = te.Style{}.Foreground(FaintRed.Color()).Styled
+	IndigoFg       func(string) string = lipgloss.Style{}.Foreground(Indigo).Render
+	SubtleIndigoFg                     = lipgloss.Style{}.Foreground(SubtleIndigo).Render
+	RedFg                              = lipgloss.Style{}.Foreground(Red).Render
+	FaintRedFg                         = lipgloss.Style{}.Foreground(FaintRed).Render
 )
 
 var (
@@ -150,18 +151,23 @@ func newPagerModel(common *commonModel) pagerModel {
 	ti := textinput.NewModel()
 	ti.Prompt = te.String(" > ").
 		Foreground(Color(darkGray)).
-		Background(YellowGreen.Color()).
+		Background(Color(YellowGreen.Dark)).
 		String()
+
+	/*
 	ti.TextColor = darkGray
 	ti.BackgroundColor = YellowGreen.String()
 	ti.CursorColor = Fuschia.String()
 	ti.CharLimit = noteCharacterLimit
 	ti.Focus()
+	 */
 
 	// Text input for search
 	sp := spinner.NewModel()
+	/*
 	sp.ForegroundColor = statusBarNoteFg.String()
 	sp.BackgroundColor = statusBarBg.String()
+	 */
 	sp.HideFor = time.Millisecond * 50
 	sp.MinimumLifetime = time.Millisecond * 180
 
@@ -247,33 +253,11 @@ func (m model) View() string {
 // ColorPair is a pair of colors, one intended for a dark background and the
 // other intended for a light background. We'll automatically determine which
 // of these colors to use.
-type ColorPair struct {
-	Dark  string
-	Light string
-}
+type ColorPair = lipgloss.AdaptiveColor
 
 // NewColorPair is a helper function for creating a ColorPair.
 func NewColorPair(dark, light string) ColorPair {
-	return ColorPair{dark, light}
-}
-
-// Color returns the appropriate termenv.Color for the terminal background.
-func (c ColorPair) Color() te.Color {
-	if HasDarkBackground {
-		return Color(c.Dark)
-	}
-
-	return Color(c.Light)
-}
-
-// String returns a string representation of the color appropriate for the
-// current terminal background.
-func (c ColorPair) String() string {
-	if HasDarkBackground {
-		return c.Dark
-	}
-
-	return c.Light
+	return lipgloss.AdaptiveColor{Dark: dark, Light: light}
 }
 
 // Wrap wraps lines at a predefined width via package muesli/reflow.
@@ -283,35 +267,20 @@ func Wrap(s string) string {
 
 // Keyword applies special formatting to imporant words or phrases.
 func Keyword(s string) string {
-	return te.String(s).Foreground(Green.Color()).String()
-}
-
-// Code applies special formatting to strings indeded to read as code.
-func Code(s string) string {
-	return te.String(" " + s + " ").
-		Foreground(NewColorPair("#ED567A", "#FF4672").Color()).
-		Background(NewColorPair("#2B2A2A", "#EBE5EC").Color()).
-		String()
-}
-
-// Subtle applies formatting to strings intended to be "subtle".
-func Subtle(s string) string {
-	return te.String(s).Foreground(NewColorPair("#5C5C5C", "#9B9B9B").Color()).String()
+	return te.String(s).Foreground(Color(Green.Dark)).String()
 }
 
 type styleFunc func(string) string
 // Returns a termenv style with foreground and background options.
 func newStyle(fg, bg ColorPair, bold bool) func(string) string {
-	s := te.Style{}.Foreground(fg.Color()).Background(bg.Color())
-	if bold {
-		s = s.Bold()
-	}
-	return s.Styled
+	s := lipgloss.Style{}.Foreground(fg).Background(bg)
+	s = s.Bold(bold)
+	return s.Render
 }
 
 // Returns a new termenv style with background options only.
 func newFgStyle(c ColorPair) styleFunc {
-	return te.Style{}.Foreground(c.Color()).Styled
+	return te.Style{}.Foreground(Color(c.Dark)).Styled
 }
 
 
@@ -469,7 +438,7 @@ func logoView(text string) string {
 	return te.String(withPadding(text)).
 		Bold().
 		Foreground(glowLogoTextColor).
-		Background(Fuschia.Color()).
+		Background(Color(Fuschia.Dark)).
 		String()
 }
 
@@ -483,7 +452,7 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 	// Logo
 	name := "FedBOX Admin TUI"
 	haveErr := false
-	if ob, _, err := m.r.LoadObjects(pub.IRI("http://example.com")); err == nil {
+	if ob, _, err := m.r.LoadObjects(pub.IRI("https://fedbox.git/")); err == nil {
 		pub.OnActor(ob.Collection().First(), func(a *pub.Actor) error {
 			m.statusMessage = a.Summary.String()
 			return nil
