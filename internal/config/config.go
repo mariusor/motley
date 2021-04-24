@@ -170,11 +170,13 @@ func LoadFromEnv(e env.Type, timeOut time.Duration) (Options, error) {
 	if to, _ := time.ParseDuration(loadKeyFromEnv(KeyTimeOut, "")); to > 0 {
 		conf.TimeOut = to
 	}
-	conf.Secure, _ = strconv.ParseBool(loadKeyFromEnv(KeyHTTPS, "false"))
-	if conf.Secure {
-		conf.BaseURL = fmt.Sprintf("https://%s", conf.Host)
-	} else {
-		conf.BaseURL = fmt.Sprintf("http://%s", conf.Host)
+	if conf.Host != "" {
+		conf.Secure, _ = strconv.ParseBool(loadKeyFromEnv(KeyHTTPS, "false"))
+		if conf.Secure {
+			conf.BaseURL = fmt.Sprintf("https://%s", conf.Host)
+		} else {
+			conf.BaseURL = fmt.Sprintf("http://%s", conf.Host)
+		}
 	}
 	conf.KeyPath = loadKeyFromEnv(KeyKeyPath, "")
 	conf.CertPath = loadKeyFromEnv(KeyCertPath, "")
@@ -184,7 +186,7 @@ func LoadFromEnv(e env.Type, timeOut time.Duration) (Options, error) {
 	conf.Storage = StorageType(strings.ToLower(envStorage))
 	conf.StoragePath = loadKeyFromEnv(KeyStoragePath, "")
 	if conf.StoragePath == "" {
-		conf.StoragePath = os.TempDir()
+		conf.StoragePath = "."
 	}
 	conf.StoragePath = path.Clean(conf.StoragePath)
 
