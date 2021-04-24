@@ -6,6 +6,7 @@ import (
 	authboltdb "github.com/go-ap/auth/boltdb"
 	authfs "github.com/go-ap/auth/fs"
 	authpgx "github.com/go-ap/auth/pgx"
+	authsqlite "github.com/go-ap/auth/sqlite"
 	"github.com/go-ap/errors"
 	"github.com/go-ap/fedbox/storage/badger"
 	"github.com/go-ap/fedbox/storage/boltdb"
@@ -87,11 +88,16 @@ func getFsStorage(c config.Options, l logrus.FieldLogger) (st.Repository, osin.S
 
 func getSqliteStorage(c config.Options, l logrus.FieldLogger) (st.Repository, osin.Storage, error) {
 	l.Debugf("Initializing sqlite storage at %s", c.StoragePath)
+	oauth := authsqlite.New(authsqlite.Config{
+		Path:  c.BaseStoragePath(),
+		LogFn: InfoLogFn(l),
+		ErrFn: ErrLogFn(l),
+	})
 	db, err := sqlite.New(sqlite.Config{})
 	if err != nil {
 		return nil, nil, err
 	}
-	return db, nil, errors.NotImplementedf("sqlite storage backend is not implemented yet")
+	return db, oauth, nil
 }
 
 func getPgxStorage(c config.Options, l logrus.FieldLogger) (st.Repository, osin.Storage, error) {
