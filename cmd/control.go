@@ -9,7 +9,6 @@ import (
 	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v2"
-	"os"
 	"time"
 )
 
@@ -49,10 +48,6 @@ func Before(c *cli.Context) error {
 }
 
 func setup(c *cli.Context, l logrus.FieldLogger) (*Control, error) {
-	dir := c.String("dir")
-	if dir == "" {
-		dir = "."
-	}
 	environ := env.Type(c.String("env"))
 	if environ == "" {
 		environ = env.DEV
@@ -61,8 +56,9 @@ func setup(c *cli.Context, l logrus.FieldLogger) (*Control, error) {
 	if err != nil {
 		l.Errorf("Unable to load config files for environment %s: %s", environ, err)
 	}
-	if dir == "." && conf.StoragePath != os.TempDir() {
-		dir = conf.StoragePath
+
+	if dir := c.String("path"); dir != "." {
+		conf.StoragePath = dir
 	}
 	typ := c.String("type")
 	if typ != "" {
@@ -78,4 +74,3 @@ func setup(c *cli.Context, l logrus.FieldLogger) (*Control, error) {
 var TuiAction = func(*cli.Context) error {
 	return tui.Launch(pub.IRI(ctl.Conf.BaseURL), ctl.Storage)
 }
-
