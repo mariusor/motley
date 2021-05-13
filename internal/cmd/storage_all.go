@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"git.sr.ht/~marius/motley/internal/config"

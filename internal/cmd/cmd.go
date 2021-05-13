@@ -1,6 +1,8 @@
-package main
+package cmd
 
 import (
+	"time"
+
 	tui "git.sr.ht/~marius/motley"
 	"git.sr.ht/~marius/motley/internal/config"
 	"git.sr.ht/~marius/motley/internal/env"
@@ -9,7 +11,6 @@ import (
 	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v2"
-	"time"
 )
 
 var (

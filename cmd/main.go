@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
+
+	"git.sr.ht/~marius/motley/internal/cmd"
 	"git.sr.ht/~marius/motley/internal/config"
 	"git.sr.ht/~marius/motley/internal/env"
 	"gopkg.in/urfave/cli.v2"
-	"os"
 )
 
 var version = "HEAD"
@@ -15,7 +17,7 @@ func main() {
 	app.Name = "motley"
 	app.Usage = "helper utility to manage a FedBOX instance"
 	app.Version = version
-	app.Before = Before
+	app.Before = cmd.Before
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:  "url",
@@ -41,7 +43,7 @@ func main() {
 			Usage: "The postgres database user",
 		},
 	}
-	app.Action = TuiAction
+	app.Action = cmd.TuiAction
 
 	if err := app.Run(os.Args); err != nil {
 		os.Exit(1)
