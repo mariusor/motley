@@ -35,12 +35,7 @@ func main() {
 		&cli.StringFlag{
 			Name:  "path",
 			Value: ".",
-			Usage: fmt.Sprintf("The path for the storage folder orsocket"),
-		},
-		&cli.StringFlag{
-			Name:  "user",
-			Value: "fedbox",
-			Usage: "The postgres database user",
+			Usage: fmt.Sprintf("The path for the storage folder or socket"),
 		},
 	}
 	app.Action = cmd.TuiAction

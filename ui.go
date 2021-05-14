@@ -2,6 +2,11 @@ package motley
 
 import (
 	"fmt"
+	"log"
+	"math"
+	"strings"
+	"time"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -9,15 +14,13 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
-	"github.com/go-ap/storage"
+	st "github.com/go-ap/storage"
+	tree "github.com/mariusor/bubbles-tree"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/wordwrap"
 	te "github.com/muesli/termenv"
-	"log"
-	"math"
-	"strings"
-	"time"
+	"github.com/openshift/osin"
 )
 
 const (
@@ -25,8 +28,8 @@ const (
 	statusMessageTimeout = time.Second * 2 // how long to show status messages like "stashed!"
 	ellipsis             = "…"
 
-	darkGray = "#333333"
-	wrapAt = 60
+	darkGray        = "#333333"
+	wrapAt          = 60
 	statusBarHeight = 1
 )
 
@@ -75,8 +78,8 @@ var (
 
 // Colors for dark and light backgrounds.
 var (
-	Indigo        = NewColorPair("#7571F9", "#5A56E0")
-	SubtleIndigo  = NewColorPair("#514DC1", "#7D79F6")
+	Indigo       = NewColorPair("#7571F9", "#5A56E0")
+	SubtleIndigo = NewColorPair("#514DC1", "#7D79F6")
 	Cream        = NewColorPair("#FFFDF5", "#FFFDF5")
 	YellowGreen  = NewColorPair("#ECFD65", "#04B575")
 	Fuschia      = NewColorPair("#EE6FF8", "#EE6FF8")
@@ -101,7 +104,7 @@ var (
 	GlamourMaxWidth = 800
 )
 
-var(
+var (
 	pagerHelpHeight int
 
 	mintGreen = NewColorPair("#89F0CB", "#89F0CB")
@@ -122,12 +125,11 @@ var(
 	helpViewStyle                  = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-
-func Launch(base pub.IRI, r storage.Repository) error {
-	return tea.NewProgram(newModel(base, r)).Start()
+func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
+	return tea.NewProgram(newModel(base, r, o)).Start()
 }
 
-func newModel(base pub.IRI, r storage.Repository) *model {
+func newModel(base pub.IRI, r st.Store, o osin.Storage) *model {
 	if te.HasDarkBackground() {
 		GlamourStyle = "dark"
 	} else {
@@ -135,8 +137,14 @@ func newModel(base pub.IRI, r storage.Repository) *model {
 	}
 	m := new(model)
 	m.commonModel = new(commonModel)
-	m.r = r
-	m.baseIRI = base
+
+	f := fedbox{iri: base, s: r, o: o}
+	m.f = f
+
+	tree := tree.New(f)
+	tree.Debug = true
+
+	m.tree =        tree
 	m.pager = newPagerModel(m.commonModel)
 	return m
 }
@@ -155,44 +163,41 @@ func newPagerModel(common *commonModel) pagerModel {
 		String()
 
 	/*
-	ti.TextColor = darkGray
-	ti.BackgroundColor = YellowGreen.String()
-	ti.CursorColor = Fuschia.String()
-	ti.CharLimit = noteCharacterLimit
-	ti.Focus()
-	 */
+		ti.TextColor = darkGray
+		ti.BackgroundColor = YellowGreen.String()
+		ti.CursorColor = Fuschia.String()
+		ti.CharLimit = noteCharacterLimit
+		ti.Focus()
+	*/
 
 	// Text input for search
 	sp := spinner.NewModel()
 	/*
-	sp.ForegroundColor = statusBarNoteFg.String()
-	sp.BackgroundColor = statusBarBg.String()
-	 */
+		sp.ForegroundColor = statusBarNoteFg.String()
+		sp.BackgroundColor = statusBarBg.String()
+	*/
 	sp.HideFor = time.Millisecond * 50
 	sp.MinimumLifetime = time.Millisecond * 180
 
 	return pagerModel{
 		commonModel: common,
-		textInput: ti,
-		viewport:  vp,
-		spinner:   sp,
+		textInput:   ti,
+		viewport:    vp,
+		spinner:     sp,
 	}
 }
 
 type commonModel struct {
-	baseIRI    pub.IRI
-	r          storage.Repository
-	cwd        string
-	width      int
-	height     int
+	f       fedbox
+	width   int
+	height  int
 }
 
 type pagerModel struct {
 	*commonModel
-	state     int
-	showHelp  bool
+	state    int
+	showHelp bool
 
-	// Inbox/Outbox tree model
 	viewport  viewport.Model
 	textInput textinput.Model
 	spinner   spinner.Model
@@ -203,13 +208,29 @@ type pagerModel struct {
 
 type model struct {
 	*commonModel
-	fatalErr    error
-	pager pagerModel
+	fatalErr error
+	// Inbox/Outbox tree model
+	tree      tree.Model
+	pager    pagerModel
 }
 
 func (m model) Init() tea.Cmd {
 	var cmds []tea.Cmd
+	cmds = append(cmds, m.tree.Init())
 	return tea.Batch(cmds...)
+}
+
+func (m *model) setSize (w, h int) {
+	m.width = w
+	m.height = h
+
+	tw := int(float32(w) * 0.33)
+	t, _ := m.tree.Update(tea.WindowSizeMsg{
+		Width:  tw,
+		Height: m.height,
+	})
+	m.tree = t.(tree.Model)
+	m.pager.setSize(w-tw, h)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -220,7 +241,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	var cmds []tea.Cmd
+	var (
+		cmd tea.Cmd
+		cmds []tea.Cmd
+	)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -228,28 +252,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return m, tea.Quit
 		case "left", "h", "delete":
-
 		// Ctrl+C always quits no matter where in the application you are.
 		case "ctrl+c":
 			return m, tea.Quit
 		}
 	// Window size is received when starting up and on every resize
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.pager.setSize(msg.Width, msg.Height)
+		m.setSize(msg.Width, msg.Height)
 	}
 
-	newPagerModel, cmd := m.pager.update(msg)
-	m.pager = newPagerModel
+	t, cmd := m.tree.Update(msg)
+	m.tree = t.(tree.Model)
+	cmds = append(cmds, cmd)
+
+	m.pager, cmd = m.pager.update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
-	return m.pager.View()
+	var b strings.Builder
+	fmt.Fprint(&b, m.tree.View()+"\n")
+	fmt.Fprintf(&b, m.pager.View())
+
+	return b.String()
 }
+
 // ColorPair is a pair of colors, one intended for a dark background and the
 // other intended for a light background. We'll automatically determine which
 // of these colors to use.
@@ -271,6 +300,7 @@ func Keyword(s string) string {
 }
 
 type styleFunc func(string) string
+
 // Returns a termenv style with foreground and background options.
 func newStyle(fg, bg ColorPair, bold bool) func(string) string {
 	s := lipgloss.Style{}.Foreground(fg).Background(bg)
@@ -282,7 +312,6 @@ func newStyle(fg, bg ColorPair, bold bool) func(string) string {
 func newFgStyle(c ColorPair) styleFunc {
 	return te.Style{}.Foreground(Color(c.Dark)).Styled
 }
-
 
 func (m *pagerModel) setSize(w, h int) {
 	m.viewport.Width = w
@@ -312,6 +341,7 @@ func (m *pagerModel) toggleHelp() {
 const (
 	pagerStateBrowse int = iota
 )
+
 // Perform stuff that needs to happen after a successful markdown stash. Note
 // that the the returned command should be sent back the through the pager
 // update function.
@@ -428,10 +458,11 @@ func (m pagerModel) View() string {
 const (
 	pagerStashIcon = "🔒"
 )
+
 var glowLogoTextColor = Color("#ECFD65")
 
 func withPadding(s string) string {
-	return " "+s+" "
+	return " " + s + " "
 }
 
 func logoView(text string) string {
@@ -452,14 +483,14 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 	// Logo
 	name := "FedBOX Admin TUI"
 	haveErr := false
-	if ob, _, err := m.r.LoadObjects(pub.IRI("https://fedbox.git/")); err == nil {
-		pub.OnActor(ob.Collection().First(), func(a *pub.Actor) error {
-			m.statusMessage = a.Summary.String()
-			return nil
-		})
-	} else {
+
+	s, err := m.f.getService()
+	if err != nil {
 		haveErr = true
-		m.statusMessage = fmt.Sprintf("Error: %s", err)
+		m.statusMessage = "Error: invalid connection"
+	}
+	if s != nil {
+		m.statusMessage = fmt.Sprintf("Connected to %s", s.GetLink())
 	}
 	logo := logoView(name)
 
@@ -473,7 +504,7 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 	} else {
 		statusMessage = statusBarMessageStyle(withPadding(m.statusMessage))
 	}
-	
+
 	// Empty space
 	padding := max(0,
 		m.width-

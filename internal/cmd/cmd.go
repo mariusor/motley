@@ -73,5 +73,5 @@ func setup(c *cli.Context, l logrus.FieldLogger) (*Control, error) {
 }
 
 var TuiAction = func(*cli.Context) error {
-	return tui.Launch(pub.IRI(ctl.Conf.BaseURL), ctl.Storage)
+	return tui.Launch(pub.IRI(ctl.Conf.BaseURL), ctl.Storage, ctl.AuthStorage)
 }
