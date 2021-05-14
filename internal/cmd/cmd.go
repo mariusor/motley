@@ -21,10 +21,10 @@ var (
 type Control struct {
 	Conf        config.Options
 	AuthStorage osin.Storage
-	Storage     storage.Repository
+	Storage     storage.Store
 }
 
-func New(authDB osin.Storage, actorDb storage.Repository, conf config.Options) *Control {
+func New(authDB osin.Storage, actorDb storage.Store, conf config.Options) *Control {
 	return &Control{
 		Conf:        conf,
 		AuthStorage: authDB,
@@ -33,7 +33,6 @@ func New(authDB osin.Storage, actorDb storage.Repository, conf config.Options) *
 }
 
 func Before(c *cli.Context) error {
-	logger.Level = logrus.WarnLevel
 	ct, err := setup(c, logger)
 	if err != nil {
 		// Ensure we don't print the default help message, which is not useful here
@@ -42,13 +41,10 @@ func Before(c *cli.Context) error {
 		return err
 	}
 	ctl = *ct
-	// the level enums have same values
-	logger.Level = logrus.TraceLevel
-
 	return nil
 }
 
-func setup(c *cli.Context, l logrus.FieldLogger) (*Control, error) {
+func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 	environ := env.Type(c.String("env"))
 	if environ == "" {
 		environ = env.DEV
@@ -57,16 +53,19 @@ func setup(c *cli.Context, l logrus.FieldLogger) (*Control, error) {
 	if err != nil {
 		l.Errorf("Unable to load config files for environment %s: %s", environ, err)
 	}
-
 	if dir := c.String("path"); dir != "." {
 		conf.StoragePath = dir
 	}
-	typ := c.String("type")
-	if typ != "" {
+	if typ := c.String("type"); typ != "" {
 		conf.Storage = config.StorageType(typ)
 	}
+	if u := c.String("url"); u != "" {
+		conf.BaseURL = u
+	}
+	l.SetLevel(conf.LogLevel)
 	db, aDb, err := Storage(conf, l)
 	if err != nil {
+		l.Errorf("Unable to access storage: %s", err)
 		return nil, err
 	}
 	return New(aDb, db, conf), nil

@@ -285,7 +285,7 @@ func (m model) View() string {
 type ColorPair = lipgloss.AdaptiveColor
 
 // NewColorPair is a helper function for creating a ColorPair.
-func NewColorPair(dark, light string) ColorPair {
+func NewColorPair(dark, light string) lipgloss.AdaptiveColor {
 	return lipgloss.AdaptiveColor{Dark: dark, Light: light}
 }
 

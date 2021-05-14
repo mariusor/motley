@@ -46,8 +46,8 @@ motley: bin/motley
 bin/motley: go.mod cmd/main.go $(APPSOURCES)
 	$(BUILD) -tags "$(TAGS)" -o $@ ./cmd/
 
-run: motley
-	@./bin/motely
+run: ./bin/motley
+	@./bin/motley
 
 clean:
 	-$(RM) bin/*
