@@ -15,6 +15,7 @@ require (
 	github.com/go-ap/auth v0.0.0-20210403114547-c68fb3011ebd
 	github.com/go-ap/errors v0.0.0-20210218123445-4466eca2f4ec
 	github.com/go-ap/fedbox v0.0.0-20210415164852-b86be7df20e1
+	github.com/go-ap/handlers v0.0.0-20210403114447-058e93c4936c // indirect
 	github.com/go-ap/storage v0.0.0-20210403114403-99ae85c8cc72
 	github.com/joho/godotenv v1.3.0
 	github.com/mariusor/bubbles-tree v0.0.0-20210514170659-b437f1f8fd6a

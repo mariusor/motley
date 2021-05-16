@@ -124,9 +124,13 @@ var (
 	statusBarMessageHelpStyle      = newStyle(NewColorPair("#B6FFE4", "#B6FFE4"), Green, false)
 	helpViewStyle                  = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
+//
+//func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
+//	return tea.NewProgram(newModel(base, r, o)).Start()
+//}
 
 func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
-	return tea.NewProgram(newModel(base, r, o)).Start()
+	return tea.NewProgram(tree.New(FedBOX(base, r, o))).Start()
 }
 
 func newModel(base pub.IRI, r st.Store, o osin.Storage) *model {
@@ -138,13 +142,8 @@ func newModel(base pub.IRI, r st.Store, o osin.Storage) *model {
 	m := new(model)
 	m.commonModel = new(commonModel)
 
-	f := fedbox{iri: base, s: r, o: o}
-	m.f = f
-
-	tree := tree.New(f)
-	tree.Debug = true
-
-	m.tree =        tree
+	m.f = FedBOX(base, r, o)
+	m.tree = tree.New(m.f)
 	m.pager = newPagerModel(m.commonModel)
 	return m
 }
@@ -188,7 +187,7 @@ func newPagerModel(common *commonModel) pagerModel {
 }
 
 type commonModel struct {
-	f       fedbox
+	f       *fedbox
 	width   int
 	height  int
 }
