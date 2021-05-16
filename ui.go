@@ -232,6 +232,17 @@ func (m *model) setSize (w, h int) {
 	m.pager.setSize(w-tw, h)
 }
 
+func (m *model) updatePager(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
+	m.pager, cmd = m.pager.update(msg)
+	return cmd
+}
+
+func (m *model) updateTree(msg tea.Msg) tea.Cmd {
+	t, cmd := m.tree.Update(msg)
+	m.tree = t.(tree.Model)
+	return cmd
+}
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// If there's been an error, any key exits
 	if m.fatalErr != nil {
@@ -259,12 +270,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 	}
-
-	t, cmd := m.tree.Update(msg)
-	m.tree = t.(tree.Model)
+	cmd = m.updateTree(msg)
 	cmds = append(cmds, cmd)
 
-	m.pager, cmd = m.pager.update(msg)
+	cmd = m.updatePager(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
