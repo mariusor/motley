@@ -130,7 +130,9 @@ var (
 //}
 
 func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
-	return tea.NewProgram(tree.New(FedBOX(base, r, o))).Start()
+	t := tree.New(FedBOX(base, r, o))
+	t.Debug = true
+	return tea.NewProgram(t).Start()
 }
 
 func newModel(base pub.IRI, r st.Store, o osin.Storage) *model {
