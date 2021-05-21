@@ -18,7 +18,7 @@ require (
 	github.com/go-ap/handlers v0.0.0-20210403114447-058e93c4936c // indirect
 	github.com/go-ap/storage v0.0.0-20210403114403-99ae85c8cc72
 	github.com/joho/godotenv v1.3.0
-	github.com/mariusor/bubbles-tree v0.0.0-20210514170659-b437f1f8fd6a
+	github.com/mariusor/bubbles-tree v0.0.0-20210520181616-dba5fe534ae7
 	github.com/mattn/go-runewidth v0.0.12
 	github.com/microcosm-cc/bluemonday v1.0.9 // indirect
 	github.com/muesli/reflow v0.2.1-0.20210115123740-9e1d0d53df68
