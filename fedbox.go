@@ -1,6 +1,9 @@
 package motley
 
 import (
+	"fmt"
+	"os"
+
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/handlers"
 	st "github.com/go-ap/storage"
@@ -112,7 +115,6 @@ func getItemElements(it pub.Item) []string {
 }
 
 func (f *fedbox) Walk(depth int) ([]string, error) {
-	//fmt.Fprintf(os.Stderr, "Walking %#v\n", *f)
 	it, err := f.s.Load(f.iri)
 	if err != nil {
 		return nil, err
@@ -138,6 +140,6 @@ func (f *fedbox) Walk(depth int) ([]string, error) {
 		result = append(result, getItemElements(f.tree[iri])...)
 	}
 
-	//fmt.Fprintf(os.Stderr, "results %#v\n", result)
+	fmt.Fprintf(os.Stderr, "results %#v\n", result)
 	return result, err
 }
