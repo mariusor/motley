@@ -7,6 +7,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -125,6 +126,11 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	}
 	configs := []string{
 		".env",
+	}
+	if strings.Contains(base, "~") {
+		if u, err := user.Current(); err == nil {
+			base = strings.Replace(base, "~", u.HomeDir, 1)
+		}
 	}
 	appendIfFile := func(typ env.Type) {
 		envFile := path.Clean(path.Join(base, fmt.Sprintf(".env.%s", typ)))
