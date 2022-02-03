@@ -124,6 +124,7 @@ var (
 	statusBarMessageHelpStyle      = newStyle(NewColorPair("#B6FFE4", "#B6FFE4"), Green, false)
 	helpViewStyle                  = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
+
 //
 //func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
 //	return tea.NewProgram(newModel(base, r, o)).Start()
@@ -172,7 +173,7 @@ func newPagerModel(common *commonModel) pagerModel {
 	*/
 
 	// Text input for search
-	sp := spinner.NewModel()
+	sp := spinner.New()
 	/*
 		sp.ForegroundColor = statusBarNoteFg.String()
 		sp.BackgroundColor = statusBarBg.String()
@@ -189,9 +190,9 @@ func newPagerModel(common *commonModel) pagerModel {
 }
 
 type commonModel struct {
-	f       *fedbox
-	width   int
-	height  int
+	f      *fedbox
+	width  int
+	height int
 }
 
 type pagerModel struct {
@@ -211,8 +212,8 @@ type model struct {
 	*commonModel
 	fatalErr error
 	// Inbox/Outbox tree model
-	tree      tree.Model
-	pager    pagerModel
+	tree  tree.Model
+	pager pagerModel
 }
 
 func (m model) Init() tea.Cmd {
@@ -221,7 +222,7 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *model) setSize (w, h int) {
+func (m *model) setSize(w, h int) {
 	m.width = w
 	m.height = h
 
@@ -254,7 +255,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var (
-		cmd tea.Cmd
+		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
 
