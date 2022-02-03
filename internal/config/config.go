@@ -2,17 +2,17 @@ package config
 
 import (
 	"fmt"
-	"git.sr.ht/~marius/motley/internal/env"
-	"github.com/go-ap/errors"
-	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
 	"os"
 	"os/user"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"git.sr.ht/~marius/motley/internal/env"
+	"github.com/go-ap/errors"
+	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 )
 
 var Prefix = "fedbox"
@@ -71,7 +71,7 @@ func (o Options) BaseStoragePath() string {
 	if !filepath.IsAbs(o.StoragePath) {
 		o.StoragePath, _ = filepath.Abs(o.StoragePath)
 	}
-	basePath := path.Clean(path.Join(o.StoragePath, string(o.Env), o.Host))
+	basePath := filepath.Clean(filepath.Join(o.StoragePath, string(o.Storage), string(o.Env), o.Host))
 	fi, err := os.Stat(basePath)
 	if err != nil && os.IsNotExist(err) {
 		err = os.MkdirAll(basePath, defaultPerm)
@@ -133,7 +133,7 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 		}
 	}
 	appendIfFile := func(typ env.Type) {
-		envFile := path.Clean(path.Join(base, fmt.Sprintf(".env.%s", typ)))
+		envFile := filepath.Clean(filepath.Join(base, fmt.Sprintf(".env.%s", typ)))
 		if _, err := os.Stat(envFile); err == nil {
 			configs = append(configs, envFile)
 		}
@@ -199,7 +199,7 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	if conf.StoragePath == "" {
 		conf.StoragePath = base
 	}
-	conf.StoragePath = path.Clean(conf.StoragePath)
+	conf.StoragePath = filepath.Clean(conf.StoragePath)
 
 	return conf, nil
 }

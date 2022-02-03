@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"path/filepath"
+
 	"git.sr.ht/~marius/motley/internal/config"
 	authbadger "github.com/go-ap/auth/badger"
 	authboltdb "github.com/go-ap/auth/boltdb"
@@ -38,10 +40,10 @@ var (
 func getBadgerStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Storage, error) {
 	l.Debugf("Initializing badger storage at %s", c.Badger())
 	db, err := badger.New(badger.Config{
-		Path:  c.Badger(),
+		Path:    c.Badger(),
 		BaseURL: c.BaseURL,
-		LogFn: InfoLogFn(l),
-		ErrFn: ErrLogFn(l),
+		LogFn:   InfoLogFn(l),
+		ErrFn:   ErrLogFn(l),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -58,10 +60,10 @@ func getBadgerStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.St
 func getBoltStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Storage, error) {
 	l.Debugf("Initializing boltdb storage at %s", c.BoltDB())
 	db, err := boltdb.New(boltdb.Config{
-		Path:  c.BoltDB(),
+		Path:    c.BoltDB(),
 		BaseURL: c.BaseURL,
-		LogFn: InfoLogFn(l),
-		ErrFn: ErrLogFn(l),
+		LogFn:   InfoLogFn(l),
+		ErrFn:   ErrLogFn(l),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -77,19 +79,20 @@ func getBoltStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Stor
 }
 
 func getFsStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Storage, error) {
+	p := c.BaseStoragePath()
 	l.Debugf("Initializing fs storage at %s", c.BaseStoragePath())
-	db, err := fs.New(fs.Config{
-		StoragePath: c.StoragePath,
-		BaseURL:     c.BaseURL,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
 	oauth := authfs.New(authfs.Config{
-		Path:  c.BaseStoragePath(),
+		Path:  p,
 		LogFn: InfoLogFn(l),
 		ErrFn: ErrLogFn(l),
 	})
+	db, err := fs.New(fs.Config{
+		StoragePath: filepath.Dir(p),
+		BaseURL:     c.BaseURL,
+	})
+	if err != nil {
+		return nil, oauth, err
+	}
 	return db, oauth, nil
 }
 
