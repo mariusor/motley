@@ -118,7 +118,7 @@ func loadKeyFromEnv(name, def string) string {
 	return def
 }
 
-func LoadFromEnv(e env.Type, timeOut time.Duration) (Options, error) {
+func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error) {
 	conf := Options{}
 	if !env.ValidType(e) {
 		e = env.Type(loadKeyFromEnv(KeyENV, ""))
@@ -127,7 +127,7 @@ func LoadFromEnv(e env.Type, timeOut time.Duration) (Options, error) {
 		".env",
 	}
 	appendIfFile := func(typ env.Type) {
-		envFile := fmt.Sprintf(".env.%s", typ)
+		envFile := path.Clean(path.Join(base, fmt.Sprintf(".env.%s", typ)))
 		if _, err := os.Stat(envFile); err == nil {
 			configs = append(configs, envFile)
 		}
@@ -139,8 +139,13 @@ func LoadFromEnv(e env.Type, timeOut time.Duration) (Options, error) {
 	} else {
 		appendIfFile(e)
 	}
+	loadedConfig := false
 	for _, f := range configs {
-		godotenv.Overload(f)
+		err := godotenv.Overload(f)
+		loadedConfig = loadedConfig || err == nil
+	}
+	if !loadedConfig {
+		return conf, fmt.Errorf("unable to find any configuration files")
 	}
 
 	lvl := loadKeyFromEnv(KeyLogLevel, "")
@@ -186,7 +191,7 @@ func LoadFromEnv(e env.Type, timeOut time.Duration) (Options, error) {
 	conf.Storage = StorageType(strings.ToLower(envStorage))
 	conf.StoragePath = loadKeyFromEnv(KeyStoragePath, "")
 	if conf.StoragePath == "" {
-		conf.StoragePath = "."
+		conf.StoragePath = base
 	}
 	conf.StoragePath = path.Clean(conf.StoragePath)
 

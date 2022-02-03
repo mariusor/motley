@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ctl Control
+	ctl    Control
 	logger = logrus.New()
 )
 
@@ -49,12 +49,10 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 	if environ == "" {
 		environ = env.DEV
 	}
-	conf, err := config.LoadFromEnv(environ, time.Second)
+	dir := c.String("path")
+	conf, err := config.LoadFromEnv(dir, environ, time.Second)
 	if err != nil {
 		l.Errorf("Unable to load config files for environment %s: %s", environ, err)
-	}
-	if dir := c.String("path"); dir != "." {
-		conf.StoragePath = dir
 	}
 	if typ := c.String("type"); typ != "" {
 		conf.Storage = config.StorageType(typ)
