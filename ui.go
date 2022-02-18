@@ -125,15 +125,8 @@ var (
 	helpViewStyle                  = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-//
-//func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
-//	return tea.NewProgram(newModel(base, r, o)).Start()
-//}
-
 func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
-	t := tree.New(FedBOX(base, r, o))
-	t.Debug = true
-	return tea.NewProgram(t).Start()
+	return tea.NewProgram(newModel(base, r, o)).Start()
 }
 
 func newModel(base pub.IRI, r st.Store, o osin.Storage) *model {
@@ -158,7 +151,7 @@ func newPagerModel(common *commonModel) pagerModel {
 	vp.HighPerformanceRendering = false
 
 	// Text input for notes/memos
-	ti := textinput.NewModel()
+	ti := textinput.New()
 	ti.Prompt = te.String(" > ").
 		Foreground(Color(darkGray)).
 		Background(Color(YellowGreen.Dark)).

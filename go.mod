@@ -7,7 +7,6 @@ require (
 	github.com/charmbracelet/bubbletea v0.19.3
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.4.0
-	github.com/containerd/console v1.0.3 // indirect
 	github.com/go-ap/activitypub v0.0.0-20220128114759-c61421fde822
 	github.com/go-ap/auth v0.0.0-20220128115652-f0b6e7dc5bdc
 	github.com/go-ap/errors v0.0.0-20211205144917-1b5bb9681d99
@@ -17,13 +16,10 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/mariusor/bubbles-tree v0.0.0-20210520181616-dba5fe534ae7
 	github.com/mattn/go-runewidth v0.0.13
-	github.com/muesli/ansi v0.0.0-20211031195517-c9f0611b6c70 // indirect
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.11.0
 	github.com/openshift/osin v1.0.1
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838 // indirect
-	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
-	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20190806201727-b62605953717
 )
