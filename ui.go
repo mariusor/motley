@@ -2,7 +2,6 @@ package motley
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"strings"
 	"time"
@@ -14,7 +13,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
-	st "github.com/go-ap/storage"
+	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
@@ -31,6 +30,8 @@ const (
 	darkGray        = "#333333"
 	wrapAt          = 60
 	statusBarHeight = 1
+
+	treeWidth = 32
 )
 
 var (
@@ -100,7 +101,6 @@ var (
 
 var (
 	GlamourStyle    = "auto"
-	GlamourEnabled  = true
 	GlamourMaxWidth = 800
 )
 
@@ -125,11 +125,11 @@ var (
 	helpViewStyle                  = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-func Launch(base pub.IRI, r st.Store, o osin.Storage) error {
+func Launch(base pub.IRI, r processing.Store, o osin.Storage) error {
 	return tea.NewProgram(newModel(base, r, o)).Start()
 }
 
-func newModel(base pub.IRI, r st.Store, o osin.Storage) *model {
+func newModel(base pub.IRI, r processing.Store, o osin.Storage) *model {
 	if te.HasDarkBackground() {
 		GlamourStyle = "dark"
 	} else {
@@ -139,9 +139,16 @@ func newModel(base pub.IRI, r st.Store, o osin.Storage) *model {
 	m.commonModel = new(commonModel)
 
 	m.f = FedBOX(base, r, o)
-	m.tree = tree.New(m.f)
+	m.tree = newTreeModel(m.commonModel, m.f)
 	m.pager = newPagerModel(m.commonModel)
 	return m
+}
+
+func newTreeModel(common *commonModel, t tree.Treeish) treeModel {
+	return treeModel{
+		commonModel: common,
+		list:        tree.New(t),
+	}
 }
 
 func newPagerModel(common *commonModel) pagerModel {
@@ -171,8 +178,7 @@ func newPagerModel(common *commonModel) pagerModel {
 		sp.ForegroundColor = statusBarNoteFg.String()
 		sp.BackgroundColor = statusBarBg.String()
 	*/
-	sp.HideFor = time.Millisecond * 50
-	sp.MinimumLifetime = time.Millisecond * 180
+	sp.Spinner.FPS = time.Second / 10
 
 	return pagerModel{
 		commonModel: common,
@@ -186,6 +192,11 @@ type commonModel struct {
 	f      *fedbox
 	width  int
 	height int
+}
+
+type treeModel struct {
+	*commonModel
+	list tree.Model
 }
 
 type pagerModel struct {
@@ -205,13 +216,13 @@ type model struct {
 	*commonModel
 	fatalErr error
 	// Inbox/Outbox tree model
-	tree  tree.Model
+	tree  treeModel
 	pager pagerModel
 }
 
 func (m model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, m.tree.Init())
+	cmds = append(cmds, m.tree.list.Init())
 	return tea.Batch(cmds...)
 }
 
@@ -220,11 +231,7 @@ func (m *model) setSize(w, h int) {
 	m.height = h
 
 	tw := int(float32(w) * 0.33)
-	t, _ := m.tree.Update(tea.WindowSizeMsg{
-		Width:  tw,
-		Height: m.height,
-	})
-	m.tree = t.(tree.Model)
+	m.tree.setSize(tw, m.height)
 	m.pager.setSize(w-tw, h)
 }
 
@@ -235,10 +242,15 @@ func (m *model) updatePager(msg tea.Msg) tea.Cmd {
 }
 
 func (m *model) updateTree(msg tea.Msg) tea.Cmd {
-	t, cmd := m.tree.Update(msg)
-	m.tree = t.(tree.Model)
+	if ms, ok := msg.(tea.WindowSizeMsg); ok {
+		ms.Width = treeWidth
+		msg = ms
+	}
+	t, cmd := m.tree.list.Update(msg)
+	m.tree.list = t.(tree.Model)
 	return cmd
 }
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// If there's been an error, any key exits
 	if m.fatalErr != nil {
@@ -277,7 +289,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	var b strings.Builder
-	fmt.Fprint(&b, m.tree.View()+"\n")
+	fmt.Fprint(&b, m.tree.list.View())
 	fmt.Fprintf(&b, m.pager.View())
 
 	return b.String()
@@ -315,6 +327,11 @@ func newStyle(fg, bg ColorPair, bold bool) func(string) string {
 // Returns a new termenv style with background options only.
 func newFgStyle(c ColorPair) styleFunc {
 	return te.Style{}.Foreground(Color(c.Dark)).Styled
+}
+
+func (t *treeModel) setSize(w, h int) {
+	t.list.Width = w
+	t.list.Height = h - statusBarHeight
 }
 
 func (m *pagerModel) setSize(w, h int) {
@@ -414,13 +431,13 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 			}
 		}
 	case spinner.TickMsg:
-		if m.state > pagerStateBrowse || m.spinner.Visible() {
+		if m.state > pagerStateBrowse {
 			// If we're still stashing, or if the spinner still needs to
 			// finish, spin it along.
 			newSpinnerModel, cmd := m.spinner.Update(msg)
 			m.spinner = newSpinnerModel
 			cmds = append(cmds, cmd)
-		} else if m.state == pagerStateBrowse && !m.spinner.Visible() {
+		} else if m.state == pagerStateBrowse {
 			// If the spinner's finished and we haven't told the user the
 			// stash was successful, do that.
 			m.state = pagerStateBrowse
@@ -583,9 +600,6 @@ func renderWithGlamour(m pagerModel, md string) tea.Cmd {
 	return func() tea.Msg {
 		s, err := glamourRender(m, md)
 		if err != nil {
-			if true {
-				log.Println("error rendering with Glamour:", err)
-			}
 			return err
 		}
 		return s
@@ -594,10 +608,6 @@ func renderWithGlamour(m pagerModel, md string) tea.Cmd {
 
 // This is where the magic happens.
 func glamourRender(m pagerModel, markdown string) (string, error) {
-	if !GlamourEnabled {
-		return markdown, nil
-	}
-
 	// initialize glamour
 	var gs glamour.TermRendererOption
 	if GlamourStyle == "auto" {

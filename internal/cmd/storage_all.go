@@ -15,7 +15,7 @@ import (
 	"github.com/go-ap/fedbox/storage/fs"
 	"github.com/go-ap/fedbox/storage/pgx"
 	"github.com/go-ap/fedbox/storage/sqlite"
-	st "github.com/go-ap/storage"
+	st "github.com/go-ap/processing"
 	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 )

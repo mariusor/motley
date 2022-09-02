@@ -5,8 +5,7 @@ import (
 	"os"
 
 	pub "github.com/go-ap/activitypub"
-	"github.com/go-ap/handlers"
-	st "github.com/go-ap/storage"
+	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/openshift/osin"
 )
@@ -14,11 +13,11 @@ import (
 type fedbox struct {
 	tree map[pub.IRI]pub.Item
 	iri  pub.IRI
-	s    st.Store
+	s    processing.Store
 	o    osin.Storage
 }
 
-func FedBOX(base pub.IRI, r st.Store, o osin.Storage) *fedbox {
+func FedBOX(base pub.IRI, r processing.Store, o osin.Storage) *fedbox {
 	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, o: o}
 }
 
@@ -55,7 +54,7 @@ func (f *fedbox) State(what string) (tree.NodeState, error) {
 	if pub.IsItemCollection(curNode) {
 		st |= tree.NodeCollapsible
 	}
-	if _, col := handlers.Split(curNode.GetLink()); col != "" {
+	if _, col := pub.Split(curNode.GetLink()); col != "" {
 		st |= tree.NodeCollapsible
 	}
 	//fmt.Fprintf(os.Stderr, "%s state %d\n", what, st)
@@ -82,8 +81,12 @@ func getActorElements(act pub.Actor) []string {
 		result = append(result, getObjectElements(*o)...)
 		return nil
 	})
-	result = append(result, act.Inbox.GetLink().String())
-	result = append(result, act.Outbox.GetLink().String())
+	if act.Inbox != nil {
+		result = append(result, act.Inbox.GetLink().String())
+	}
+	if act.Outbox != nil {
+		result = append(result, act.Outbox.GetLink().String())
+	}
 	if act.Liked != nil {
 		result = append(result, act.Liked.GetLink().String())
 	}

@@ -7,7 +7,7 @@ import (
 	"git.sr.ht/~marius/motley/internal/config"
 	"git.sr.ht/~marius/motley/internal/env"
 	pub "github.com/go-ap/activitypub"
-	"github.com/go-ap/storage"
+	"github.com/go-ap/processing"
 	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v2"
@@ -21,10 +21,10 @@ var (
 type Control struct {
 	Conf        config.Options
 	AuthStorage osin.Storage
-	Storage     storage.Store
+	Storage     processing.Store
 }
 
-func New(authDB osin.Storage, actorDb storage.Store, conf config.Options) *Control {
+func New(authDB osin.Storage, actorDb processing.Store, conf config.Options) *Control {
 	return &Control{
 		Conf:        conf,
 		AuthStorage: authDB,
