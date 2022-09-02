@@ -2,11 +2,12 @@ package config
 
 import (
 	"fmt"
-	"git.sr.ht/~marius/motley/internal/env"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"git.sr.ht/~marius/motley/internal/env"
 )
 
 const (
@@ -39,7 +40,7 @@ func TestLoadFromEnv(t *testing.T) {
 		os.Setenv(KeyStorage, pgSQL)
 
 		var baseURL = fmt.Sprintf("https://%s", hostname)
-		c, err := LoadFromEnv(env.TEST, time.Second)
+		c, err := LoadFromEnv(".", env.TEST, time.Second)
 		if err != nil {
 			t.Errorf("Error loading env: %s", err)
 		}
@@ -79,7 +80,7 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 	{
 		os.Setenv(KeyStorage, boltDB)
-		c, err := LoadFromEnv(env.TEST, time.Second)
+		c, err := LoadFromEnv(".", env.TEST, time.Second)
 		if err != nil {
 			t.Errorf("Error loading env: %s", err)
 		}
