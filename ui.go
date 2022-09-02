@@ -230,7 +230,7 @@ func (m *model) setSize(w, h int) {
 	m.width = w
 	m.height = h
 
-	tw := int(float32(w) * 0.33)
+	tw := treeWidth
 	m.tree.setSize(tw, m.height)
 	m.pager.setSize(w-tw, h)
 }
