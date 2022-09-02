@@ -1,9 +1,6 @@
 package motley
 
 import (
-	"fmt"
-	"os"
-
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
@@ -143,6 +140,6 @@ func (f *fedbox) Walk(depth int) ([]string, error) {
 		result = append(result, getItemElements(f.tree[iri])...)
 	}
 
-	fmt.Fprintf(os.Stderr, "results %#v\n", result)
+	//fmt.Fprintf(os.Stderr, "results %#v\n", result)
 	return result, err
 }
