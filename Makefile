@@ -43,8 +43,8 @@ TEST := $(GO) test $(BUILDFLAGS)
 all: motley
 
 motley: bin/motley
-bin/motley: go.mod cmd/main.go $(APPSOURCES)
-	$(BUILD) -tags "$(TAGS)" -o $@ ./cmd/
+bin/motley: go.mod cmd/motley/main.go $(APPSOURCES)
+	$(BUILD) -tags "$(TAGS)" -o $@ ./cmd/motley
 
 run: ./bin/motley
 	@./bin/motley
