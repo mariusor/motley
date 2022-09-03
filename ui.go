@@ -73,8 +73,7 @@ var (
 	// for use in termenv styling.
 	Color = lipgloss.ColorProfile().Color
 
-	// HasDarkBackground stores whether or not the terminal has a dark
-	// background.
+	// HasDarkBackground stores whether the terminal has a dark background.
 	HasDarkBackground = te.HasDarkBackground()
 )
 
@@ -139,7 +138,7 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger
 	m := new(model)
 	m.commonModel = new(commonModel)
 
-	m.f = FedBOX(base, r, o)
+	m.f = FedBOX(base, r, o, l)
 	m.tree = newTreeModel(m.commonModel, m.f)
 	m.tree.list.LogFn = l.Infof
 	m.pager = newPagerModel(m.commonModel)
@@ -162,25 +161,17 @@ func newPagerModel(common *commonModel) pagerModel {
 
 	// Text input for notes/memos
 	ti := textinput.New()
+	ti.CursorStyle = lipgloss.Style{}.Foreground(Fuschia)
+	ti.CharLimit = noteCharacterLimit
 	ti.Prompt = te.String(" > ").
 		Foreground(Color(darkGray)).
 		Background(Color(YellowGreen.Dark)).
 		String()
-
-	/*
-		ti.TextColor = darkGray
-		ti.BackgroundColor = YellowGreen.String()
-		ti.CursorColor = Fuschia.String()
-		ti.CharLimit = noteCharacterLimit
-		ti.Focus()
-	*/
+	ti.Focus()
 
 	// Text input for search
 	sp := spinner.New()
-	/*
-		sp.ForegroundColor = statusBarNoteFg.String()
-		sp.BackgroundColor = statusBarBg.String()
-	*/
+	sp.Style = lipgloss.Style{}.Foreground(statusBarNoteFg).Background(statusBarBg)
 	sp.Spinner.FPS = time.Second / 10
 
 	return pagerModel{
