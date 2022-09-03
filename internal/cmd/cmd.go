@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	tui "git.sr.ht/~marius/motley"
@@ -32,6 +35,19 @@ func New(authDB osin.Storage, actorDb processing.Store, conf config.Options) *Co
 	}
 }
 
+func openlog() io.Writer {
+	wd, err := os.Getwd()
+	if err != nil {
+		return io.Discard
+	}
+	name := filepath.Join(wd, filepath.Base(os.Args[0])+".log")
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		return io.Discard
+	}
+	return f
+}
+
 func Before(c *cli.Context) error {
 	ct, err := setup(c, logger)
 	if err != nil {
@@ -61,6 +77,7 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 		conf.BaseURL = u
 	}
 	l.SetLevel(conf.LogLevel)
+	l.SetOutput(openlog())
 	db, aDb, err := Storage(conf, l)
 	if err != nil {
 		l.Errorf("Unable to access storage: %s", err)
@@ -70,5 +87,5 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 }
 
 var TuiAction = func(*cli.Context) error {
-	return tui.Launch(pub.IRI(ctl.Conf.BaseURL), ctl.Storage, ctl.AuthStorage)
+	return tui.Launch(pub.IRI(ctl.Conf.BaseURL), ctl.Storage, ctl.AuthStorage, logger)
 }

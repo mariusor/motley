@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
-
 	"git.sr.ht/~marius/motley/internal/cmd"
 	"git.sr.ht/~marius/motley/internal/config"
 	"git.sr.ht/~marius/motley/internal/env"
 	"gopkg.in/urfave/cli.v2"
+	"os"
 )
 
 var version = "HEAD"

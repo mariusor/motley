@@ -2,6 +2,7 @@ package motley
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"math"
 	"strings"
 	"time"
@@ -125,11 +126,11 @@ var (
 	helpViewStyle                  = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-func Launch(base pub.IRI, r processing.Store, o osin.Storage) error {
-	return tea.NewProgram(newModel(base, r, o)).Start()
+func Launch(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) error {
+	return tea.NewProgram(newModel(base, r, o, l)).Start()
 }
 
-func newModel(base pub.IRI, r processing.Store, o osin.Storage) *model {
+func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) *model {
 	if te.HasDarkBackground() {
 		GlamourStyle = "dark"
 	} else {
@@ -140,6 +141,7 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage) *model {
 
 	m.f = FedBOX(base, r, o)
 	m.tree = newTreeModel(m.commonModel, m.f)
+	m.tree.list.LogFn = l.Infof
 	m.pager = newPagerModel(m.commonModel)
 	return m
 }
@@ -223,7 +225,7 @@ type model struct {
 
 func (m model) Init() tea.Cmd {
 	var cmds []tea.Cmd
-	cmds = append(cmds, m.tree.list.Init())
+	cmds = append(cmds, m.tree.list.Init(), m.pager.viewport.Init())
 	return tea.Batch(cmds...)
 }
 
