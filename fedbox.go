@@ -5,17 +5,19 @@ import (
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/openshift/osin"
+	"github.com/sirupsen/logrus"
 )
 
 type fedbox struct {
-	tree map[pub.IRI]pub.Item
-	iri  pub.IRI
-	s    processing.Store
-	o    osin.Storage
+	tree  map[pub.IRI]pub.Item
+	iri   pub.IRI
+	s     processing.Store
+	o     osin.Storage
+	logFn func(string, ...interface{})
 }
 
-func FedBOX(base pub.IRI, r processing.Store, o osin.Storage) *fedbox {
-	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, o: o}
+func FedBOX(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) *fedbox {
+	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, o: o, logFn: l.Infof}
 }
 
 func (f *fedbox) getService() (pub.Item, error) {
@@ -54,7 +56,7 @@ func (f *fedbox) State(what string) (tree.NodeState, error) {
 	if _, col := pub.Split(curNode.GetLink()); col != "" {
 		st |= tree.NodeCollapsible
 	}
-	//fmt.Fprintf(os.Stderr, "%s state %d\n", what, st)
+	f.logFn("%s state %d", what, st)
 	return st, nil
 }
 
@@ -114,7 +116,7 @@ func getItemElements(it pub.Item) []string {
 	return result
 }
 
-func (f *fedbox) Walk(depth int) ([]string, error) {
+func (f *fedbox) Walk(maxCount int) ([]string, error) {
 	it, err := f.s.Load(f.iri)
 	if err != nil {
 		return nil, err
@@ -122,7 +124,11 @@ func (f *fedbox) Walk(depth int) ([]string, error) {
 
 	if it.IsCollection() {
 		err = pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
+			cnt := 0
 			for _, it := range col.Collection() {
+				if cnt >= maxCount {
+					break
+				}
 				f.tree[it.GetLink()] = it
 			}
 			return nil
@@ -133,13 +139,13 @@ func (f *fedbox) Walk(depth int) ([]string, error) {
 	} else {
 		f.tree[it.GetLink()] = it
 	}
-	//fmt.Fprintf(os.Stderr, "%#v\n", f.tree)
+	//f.logFn( "%#v\n", f.tree)
 	var result []string
 	for iri := range f.tree {
 		result = append(result, iri.String())
 		result = append(result, getItemElements(f.tree[iri])...)
 	}
 
-	//fmt.Fprintf(os.Stderr, "results %#v\n", result)
+	//f.logFn("results %#v\n", result)
 	return result, err
 }
