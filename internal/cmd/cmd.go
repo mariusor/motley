@@ -78,6 +78,7 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 	}
 	l.SetLevel(conf.LogLevel)
 	l.SetOutput(openlog())
+	l.SetFormatter(&logrus.TextFormatter{DisableQuote: true, DisableTimestamp: true})
 	db, aDb, err := Storage(conf, l)
 	if err != nil {
 		l.Errorf("Unable to access storage: %s", err)
