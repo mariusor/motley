@@ -145,9 +145,10 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage) *model {
 }
 
 func newTreeModel(common *commonModel, t tree.Treeish) treeModel {
+	ls := tree.New(t)
 	return treeModel{
 		commonModel: common,
-		list:        tree.New(t),
+		list:        &ls,
 	}
 }
 
@@ -196,7 +197,7 @@ type commonModel struct {
 
 type treeModel struct {
 	*commonModel
-	list tree.Model
+	list *tree.Model
 }
 
 type pagerModel struct {
@@ -247,7 +248,7 @@ func (m *model) updateTree(msg tea.Msg) tea.Cmd {
 		msg = ms
 	}
 	t, cmd := m.tree.list.Update(msg)
-	m.tree.list = t.(tree.Model)
+	m.tree.list = t.(*tree.Model)
 	return cmd
 }
 
@@ -330,8 +331,8 @@ func newFgStyle(c ColorPair) styleFunc {
 }
 
 func (t *treeModel) setSize(w, h int) {
-	t.list.Width = w
-	t.list.Height = h - statusBarHeight
+	t.list.SetWidth(w)
+	t.list.SetHeight(h - statusBarHeight)
 }
 
 func (m *pagerModel) setSize(w, h int) {
@@ -364,7 +365,7 @@ const (
 )
 
 // Perform stuff that needs to happen after a successful markdown stash. Note
-// that the the returned command should be sent back the through the pager
+// that the returned command should be sent back the through the pager
 // update function.
 func (m *pagerModel) showStatusMessage(statusMessage string) tea.Cmd {
 	// Show a success message to the user

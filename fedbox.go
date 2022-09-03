@@ -18,7 +18,7 @@ func FedBOX(base pub.IRI, r processing.Store, o osin.Storage) *fedbox {
 	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, o: o}
 }
 
-func (f fedbox) getService() (pub.Item, error) {
+func (f *fedbox) getService() (pub.Item, error) {
 	col, err := f.s.Load(f.iri)
 	if err != nil {
 		return nil, err
