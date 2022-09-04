@@ -15,7 +15,7 @@ require (
 	github.com/go-ap/processing v0.0.0-20220828135254-baa2c3c37d57
 	github.com/joho/godotenv v1.4.0
 	github.com/kr/pretty v0.2.0 // indirect
-	github.com/mariusor/bubbles-tree v0.0.0-20220903154919-3172ca527518
+	github.com/mariusor/bubbles-tree v0.0.0-20220904153711-d902129aa7eb
 	github.com/mattn/go-runewidth v0.0.13
 	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
 	github.com/muesli/reflow v0.3.0

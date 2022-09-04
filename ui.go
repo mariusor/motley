@@ -139,13 +139,13 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger
 	m.commonModel = new(commonModel)
 
 	m.f = FedBOX(base, r, o, l)
-	m.tree = newTreeModel(m.commonModel, m.f)
+	m.tree = newTreeModel(m.commonModel, tree.Nodes{node(m.f.getService())})
 	m.tree.list.LogFn = l.Infof
 	m.pager = newPagerModel(m.commonModel)
 	return m
 }
 
-func newTreeModel(common *commonModel, t tree.Treeish) treeModel {
+func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 	ls := tree.New(t)
 	return treeModel{
 		commonModel: common,
@@ -499,13 +499,12 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 	name := "FedBOX Admin TUI"
 	haveErr := false
 
-	s, err := m.f.getService()
-	if err != nil {
-		haveErr = true
-		m.statusMessage = "Error: invalid connection"
-	}
+	s := m.f.getService()
 	if s != nil {
 		m.statusMessage = fmt.Sprintf("Connected to %s", s.GetLink())
+	} else {
+		haveErr = true
+		m.statusMessage = "Error: invalid connection"
 	}
 	logo := logoView(name)
 

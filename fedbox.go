@@ -20,34 +20,42 @@ func FedBOX(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) 
 	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, o: o, logFn: l.Infof}
 }
 
-func (f *fedbox) getService() (pub.Item, error) {
+func (f *fedbox) getService() pub.Item {
 	col, err := f.s.Load(f.iri)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	var service pub.Item
 	pub.OnObject(col, func(o *pub.Object) error {
 		service = o
 		return nil
 	})
-	return service, nil
+	return service
 }
 
-func (f *fedbox) Advance(to string) (tree.Treeish, error) {
-	f.iri = pub.IRI(to)
-	return f, nil
+type apNode struct {
+	pub.Item
 }
 
-func (f *fedbox) State(what string) (tree.NodeState, error) {
-	var curNode pub.Item
-	for iri, it := range f.tree {
-		if iri.Equals(pub.IRI(what), false) {
-			curNode = it
-			break
-		}
-	}
+func node(it pub.Item) tree.Node {
+	return &apNode{it}
+}
+
+func (f *apNode) Parent() tree.Node {
+	return nil
+}
+func (f *apNode) Name() string {
+	return f.GetID().String()
+}
+
+func (f *apNode) Children() tree.Nodes {
+	return getItemElements(f.Item)
+}
+
+func (f *apNode) State() tree.NodeState {
+	curNode := f.Item
 	if curNode == nil {
-		return 0, nil
+		return tree.NodeNone
 	}
 	var st tree.NodeState = tree.NodeVisible
 	if pub.IsItemCollection(curNode) {
@@ -56,47 +64,50 @@ func (f *fedbox) State(what string) (tree.NodeState, error) {
 	if _, col := pub.Split(curNode.GetLink()); col != "" {
 		st |= tree.NodeCollapsible
 	}
-	f.logFn("%s state %d", what, st)
-	return st, nil
+	//	f.logFn("%s state %d", what, st)
+	return st
 }
 
-func getObjectElements(ob pub.Object) []string {
-	result := make([]string, 0)
+func (f *apNode) SetState(tree.NodeState) {}
+
+func getObjectElements(ob pub.Object) tree.Nodes {
+	result := make([]tree.Node, 0)
 	if ob.Likes != nil {
-		result = append(result, ob.Likes.GetLink().String())
+		result = append(result, node(ob.Likes))
 	}
 	if ob.Shares != nil {
-		result = append(result, ob.Shares.GetLink().String())
+		result = append(result, node(ob.Shares))
 	}
 	if ob.Replies != nil {
-		result = append(result, ob.Replies.GetLink().String())
+		result = append(result, node(ob.Replies))
 	}
 	return result
 }
 
-func getActorElements(act pub.Actor) []string {
-	result := make([]string, 0)
+func getActorElements(act pub.Actor) tree.Nodes {
+	result := make([]tree.Node, 0)
 	pub.OnObject(&act, func(o *pub.Object) error {
 		result = append(result, getObjectElements(*o)...)
 		return nil
 	})
 	if act.Inbox != nil {
-		result = append(result, act.Inbox.GetLink().String())
+		result = append(result, node(act.Inbox))
 	}
 	if act.Outbox != nil {
-		result = append(result, act.Outbox.GetLink().String())
+		result = append(result, node(act.Outbox))
 	}
 	if act.Liked != nil {
-		result = append(result, act.Liked.GetLink().String())
+		result = append(result, node(act.Liked))
 	}
 	return result
 }
-func getItemElements(it pub.Item) []string {
-	result := make([]string, 0)
+
+func getItemElements(it pub.Item) tree.Nodes {
+	result := make([]tree.Node, 0)
 	if pub.IsItemCollection(it) {
 		pub.OnItemCollection(it, func(c *pub.ItemCollection) error {
 			for _, it := range c.Collection() {
-				result = append(getItemElements(it))
+				result = append(result, node(it))
 			}
 			return nil
 		})
@@ -114,38 +125,4 @@ func getItemElements(it pub.Item) []string {
 		})
 	}
 	return result
-}
-
-func (f *fedbox) Walk(maxCount int) ([]string, error) {
-	it, err := f.s.Load(f.iri)
-	if err != nil {
-		return nil, err
-	}
-
-	if it.IsCollection() {
-		err = pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
-			cnt := 0
-			for _, it := range col.Collection() {
-				if cnt >= maxCount {
-					break
-				}
-				f.tree[it.GetLink()] = it
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		f.tree[it.GetLink()] = it
-	}
-	//f.logFn( "%#v\n", f.tree)
-	var result []string
-	for iri := range f.tree {
-		result = append(result, iri.String())
-		result = append(result, getItemElements(f.tree[iri])...)
-	}
-
-	//f.logFn("results %#v\n", result)
-	return result, err
 }
