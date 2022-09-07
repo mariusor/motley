@@ -140,13 +140,15 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger
 
 	m.f = FedBOX(base, r, o, l)
 	m.tree = newTreeModel(m.commonModel, tree.Nodes{node(m.f.getService())})
-	m.tree.list.LogFn = l.Infof
+
+	m.commonModel.logFn = l.Infof
 	m.pager = newPagerModel(m.commonModel)
 	return m
 }
 
 func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 	ls := tree.New(t)
+	ls.Focus()
 	return treeModel{
 		commonModel: common,
 		list:        &ls,
@@ -184,6 +186,7 @@ func newPagerModel(common *commonModel) pagerModel {
 
 type commonModel struct {
 	f      *fedbox
+	logFn  func(string, ...interface{})
 	width  int
 	height int
 }
@@ -214,7 +217,7 @@ type model struct {
 	pager pagerModel
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	var cmds []tea.Cmd
 	cmds = append(cmds, m.tree.list.Init(), m.pager.viewport.Init())
 	return tea.Batch(cmds...)
@@ -225,8 +228,8 @@ func (m *model) setSize(w, h int) {
 	m.height = h
 
 	tw := treeWidth
-	m.tree.setSize(tw, m.height)
-	m.pager.setSize(w-tw, h)
+	m.tree.setSize(treeWidth, m.height)
+	m.pager.setSize(w-tw, m.height)
 }
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
@@ -245,7 +248,7 @@ func (m *model) updateTree(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// If there's been an error, any key exits
 	if m.fatalErr != nil {
 		if _, ok := msg.(tea.KeyMsg); ok {
@@ -253,11 +256,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-
+	m.logFn("model msg[%T]: %v", msg, msg)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -272,21 +271,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 	}
-	cmd = m.updateTree(msg)
-	cmds = append(cmds, cmd)
 
-	cmd = m.updatePager(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
+	return m, nil
 }
 
-func (m model) View() string {
-	var b strings.Builder
-	fmt.Fprint(&b, m.tree.list.View())
-	fmt.Fprintf(&b, m.pager.View())
-
-	return b.String()
+func (m *model) View() string {
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		lipgloss.JoinHorizontal(lipgloss.Left, m.tree.list.View(), m.pager.View()),
+	)
 }
 
 // ColorPair is a pair of colors, one intended for a dark background and the
@@ -326,12 +319,14 @@ func newFgStyle(c ColorPair) styleFunc {
 func (t *treeModel) setSize(w, h int) {
 	t.list.SetWidth(w)
 	t.list.SetHeight(h - statusBarHeight)
+	t.logFn("tree size: %dx%d", t.list.Width(), t.list.Height())
 }
 
 func (m *pagerModel) setSize(w, h int) {
 	m.viewport.Width = w
 	m.viewport.Height = h - statusBarHeight
 	m.textInput.Width = w - ansi.PrintableRuneWidth(m.textInput.Prompt) - 1
+	m.logFn("tree size: %dx%d", m.viewport.Width, m.viewport.Height)
 
 	if m.showHelp {
 		if pagerHelpHeight == 0 {
@@ -390,7 +385,7 @@ func (m *pagerModel) unload() {
 	m.textInput.Reset()
 }
 
-func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
+func (m *pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -404,7 +399,7 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 			case "q", "esc":
 				if m.state != pagerStateBrowse {
 					m.state = pagerStateBrowse
-					return m, nil
+					return *m, nil
 				}
 			case "home", "g":
 				m.viewport.GotoTop()
@@ -439,7 +434,7 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		return m, renderWithGlamour(m, "")
+		return *m, renderWithGlamour(*m, "")
 	default:
 		m.state = pagerStateBrowse
 	}
@@ -450,10 +445,10 @@ func (m pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	return m, tea.Batch(cmds...)
+	return *m, tea.Batch(cmds...)
 }
 
-func (m pagerModel) View() string {
+func (m *pagerModel) View() string {
 	var b strings.Builder
 	fmt.Fprint(&b, m.viewport.View()+"\n")
 
@@ -542,11 +537,11 @@ func (m pagerModel) statusBarView(b *strings.Builder) {
 	)
 }
 
-func (m pagerModel) setNoteView(b *strings.Builder) {
-	fmt.Fprint(b, m.textInput.View())
+func (m *pagerModel) setNoteView(b *strings.Builder) {
+	b.WriteString(m.textInput.View())
 }
 
-func (m pagerModel) helpView() (s string) {
+func (m *pagerModel) helpView() (s string) {
 	memoOrStash := "m       set memo"
 
 	col1 := []string{
