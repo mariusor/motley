@@ -38,12 +38,24 @@ func (f *fedbox) getService() pub.Item {
 	return service
 }
 
+func initNodes(f *fedbox) tree.Nodes {
+	n := node(
+		f.getService(),
+		withStorage(f),
+		withState(tree.NodeLastChild|tree.NodeSingleChild|tree.NodeSelected),
+	)
+
+	return tree.Nodes{n}
+}
+
 type n struct {
 	pub.Item
 	n string
 	p *n
 	c []*n
 	s tree.NodeState
+
+	f *fedbox
 }
 
 func (n *n) Parent() tree.Node {
@@ -70,13 +82,29 @@ func (n *n) State() tree.NodeState {
 func (n *n) SetState(st tree.NodeState) {
 	n.s = st
 	if st&tree.NodeSelected == tree.NodeSelected && st&tree.NodeCollapsed == tree.NodeNone {
-		logFn("Need to expand: %s", n.n)
+		if pub.IsIRI(n.Item) && pub.ValidCollectionIRI(n.Item.GetLink()) {
+			it, err := n.f.s.Load(n.Item.GetLink())
+			if err != nil {
+				// TODO(marius): plug this into an error channel for the top model
+				n.n = err.Error()
+				n.SetState(n.State() | tree.NodeError)
+			}
+			n.Item = it
+		}
+		n.c = getItemElements(n)
 	}
 }
 
 func withParent(p *n) func(*n) {
 	return func(nn *n) {
+		nn.f = p.f
 		nn.p = p
+	}
+}
+
+func withStorage(f *fedbox) func(*n) {
+	return func(nn *n) {
+		nn.f = f
 	}
 }
 
@@ -100,6 +128,7 @@ func c(c ...*n) func(*n) {
 		}
 	}
 }
+
 func getNameFromItem(it pub.Item) string {
 	switch it.GetType() {
 	default:
@@ -163,6 +192,7 @@ func getActorElements(act pub.Actor, parent *n) []*n {
 func getItemElements(parent *n) []*n {
 	result := make([]*n, 0)
 	it := parent.Item
+
 	if pub.IsItemCollection(it) {
 		pub.OnItemCollection(it, func(c *pub.ItemCollection) error {
 			for _, ob := range c.Collection() {
