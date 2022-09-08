@@ -124,13 +124,13 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	if !env.ValidType(e) {
 		e = env.Type(loadKeyFromEnv(KeyENV, ""))
 	}
-	configs := []string{
-		".env",
-	}
 	if strings.Contains(base, "~") {
 		if u, err := user.Current(); err == nil {
 			base = strings.Replace(base, "~", u.HomeDir, 1)
 		}
+	}
+	configs := []string{
+		filepath.Clean(filepath.Join(base, ".env")),
 	}
 	appendIfFile := func(typ env.Type) {
 		envFile := filepath.Clean(filepath.Join(base, fmt.Sprintf(".env.%s", typ)))
