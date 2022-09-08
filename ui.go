@@ -43,7 +43,7 @@ var (
 	semiDimGreenFg = newFgStyle(NewColorPair("#036B46", "#35D79C"))
 	dimGreenFg     = newFgStyle(NewColorPair("#0B5137", "#72D2B0"))
 
-	fuchsiaFg    = newFgStyle(Fuschia)
+	fuchsiaFg    = newFgStyle(Fuchsia)
 	dimFuchsiaFg = newFgStyle(NewColorPair("#99519E", "#F1A8FF"))
 
 	dullFuchsiaFg    = newFgStyle(NewColorPair("#AD58B4", "#F793FF"))
@@ -76,7 +76,7 @@ var (
 	SubtleIndigo = NewColorPair("#514DC1", "#7D79F6")
 	Cream        = NewColorPair("#FFFDF5", "#FFFDF5")
 	YellowGreen  = NewColorPair("#ECFD65", "#04B575")
-	Fuschia      = NewColorPair("#EE6FF8", "#EE6FF8")
+	Fuchsia      = NewColorPair("#EE6FF8", "#EE6FF8")
 	Green        = NewColorPair("#04B575", "#04B575")
 	Red          = NewColorPair("#ED567A", "#FF4672")
 	FaintRed     = NewColorPair("#C74665", "#FF6F91")
@@ -109,7 +109,7 @@ var (
 	// Styling funcs.
 	statusBarScrollPosStyle        = newStyle(NewColorPair("#5A5A5A", "#949494"), statusBarBg, false)
 	statusBarOKStyle               = newStyle(statusBarNoteFg, statusBarBg, false)
-	statusBarFailStyle             = newStyle(statusBarNoteFg, FaintRed, false)
+	statusBarFailStyle             = newStyle(NewColorPair("#1B1B1B", "#f2f2f2"), FaintRed, false)
 	statusBarStashDotStyle         = newStyle(Green, statusBarBg, false)
 	statusBarMessageStyle          = newStyle(mintGreen, darkGreen, false)
 	statusBarMessageStashIconStyle = newStyle(mintGreen, darkGreen, false)
@@ -181,16 +181,29 @@ func (m *model) updateTree(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// If there's been an error, any key exits
-	if m.fatalErr != nil {
-		if _, ok := msg.(tea.KeyMsg); ok {
-			return m, tea.Quit
-		}
+func (m *model) update(msg tea.Msg) tea.Cmd {
+	cmds := make([]tea.Cmd, 0)
+	if cmd := m.updateTree(msg); cmd != nil {
+		cmds = append(cmds, cmd)
 	}
+	if cmd := m.updatePager(msg); cmd != nil {
+		cmds = append(cmds, cmd)
+		m.logFn("pager update cmd: %v", cmds)
+	}
+	if len(cmds) == 0 {
+		return nil
+	}
+	return tea.Batch(cmds...)
+}
 
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.logFn("model msg[%T]: %v", msg, msg)
 	switch msg := msg.(type) {
+	case error:
+		m.pager.showError(msg)
+	case *n:
+		m.logFn("tree new node: %v", msg)
+		m.displayItem(msg.Item)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
@@ -198,18 +211,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		default:
-			m.logFn("tree update cmd: %v", m.updateTree(msg))
-			m.logFn("pager update cmd: %v", m.updatePager(msg))
+			return m, tea.Batch(m.update(msg))
 		}
 	// Window size is received when starting up and on every resize
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 	default:
-		m.logFn("tree update cmd: %v", m.updateTree(msg))
-		m.logFn("pager update cmd: %v", m.updatePager(msg))
+		return m, tea.Batch(m.update(msg))
 	}
 
 	return m, nil
+}
+
+func (m *model) displayItem(it pub.Item) {
+	m.pager.setContent(fmt.Sprintf("%+v", it))
 }
 
 func (m *model) View() string {
@@ -282,7 +297,7 @@ func logoView(text string) string {
 	return te.String(withPadding(text)).
 		Bold().
 		Foreground(glowLogoTextColor).
-		Background(Color(Fuschia.Dark)).
+		Background(Color(Fuchsia.Dark)).
 		String()
 }
 

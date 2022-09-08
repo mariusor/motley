@@ -37,7 +37,7 @@ func newPagerModel(common *commonModel) pagerModel {
 
 	// Text input for notes/memos
 	ti := textinput.New()
-	ti.CursorStyle = lipgloss.Style{}.Foreground(Fuschia)
+	ti.CursorStyle = lipgloss.Style{}.Foreground(Fuchsia)
 	ti.CharLimit = noteCharacterLimit
 	ti.Prompt = te.String(" > ").
 		Foreground(Color(darkGray)).
@@ -89,8 +89,15 @@ func (p *pagerModel) toggleHelp() {
 }
 
 const (
+	pagerStateError int = -1
+
 	pagerStateBrowse int = iota
 )
+
+func (p *pagerModel) showError(err error) tea.Cmd {
+	p.state = pagerStateError
+	return p.showStatusMessage(err.Error())
+}
 
 // Perform stuff that needs to happen after a successful markdown stash. Note
 // that the returned command should be sent back the through the pager
@@ -165,6 +172,8 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// stash was successful, do that.
 			p.state = pagerStateBrowse
 			cmds = append(cmds, p.showStatusMessage("Stashed!"))
+		} else if p.state == pagerStateError {
+
 		}
 
 	case tea.WindowSizeMsg:
@@ -212,14 +221,16 @@ func (p *pagerModel) statusBarView(b *strings.Builder) {
 
 	// Logo
 	name := "FedBOX Admin TUI"
-	haveErr := false
+	haveErr := p.state&pagerStateError == pagerStateError
 
-	s := p.f.getService()
-	if s != nil {
-		p.statusMessage = fmt.Sprintf("Connected to %s", s.GetLink())
-	} else {
-		haveErr = true
-		p.statusMessage = "Error: invalid connection"
+	if !haveErr {
+		s := p.f.getService()
+		if s != nil {
+			p.statusMessage = fmt.Sprintf("Connected to %s", s.GetLink())
+		} else {
+			haveErr = true
+			p.statusMessage = "Error: invalid connection"
+		}
 	}
 	logo := logoView(name)
 
