@@ -173,9 +173,8 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.state = pagerStateBrowse
 			cmds = append(cmds, p.showStatusMessage("Stashed!"))
 		} else if p.state == pagerStateError {
-
+			p.showStatusMessage("Error!")
 		}
-
 	case tea.WindowSizeMsg:
 		return p, renderWithGlamour(*p, "")
 	default:
@@ -224,13 +223,6 @@ func (p *pagerModel) statusBarView(b *strings.Builder) {
 	haveErr := p.state&pagerStateError == pagerStateError
 
 	if !haveErr {
-		s := p.f.getService()
-		if s != nil {
-			p.statusMessage = fmt.Sprintf("Connected to %s", s.GetLink())
-		} else {
-			haveErr = true
-			p.statusMessage = "Error: invalid connection"
-		}
 	}
 	logo := logoView(name)
 

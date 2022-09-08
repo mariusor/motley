@@ -136,6 +136,7 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger
 
 	m.commonModel.logFn = l.Infof
 	m.pager = newPagerModel(m.commonModel)
+
 	return m
 }
 
@@ -155,9 +156,9 @@ type model struct {
 }
 
 func (m *model) Init() tea.Cmd {
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.tree.list.Init(), m.pager.viewport.Init())
-	return tea.Batch(cmds...)
+	return tea.Batch(
+		m.tree.list.Init(),
+	)
 }
 
 func (m *model) setSize(w, h int) {
@@ -203,7 +204,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pager.showError(msg)
 	case *n:
 		m.logFn("tree new node: %v", msg)
-		m.displayItem(msg.Item)
+		m.displayItem(msg)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
@@ -223,8 +224,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) displayItem(it pub.Item) {
+func (m *model) displayItem(n *n) {
+	it := n.Item
 	m.pager.setContent(fmt.Sprintf("%+v", it))
+	if pub.IsItemCollection(it) {
+		m.pager.showStatusMessage(fmt.Sprintf("Collection: %s %d items", n.n, len(n.c)))
+	} else {
+		m.pager.showStatusMessage(fmt.Sprintf("%s: %s", it.GetType(), it.GetLink()))
+	}
 }
 
 func (m *model) View() string {
@@ -235,7 +242,6 @@ func (m *model) View() string {
 			lipgloss.NewStyle().
 				Border(lipgloss.ThickBorder(), false, true, false, false).
 				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
-				//Foreground(lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}).
 				Padding(0, 0, 0, 1).Render(m.tree.list.View()),
 			lipgloss.NewStyle().
 				Border(lipgloss.NormalBorder(), false, false, false, false).
