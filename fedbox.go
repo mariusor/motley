@@ -104,7 +104,8 @@ func getNameFromItem(it pub.Item) string {
 func node(it pub.Item, fns ...func(*n)) *n {
 	n := &n{Item: it}
 	if it == nil {
-		n.s = tree.NodeNone
+		n.s = tree.NodeError
+		n.n = "Invalid ActivityPub object"
 		return n
 	}
 
