@@ -10,6 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var logFn = func(string, ...interface{}) {}
+
 type fedbox struct {
 	tree  map[pub.IRI]pub.Item
 	iri   pub.IRI
@@ -19,6 +21,7 @@ type fedbox struct {
 }
 
 func FedBOX(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) *fedbox {
+	logFn = l.Infof
 	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, o: o, logFn: l.Infof}
 }
 
@@ -66,6 +69,9 @@ func (n *n) State() tree.NodeState {
 
 func (n *n) SetState(st tree.NodeState) {
 	n.s = st
+	if st&tree.NodeSelected == tree.NodeSelected && st&tree.NodeCollapsed == tree.NodeNone {
+		logFn("Need to expand: %s", n.n)
+	}
 }
 
 func withParent(p *n) func(*n) {
