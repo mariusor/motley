@@ -2,7 +2,6 @@ package motley
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"math"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 	te "github.com/muesli/termenv"
 	"github.com/openshift/osin"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -129,6 +129,12 @@ func Launch(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) 
 	return tea.NewProgram(newModel(base, r, o, l)).Start()
 }
 
+func initNodes(root pub.Item) tree.Nodes {
+	n := node(root, withState(tree.NodeLastChild|tree.NodeSingleChild|tree.NodeSelected))
+
+	return tree.Nodes{n}
+}
+
 func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) *model {
 	if te.HasDarkBackground() {
 		GlamourStyle = "dark"
@@ -139,7 +145,7 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger
 	m.commonModel = new(commonModel)
 
 	m.f = FedBOX(base, r, o, l)
-	m.tree = newTreeModel(m.commonModel, tree.Nodes{node(m.f.getService())})
+	m.tree = newTreeModel(m.commonModel, initNodes(m.f.getService()))
 
 	m.commonModel.logFn = l.Infof
 	m.pager = newPagerModel(m.commonModel)
