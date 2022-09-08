@@ -2,21 +2,15 @@ package motley
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
-	rw "github.com/mattn/go-runewidth"
-	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/wordwrap"
 	te "github.com/muesli/termenv"
 	"github.com/openshift/osin"
@@ -152,67 +146,11 @@ func newModel(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger
 	return m
 }
 
-func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
-	ls := tree.New(t)
-	ls.Focus()
-	return treeModel{
-		commonModel: common,
-		list:        &ls,
-	}
-}
-
-func newPagerModel(common *commonModel) pagerModel {
-	// Init viewport
-	vp := viewport.Model{}
-	vp.YPosition = 0
-	vp.HighPerformanceRendering = false
-
-	// Text input for notes/memos
-	ti := textinput.New()
-	ti.CursorStyle = lipgloss.Style{}.Foreground(Fuschia)
-	ti.CharLimit = noteCharacterLimit
-	ti.Prompt = te.String(" > ").
-		Foreground(Color(darkGray)).
-		Background(Color(YellowGreen.Dark)).
-		String()
-	ti.Focus()
-
-	// Text input for search
-	sp := spinner.New()
-	sp.Style = lipgloss.Style{}.Foreground(statusBarNoteFg).Background(statusBarBg)
-	sp.Spinner.FPS = time.Second / 10
-
-	return pagerModel{
-		commonModel: common,
-		textInput:   ti,
-		viewport:    vp,
-		spinner:     sp,
-	}
-}
-
 type commonModel struct {
 	f      *fedbox
 	logFn  func(string, ...interface{})
 	width  int
 	height int
-}
-
-type treeModel struct {
-	*commonModel
-	list *tree.Model
-}
-
-type pagerModel struct {
-	*commonModel
-	state    int
-	showHelp bool
-
-	viewport  viewport.Model
-	textInput textinput.Model
-	spinner   spinner.Model
-
-	statusMessage      string
-	statusMessageTimer *time.Timer
 }
 
 type model struct {
@@ -233,24 +171,20 @@ func (m *model) setSize(w, h int) {
 	m.width = w
 	m.height = h
 
-	tw := treeWidth
-	m.tree.setSize(treeWidth, m.height)
+	tw := max(treeWidth, int(0.20*float32(w)))
+	m.tree.setSize(tw, m.height)
 	m.pager.setSize(w-tw, m.height)
 }
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
-	m.pager, cmd = m.pager.update(msg)
+	p, cmd := m.pager.Update(msg)
+	m.pager = *(p.(*pagerModel))
 	return cmd
 }
 
 func (m *model) updateTree(msg tea.Msg) tea.Cmd {
-	if ms, ok := msg.(tea.WindowSizeMsg); ok {
-		ms.Width = treeWidth
-		msg = ms
-	}
-	t, cmd := m.tree.list.Update(msg)
-	m.tree.list = t.(*tree.Model)
+	t, cmd := m.tree.Update(msg)
+	m.tree = *(t.(*treeModel))
 	return cmd
 }
 
@@ -268,14 +202,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc":
 			return m, tea.Quit
-		case "left", "h", "delete":
-		// Ctrl+C always quits no matter where in the application you are.
 		case "ctrl+c":
 			return m, tea.Quit
+		default:
+			m.logFn("tree update cmd: %v", m.updateTree(msg))
+			m.logFn("pager update cmd: %v", m.updatePager(msg))
 		}
 	// Window size is received when starting up and on every resize
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
+	default:
+		m.logFn("tree update cmd: %v", m.updateTree(msg))
+		m.logFn("pager update cmd: %v", m.updatePager(msg))
 	}
 
 	return m, nil
@@ -284,7 +222,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *model) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Left, m.tree.list.View(), m.pager.View()),
+		lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			lipgloss.NewStyle().
+				Border(lipgloss.ThickBorder(), false, true, false, false).
+				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
+				//Foreground(lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}).
+				Padding(0, 0, 0, 1).Render(m.tree.list.View()),
+			lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder(), false, false, false, false).
+				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
+				Foreground(lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}).
+				Padding(0, 0, 0, 0).Render(m.pager.View()),
+		),
 	)
 }
 
@@ -322,158 +272,12 @@ func newFgStyle(c ColorPair) styleFunc {
 	return te.Style{}.Foreground(Color(c.Dark)).Styled
 }
 
-func (t *treeModel) setSize(w, h int) {
-	t.list.SetWidth(w)
-	t.list.SetHeight(h - statusBarHeight)
-	t.logFn("tree size: %dx%d", t.list.Width(), t.list.Height())
-}
-
-func (m *pagerModel) setSize(w, h int) {
-	m.viewport.Width = w
-	m.viewport.Height = h - statusBarHeight
-	m.textInput.Width = w - ansi.PrintableRuneWidth(m.textInput.Prompt) - 1
-	m.logFn("tree size: %dx%d", m.viewport.Width, m.viewport.Height)
-
-	if m.showHelp {
-		if pagerHelpHeight == 0 {
-			pagerHelpHeight = strings.Count(m.helpView(), "\n")
-		}
-		m.viewport.Height -= statusBarHeight + pagerHelpHeight
-	}
-}
-
-func (m *pagerModel) setContent(s string) {
-	m.viewport.SetContent(s)
-}
-
-func (m *pagerModel) toggleHelp() {
-	m.showHelp = !m.showHelp
-	m.setSize(m.width, m.height)
-	if m.viewport.PastBottom() {
-		m.viewport.GotoBottom()
-	}
-}
-
-const (
-	pagerStateBrowse int = iota
-)
-
-// Perform stuff that needs to happen after a successful markdown stash. Note
-// that the returned command should be sent back the through the pager
-// update function.
-func (m *pagerModel) showStatusMessage(statusMessage string) tea.Cmd {
-	// Show a success message to the user
-	m.statusMessage = statusMessage
-	if m.statusMessageTimer != nil {
-		m.statusMessageTimer.Stop()
-	}
-	m.statusMessageTimer = time.NewTimer(statusMessageTimeout)
-
-	return waitForStatusMessageTimeout(1, m.statusMessageTimer)
-}
-
 func waitForStatusMessageTimeout(appCtx int, t *time.Timer) tea.Cmd {
 	return func() tea.Msg {
 		<-t.C
 		return appCtx
 	}
 }
-func (m *pagerModel) unload() {
-	if m.showHelp {
-		m.toggleHelp()
-	}
-	if m.statusMessageTimer != nil {
-		m.statusMessageTimer.Stop()
-	}
-	m.state = pagerStateBrowse
-	m.viewport.SetContent("")
-	m.viewport.YOffset = 0
-	m.textInput.Reset()
-}
-
-func (m *pagerModel) update(msg tea.Msg) (pagerModel, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch m.state {
-		default:
-			switch msg.String() {
-			case "q", "esc":
-				if m.state != pagerStateBrowse {
-					m.state = pagerStateBrowse
-					return *m, nil
-				}
-			case "home", "g":
-				m.viewport.GotoTop()
-				if m.viewport.HighPerformanceRendering {
-					cmds = append(cmds, viewport.Sync(m.viewport))
-				}
-			case "end", "G":
-				m.viewport.GotoBottom()
-				if m.viewport.HighPerformanceRendering {
-					cmds = append(cmds, viewport.Sync(m.viewport))
-				}
-			case "m":
-			case "?":
-				m.toggleHelp()
-				if m.viewport.HighPerformanceRendering {
-					cmds = append(cmds, viewport.Sync(m.viewport))
-				}
-			}
-		}
-	case spinner.TickMsg:
-		if m.state > pagerStateBrowse {
-			// If we're still stashing, or if the spinner still needs to
-			// finish, spin it along.
-			newSpinnerModel, cmd := m.spinner.Update(msg)
-			m.spinner = newSpinnerModel
-			cmds = append(cmds, cmd)
-		} else if m.state == pagerStateBrowse {
-			// If the spinner's finished and we haven't told the user the
-			// stash was successful, do that.
-			m.state = pagerStateBrowse
-			cmds = append(cmds, m.showStatusMessage("Stashed!"))
-		}
-
-	case tea.WindowSizeMsg:
-		return *m, renderWithGlamour(*m, "")
-	default:
-		m.state = pagerStateBrowse
-	}
-
-	switch m.state {
-	default:
-		m.viewport, cmd = m.viewport.Update(msg)
-		cmds = append(cmds, cmd)
-	}
-
-	return *m, tea.Batch(cmds...)
-}
-
-func (m *pagerModel) View() string {
-	var b strings.Builder
-	fmt.Fprint(&b, m.viewport.View()+"\n")
-
-	// Footer
-	switch m.state {
-	default:
-		m.statusBarView(&b)
-	}
-
-	if m.showHelp {
-		fmt.Fprint(&b, m.helpView())
-	}
-
-	return b.String()
-}
-
-const (
-	pagerStashIcon = "🔒"
-)
 
 var glowLogoTextColor = Color("#ECFD65")
 
@@ -487,105 +291,6 @@ func logoView(text string) string {
 		Foreground(glowLogoTextColor).
 		Background(Color(Fuschia.Dark)).
 		String()
-}
-
-func (m pagerModel) statusBarView(b *strings.Builder) {
-	const (
-		minPercent               float64 = 0.0
-		maxPercent               float64 = 1.0
-		percentToStringMagnitude float64 = 100.0
-	)
-
-	// Logo
-	name := "FedBOX Admin TUI"
-	haveErr := false
-
-	s := m.f.getService()
-	if s != nil {
-		m.statusMessage = fmt.Sprintf("Connected to %s", s.GetLink())
-	} else {
-		haveErr = true
-		m.statusMessage = "Error: invalid connection"
-	}
-	logo := logoView(name)
-
-	// Scroll percent
-	percent := math.Max(minPercent, math.Min(maxPercent, m.viewport.ScrollPercent()))
-	scrollPercent := statusBarMessageScrollPosStyle(fmt.Sprintf(" %3.f%% ", percent*percentToStringMagnitude))
-
-	var statusMessage string
-	if haveErr {
-		statusMessage = statusBarFailStyle(withPadding(m.statusMessage))
-	} else {
-		statusMessage = statusBarMessageStyle(withPadding(m.statusMessage))
-	}
-
-	// Empty space
-	padding := max(0,
-		m.width-
-			ansi.PrintableRuneWidth(logo)-
-			ansi.PrintableRuneWidth(statusMessage)-
-			ansi.PrintableRuneWidth(scrollPercent),
-	)
-
-	emptySpace := strings.Repeat(" ", padding)
-	if haveErr {
-		emptySpace = statusBarFailStyle(emptySpace)
-	} else {
-		emptySpace = statusBarMessageStyle(emptySpace)
-	}
-
-	fmt.Fprintf(b, "%s%s%s%s",
-		logo,
-		statusMessage,
-		emptySpace,
-		scrollPercent,
-	)
-}
-
-func (m *pagerModel) setNoteView(b *strings.Builder) {
-	b.WriteString(m.textInput.View())
-}
-
-func (m *pagerModel) helpView() (s string) {
-	memoOrStash := "m       set memo"
-
-	col1 := []string{
-		"g/home  go to top",
-		"G/end   go to bottom",
-		"",
-		memoOrStash,
-		"esc     back to files",
-		"q       quit",
-	}
-
-	s += "\n"
-	s += "k/↑      up                  " + col1[0] + "\n"
-	s += "j/↓      down                " + col1[1] + "\n"
-	s += "b/pgup   page up             " + col1[2] + "\n"
-	s += "f/pgdn   page down           " + col1[3] + "\n"
-	s += "u        ½ page up           " + col1[4] + "\n"
-	s += "d        ½ page down         "
-
-	if len(col1) > 5 {
-		s += col1[5]
-	}
-
-	s = indent(s, 2)
-
-	// Fill up empty cells with spaces for background coloring
-	if m.width > 0 {
-		lines := strings.Split(s, "\n")
-		for i := 0; i < len(lines); i++ {
-			l := rw.StringWidth(lines[i])
-			n := max(m.width-l, 0)
-			lines[i] += strings.Repeat(" ", n)
-		}
-
-		s = strings.Join(lines, "\n")
-	}
-
-	return helpViewStyle(s)
 }
 
 // COMMANDS
