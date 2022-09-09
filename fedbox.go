@@ -186,6 +186,15 @@ func getActorElements(act pub.Actor, parent *n) []*n {
 	if act.Liked != nil {
 		result = append(result, node(act.Liked, withParent(parent), withState(tree.NodeCollapsed)))
 	}
+	if act.Followers != nil {
+		result = append(result, node(act.Followers, withParent(parent), withState(tree.NodeCollapsed)))
+	}
+	if act.Following != nil {
+		result = append(result, node(act.Following, withParent(parent), withState(tree.NodeCollapsed)))
+	}
+	if act.Streams != nil {
+		result = append(result, node(act.Streams, withParent(parent), withState(tree.NodeCollapsed)))
+	}
 	return result
 }
 
