@@ -40,3 +40,26 @@ func (t *treeModel) setSize(w, h int) {
 	t.list.SetHeight(h - statusBarHeight)
 	t.logFn("tree size: %dx%d", t.list.Width(), t.list.Height())
 }
+
+func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {
+	t.logFn("Trying to go back in tree")
+	previous.SetWidth(t.list.Width())
+	previous.SetHeight(t.list.Height())
+	previous.Focus()
+	t.list = previous
+	return t, nil
+}
+
+func (t *treeModel) Advance(current *n) *tree.Model {
+	newTree := tree.New(tree.Nodes{current})
+	newTree.Symbols = t.list.Symbols
+	newTree.KeyMap = t.list.KeyMap
+	newTree.Styles = t.list.Styles
+	newTree.SetWidth(t.list.Width())
+	newTree.SetHeight(t.list.Height())
+	newTree.Focus()
+
+	oldTree := t.list
+	t.list = &newTree
+	return oldTree
+}

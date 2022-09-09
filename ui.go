@@ -5,11 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/processing"
+	tree "github.com/mariusor/bubbles-tree"
 	"github.com/muesli/reflow/wordwrap"
 	te "github.com/muesli/termenv"
 	"github.com/openshift/osin"
@@ -149,13 +151,16 @@ type commonModel struct {
 
 type model struct {
 	*commonModel
-	fatalErr error
-	// Inbox/Outbox tree model
+
+	currentNode *n
+	breadCrumbs []*tree.Model
+
 	tree  treeModel
 	pager pagerModel
 }
 
 func (m *model) Init() tea.Cmd {
+	m.breadCrumbs = make([]*tree.Model, 0)
 	return tea.Batch(
 		m.tree.list.Init(),
 	)
@@ -197,6 +202,44 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+var (
+	advanceKey = key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "move to current element in tree"),
+	)
+	backKey = key.NewBinding(
+		key.WithKeys("backspace"),
+		key.WithHelp("backspace", "move to the previous element in tree"),
+	)
+	quitKey = key.NewBinding(
+		key.WithKeys("q", "esc", "ctrl+c"),
+		key.WithHelp("esc", "exit"),
+	)
+)
+
+func (m *model) Back(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.logFn("Trying to go back in tree")
+	if len(m.breadCrumbs) == 0 {
+		m.logFn("No previous tree to go back to.")
+		return m, nil
+	}
+	if oldTree := m.breadCrumbs[len(m.breadCrumbs)-1]; oldTree != nil {
+		m.tree.Back(oldTree)
+		m.breadCrumbs = m.breadCrumbs[:len(m.breadCrumbs)-1]
+	}
+	return m, nil
+}
+
+func (m *model) Advance(msg tea.Msg) (tea.Model, tea.Cmd) {
+	//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
+	//	// skip if trying to advance to same element
+	//	return m, nil
+	//}
+	oldTree := m.tree.Advance(m.currentNode)
+	m.breadCrumbs = append(m.breadCrumbs, oldTree)
+	return m, nil
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.logFn("model msg[%T]: %v", msg, msg)
 	switch msg := msg.(type) {
@@ -205,12 +248,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case *n:
 		m.logFn("tree new node: %v", msg)
 		m.displayItem(msg)
+		m.currentNode = msg
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "esc":
+		switch {
+		case key.Matches(msg, quitKey):
 			return m, tea.Quit
-		case "ctrl+c":
-			return m, tea.Quit
+		case key.Matches(msg, advanceKey):
+			return m.Advance(msg)
+		case key.Matches(msg, backKey):
+			return m.Back(msg)
 		default:
 			return m, tea.Batch(m.update(msg))
 		}
