@@ -293,10 +293,15 @@ type advanceMsg struct {
 
 func (m *model) displayItem(n *n) {
 	it := n.Item
-	m.pager.setContent(fmt.Sprintf("%+v", it))
-	if pub.IsItemCollection(it) {
+	switch it.(type) {
+	case pub.ItemCollection:
 		m.pager.showStatusMessage(fmt.Sprintf("Collection: %s %d items", n.n, len(n.c)))
-	} else {
+	case pub.Item:
+		err := m.pager.showItem(it)
+		if err != nil {
+			m.pager.showError(err)
+			return
+		}
 		m.pager.showStatusMessage(fmt.Sprintf("%s: %s", it.GetType(), it.GetLink()))
 	}
 }
