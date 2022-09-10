@@ -250,6 +250,29 @@ func nodeCmd(node *n) tea.Cmd {
 	}
 }
 
+func (m *model) loadChildrenForNode(nn *n) error {
+	iri := nn.Item.GetLink()
+	col, err := m.f.s.Load(iri)
+	if err != nil {
+		return err
+	}
+	if pub.IsItemCollection(col) {
+		children := make([]*n, 0)
+		err = pub.OnItemCollection(col, func(col *pub.ItemCollection) error {
+			for _, it := range *col {
+				children = append(children, node(it, withState(tree.NodeCollapsed)))
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		nn.setChildren(children...)
+	}
+
+	return nil
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case error:
@@ -257,6 +280,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case *n:
 		if msg.State().Is(NodeError) {
 			return m, errCmd(fmt.Errorf("%s", msg.n))
+		}
+		if len(msg.c) == 0 && msg.s.Is(tree.NodeCollapsible) {
+			if err := m.loadChildrenForNode(msg); err != nil {
+				return m, errCmd(err)
+			}
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
@@ -268,27 +296,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//if msg.State().Is(NodeError) {
 		//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
 		//}
-		iri := msg.Item.GetLink()
-		col, err := m.f.s.Load(iri)
-		if err != nil {
-			return m, errCmd(err)
+		iri := msg.GetLink().String()
+		newNode := node(msg.Item, withParent(msg.n), withName(iri))
+		if err := m.loadChildrenForNode(newNode); err != nil {
+			return m, errCmd(fmt.Errorf("%s", msg.n.n))
 		}
-
-		newNode := node(msg.Item, withParent(msg.n), withName(iri.String()))
-		if pub.IsItemCollection(col) {
-			children := make([]*n, 0)
-			err = pub.OnItemCollection(col, func(col *pub.ItemCollection) error {
-				for _, it := range *col {
-					children = append(children, node(it, withState(tree.NodeCollapsed)))
-				}
-				return nil
-			})
-			if err != nil {
-				return m, errCmd(err)
-			}
-			newNode.setChildren(children...)
-		}
-
 		if len(newNode.c) == 0 {
 			return m, errCmd(fmt.Errorf("no items in collection %s", iri))
 		}
