@@ -256,13 +256,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error:
 		m.pager.showError(msg)
 	case *n:
-		if msg.State()&tree.NodeError == tree.NodeError {
+		if msg.State()&NodeError == NodeError {
 			return m, errCmd(fmt.Errorf("%s", msg.n))
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
 	case advanceMsg:
-		if msg.State()&tree.NodeError == tree.NodeError {
+		if msg.State()&NodeError == NodeError {
 			return m, errCmd(fmt.Errorf("%s", msg.n.n))
 		}
 		m.logFn("Advancing to %q", msg.n)

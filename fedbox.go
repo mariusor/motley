@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	pub "github.com/go-ap/activitypub"
 	tea "github.com/charmbracelet/bubbletea"
+	pub "github.com/go-ap/activitypub"
+	fbox "github.com/go-ap/fedbox/activitypub"
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/openshift/osin"
@@ -44,7 +45,7 @@ func initNodes(f *fedbox) tree.Nodes {
 	n := node(
 		f.getService(),
 		withStorage(f),
-		withState(tree.NodeLastChild|tree.NodeSingleChild|tree.NodeSelected),
+		withState(tree.NodeLastChild|tree.NodeSelected),
 	)
 
 	return tree.Nodes{n}
@@ -75,10 +76,21 @@ const (
 	Expanded  = "⊟"
 )
 
+func nodeIsCollapsible(n *n) bool {
+	st := false
+	it := n.Item
+	if len(n.c) > 0 {
+		return true
+	}
+	_, typ := pub.Split(it.GetLink())
+	st = pub.ValidCollection(typ) || fbox.FedBOXCollections.Contains(typ)
+	return st
+}
+
 func (n *n) View() string {
 	hints := n.s
 	annotation := ""
-	if hints&tree.NodeCollapsible == tree.NodeCollapsible {
+	if nodeIsCollapsible(n) {
 		annotation = Expanded
 		if hints&tree.NodeCollapsed == tree.NodeCollapsed {
 			annotation = Collapsed
@@ -109,7 +121,7 @@ func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					// TODO(marius): plug this into an error channel for the top model
 					n.n = err.Error()
-					n.s = n.s | tree.NodeError
+					n.s = n.s | NodeError
 				}
 				n.Item = it
 			}
@@ -147,9 +159,6 @@ func withState(st tree.NodeState) func(*n) {
 func c(c ...*n) func(*n) {
 	return func(nn *n) {
 		for i, nnn := range c {
-			if len(c) == 1 {
-				nnn.s |= tree.NodeSingleChild
-			}
 			if i == len(c)-1 {
 				nnn.s |= tree.NodeLastChild
 			}
@@ -166,11 +175,18 @@ func getNameFromItem(it pub.Item) string {
 	}
 }
 
+const (
+	NodeError tree.NodeState = -1
+	//tree.NodeLastChild << iota
+)
+
 func node(it pub.Item, fns ...func(*n)) *n {
 	n := &n{Item: it}
+
 	if it == nil {
-		n.s = tree.NodeError
+		n.s = NodeError
 		n.n = "Invalid ActivityPub object"
+		n.c = n.c[:0]
 		return n
 	}
 
