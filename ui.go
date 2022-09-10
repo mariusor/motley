@@ -256,9 +256,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error:
 		m.pager.showError(msg)
 	case *n:
-		//if msg.State().Is(NodeError) {
-		//	return m, errCmd(fmt.Errorf("%s", msg.n))
-		//}
+		if msg.State().Is(NodeError) {
+			return m, errCmd(fmt.Errorf("%s", msg.n))
+		}
 		m.currentNode = msg
 		m.displayItem(msg)
 	case advanceMsg:
@@ -275,7 +275,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, errCmd(err)
 		}
 
-		var newNode *n
+		newNode := node(msg.Item, withParent(msg.n), withName(iri.String()))
 		if pub.IsItemCollection(col) {
 			children := make([]*n, 0)
 			err = pub.OnItemCollection(col, func(col *pub.ItemCollection) error {
@@ -287,11 +287,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, errCmd(err)
 			}
-			newNode = node(msg.Item, withParent(msg.n), withName(iri.String()), withChildren(children...))
-		} else {
-			newNode = node(col, withParent(msg.n), withName(iri.String()))
+			newNode.setChildren(children...)
 		}
 
+		if len(newNode.c) == 0 {
+			return m, errCmd(fmt.Errorf("no items in collection %s", iri))
+		}
 		oldTree := m.tree.Advance(newNode)
 		m.breadCrumbs = append(m.breadCrumbs, oldTree)
 		return m, nodeCmd(newNode)

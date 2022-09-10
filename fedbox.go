@@ -44,7 +44,7 @@ func (f *fedbox) getService() pub.Item {
 func initNodes(f *fedbox) tree.Nodes {
 	n := node(
 		f.getService(),
-		withStorage(f),
+		//withStorage(f),
 		withState(tree.NodeLastChild|tree.NodeSelected),
 	)
 
@@ -119,19 +119,31 @@ func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tree.NodeState:
 		n.s = m
 		if m.Is(tree.NodeSelected) && !m.Is(tree.NodeCollapsed) {
-			if pub.IsIRI(n.Item) && pub.ValidCollectionIRI(n.Item.GetLink()) {
-				it, err := n.f.s.Load(n.Item.GetLink())
-				if err != nil {
-					// TODO(marius): plug this into an error channel for the top model
-					n.n = err.Error()
-					n.s = n.s | NodeError
-				}
-				n.Item = it
-			}
+			//if pub.IsIRI(n.Item) && pub.ValidCollectionIRI(n.Item.GetLink()) {
+			//	n
+			//	it, err := n.f.s.Load(n.Item.GetLink())
+			//	if err != nil {
+			//		// TODO(marius): plug this into an error channel for the top model
+			//		n.n = err.Error()
+			//		n.s = n.s | NodeError
+			//	}
+			//	n.Item = it
+			//}
 			n.c = getItemElements(n)
 		}
 	}
 	return n, nil
+}
+
+func (n *n) setChildren(c ...*n) {
+	for i, nnn := range c {
+		if i == len(c)-1 {
+			nnn.s |= tree.NodeLastChild
+		}
+		nnn.p = n
+		//nnn.f = n.f
+		n.c = append(n.c, nnn)
+	}
 }
 
 func withName(name string) func(*n) {
@@ -142,7 +154,7 @@ func withName(name string) func(*n) {
 
 func withParent(p *n) func(*n) {
 	return func(nn *n) {
-		nn.f = p.f
+		//nn.f = p.f
 		nn.p = p
 	}
 }
@@ -161,14 +173,7 @@ func withState(st tree.NodeState) func(*n) {
 
 func withChildren(c ...*n) func(*n) {
 	return func(nn *n) {
-		for i, nnn := range c {
-			if i == len(c)-1 {
-				nnn.s |= tree.NodeLastChild
-			}
-			nnn.p = nn
-			nnn.f = nn.f
-			nn.c = append(nn.c, nnn)
-		}
+		nn.setChildren(c...)
 	}
 }
 
