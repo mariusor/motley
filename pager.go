@@ -82,7 +82,7 @@ func (p *pagerModel) writePropertyWithLabel(s io.Writer, l string, it pub.Item) 
 	if pub.IsNil(it) {
 		return
 	}
-	if c, ok := it.(pub.ItemCollection); !ok || len(c) == 0 {
+	if c, ok := it.(pub.ItemCollection); ok && len(c) == 0 {
 		return
 	}
 	fmt.Fprintf(s, "%s: ", l)
@@ -108,6 +108,7 @@ func (p *pagerModel) writeObject(s io.Writer) func(ob *pub.Object) error {
 		p.writeNaturalLanguageValuesWithLabel(s, "Name", ob.Name)
 		p.writeNaturalLanguageValuesWithLabel(s, "Summary", ob.Summary)
 		p.writeNaturalLanguageValuesWithLabel(s, "Content", ob.Content)
+
 		if ob.Source.Content != nil {
 			if len(ob.MediaType) > 0 {
 				fmt.Fprintf(s, "Source[%s]: %s\n", ob.Source.MediaType, ob.Source.Content)
@@ -115,6 +116,8 @@ func (p *pagerModel) writeObject(s io.Writer) func(ob *pub.Object) error {
 				fmt.Fprintf(s, "Source: %s\n", ob.Source.Content)
 			}
 		}
+
+		p.writePropertyWithLabel(s, "URL", ob.URL)
 
 		p.writePropertyWithLabel(s, "Context", ob.Context)
 		p.writePropertyWithLabel(s, "InReplyTo", ob.InReplyTo)
