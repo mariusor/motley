@@ -88,11 +88,14 @@ func nodeIsCollapsible(n *n) bool {
 }
 
 func (n *n) View() string {
+	if n == nil || n.Item == nil || n.s.Is(tree.NodeHidden) {
+		return ""
+	}
 	hints := n.s
 	annotation := ""
 	if nodeIsCollapsible(n) {
 		annotation = Expanded
-		if hints&tree.NodeCollapsed == tree.NodeCollapsed {
+		if hints.Is(tree.NodeCollapsed) {
 			annotation = Collapsed
 		}
 	}
@@ -115,7 +118,7 @@ func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m := msg.(type) {
 	case tree.NodeState:
 		n.s = m
-		if m&tree.NodeSelected == tree.NodeSelected && m&tree.NodeCollapsed == tree.NodeNone {
+		if m.Is(tree.NodeSelected) && !m.Is(tree.NodeCollapsed) {
 			if pub.IsIRI(n.Item) && pub.ValidCollectionIRI(n.Item.GetLink()) {
 				it, err := n.f.s.Load(n.Item.GetLink())
 				if err != nil {
@@ -156,13 +159,14 @@ func withState(st tree.NodeState) func(*n) {
 	}
 }
 
-func c(c ...*n) func(*n) {
+func withChildren(c ...*n) func(*n) {
 	return func(nn *n) {
 		for i, nnn := range c {
 			if i == len(c)-1 {
 				nnn.s |= tree.NodeLastChild
 			}
 			nnn.p = nn
+			nnn.f = nn.f
 			nn.c = append(nn.c, nnn)
 		}
 	}
@@ -176,8 +180,8 @@ func getNameFromItem(it pub.Item) string {
 }
 
 const (
-	NodeError tree.NodeState = -1
-	//tree.NodeLastChild << iota
+	NodeError tree.NodeState = -1 << iota
+	NodeWarning
 )
 
 func node(it pub.Item, fns ...func(*n)) *n {
@@ -196,7 +200,6 @@ func node(it pub.Item, fns ...func(*n)) *n {
 	for _, fn := range fns {
 		fn(n)
 	}
-	n.s |= tree.NodeVisible
 	if len(n.c) > 0 || pub.IsItemCollection(it) || pub.ValidCollectionIRI(it.GetLink()) {
 		n.s |= tree.NodeCollapsible
 	}
@@ -268,5 +271,8 @@ func getItemElements(parent *n) []*n {
 			return nil
 		})
 	}
+	//if pub.IsIRI(it) {
+	//	result = append(result)
+	//}
 	return result
 }

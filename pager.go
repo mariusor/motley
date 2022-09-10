@@ -221,19 +221,15 @@ func (p *pagerModel) writeItem(s io.Writer, it pub.Item) error {
 		return pub.OnItemCollection(it, p.writeItemCollection(s))
 	}
 	if pub.IntransitiveActivityTypes.Contains(it.GetType()) {
-		p.logFn("display intransitive activity")
 		return pub.OnIntransitiveActivity(it, p.writeIntransitiveActivity(s))
 	}
 	if pub.ActivityTypes.Contains(it.GetType()) {
-		p.logFn("display activity")
 		return pub.OnActivity(it, p.writeActivity(s))
 	}
 	if pub.ActorTypes.Contains(it.GetType()) {
-		p.logFn("display actor")
 		return pub.OnActor(it, p.writeActor(s))
 	}
 	if pub.ObjectTypes.Contains(it.GetType()) {
-		p.logFn("display object")
 		return pub.OnObject(it, p.writeObject(s))
 	}
 	return fmt.Errorf("unknown activitypub object of type %T", it)
@@ -277,6 +273,7 @@ func (p *pagerModel) showError(err error) tea.Cmd {
 // update function.
 func (p *pagerModel) showStatusMessage(statusMessage string) tea.Cmd {
 	// Show a success message to the user
+	p.state |= ^pagerStateError
 	p.statusMessage = statusMessage
 	if p.statusMessageTimer != nil {
 		p.statusMessageTimer.Stop()

@@ -236,13 +236,7 @@ func advanceCmd(n *n) tea.Cmd {
 }
 
 func (m *model) Advance(msg tea.Msg) (tea.Model, tea.Cmd) {
-	//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
-	//	// skip if trying to advance to same element
-	//	return m, nil
-	//}
-	oldTree := m.tree.Advance(m.currentNode)
-	m.breadCrumbs = append(m.breadCrumbs, oldTree)
-	return m, advanceCmd(m.currentNode)
+	return nil, nil
 }
 
 func errCmd(err error) tea.Cmd {
@@ -251,27 +245,62 @@ func errCmd(err error) tea.Cmd {
 	}
 }
 
+func nodeCmd(node *n) tea.Cmd {
+	return func() tea.Msg {
+		return node
+	}
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case error:
 		m.pager.showError(msg)
 	case *n:
-		if msg.State()&NodeError == NodeError {
-			return m, errCmd(fmt.Errorf("%s", msg.n))
-		}
+		//if msg.State().Is(NodeError) {
+		//	return m, errCmd(fmt.Errorf("%s", msg.n))
+		//}
 		m.currentNode = msg
 		m.displayItem(msg)
 	case advanceMsg:
-		if msg.State()&NodeError == NodeError {
-			return m, errCmd(fmt.Errorf("%s", msg.n.n))
+		//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
+		//	// skip if trying to advance to same element
+		//	return m, nil
+		//}
+		//if msg.State().Is(NodeError) {
+		//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
+		//}
+		iri := msg.Item.GetLink()
+		col, err := m.f.s.Load(iri)
+		if err != nil {
+			return m, errCmd(err)
 		}
-		m.logFn("Advancing to %q", msg.n)
+
+		var newNode *n
+		if pub.IsItemCollection(col) {
+			children := make([]*n, 0)
+			err = pub.OnItemCollection(col, func(col *pub.ItemCollection) error {
+				for _, it := range *col {
+					children = append(children, node(it, withState(tree.NodeCollapsed)))
+				}
+				return nil
+			})
+			if err != nil {
+				return m, errCmd(err)
+			}
+			newNode = node(msg.Item, withParent(msg.n), withName(iri.String()), withChildren(children...))
+		} else {
+			newNode = node(col, withParent(msg.n), withName(iri.String()))
+		}
+
+		oldTree := m.tree.Advance(newNode)
+		m.breadCrumbs = append(m.breadCrumbs, oldTree)
+		return m, nodeCmd(newNode)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, quitKey):
 			return m, tea.Quit
 		case key.Matches(msg, advanceKey):
-			return m.Advance(msg)
+			return m, advanceCmd(m.currentNode)
 		case key.Matches(msg, backKey):
 			return m.Back(msg)
 		default:
