@@ -42,7 +42,6 @@ func (t *treeModel) setSize(w, h int) {
 }
 
 func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {
-	t.logFn("Trying to go back in tree")
 	previous.SetWidth(t.list.Width())
 	previous.SetHeight(t.list.Height())
 	previous.Focus()

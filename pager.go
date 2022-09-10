@@ -220,16 +220,17 @@ func (p *pagerModel) writeItem(s io.Writer, it pub.Item) error {
 	if pub.IsItemCollection(it) {
 		return pub.OnItemCollection(it, p.writeItemCollection(s))
 	}
-	if pub.IntransitiveActivityTypes.Contains(it.GetType()) {
+	typ := it.GetType()
+	if pub.IntransitiveActivityTypes.Contains(typ) {
 		return pub.OnIntransitiveActivity(it, p.writeIntransitiveActivity(s))
 	}
-	if pub.ActivityTypes.Contains(it.GetType()) {
+	if pub.ActivityTypes.Contains(typ) {
 		return pub.OnActivity(it, p.writeActivity(s))
 	}
-	if pub.ActorTypes.Contains(it.GetType()) {
+	if pub.ActorTypes.Contains(typ) {
 		return pub.OnActor(it, p.writeActor(s))
 	}
-	if pub.ObjectTypes.Contains(it.GetType()) {
+	if pub.ObjectTypes.Contains(typ) || typ == "" {
 		return pub.OnObject(it, p.writeObject(s))
 	}
 	return fmt.Errorf("unknown activitypub object of type %T", it)

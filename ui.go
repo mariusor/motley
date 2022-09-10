@@ -217,7 +217,6 @@ var (
 )
 
 func (m *model) Back(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m.logFn("Trying to go back in tree")
 	if len(m.breadCrumbs) == 0 {
 		m.logFn("No previous tree to go back to.")
 		return m, nil
