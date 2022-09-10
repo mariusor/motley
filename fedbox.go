@@ -95,6 +95,12 @@ func (n *n) SetState(st tree.NodeState) {
 	}
 }
 
+func withName(name string) func(*n) {
+	return func(nn *n) {
+		nn.n = name
+	}
+}
+
 func withParent(p *n) func(*n) {
 	return func(nn *n) {
 		nn.f = p.f
@@ -193,7 +199,7 @@ func getActorElements(act pub.Actor, parent *n) []*n {
 		result = append(result, node(act.Following, withParent(parent), withState(tree.NodeCollapsed)))
 	}
 	if act.Streams != nil {
-		result = append(result, node(act.Streams, withParent(parent), withState(tree.NodeCollapsed)))
+		result = append(result, node(act.Streams, withName("streams"), withParent(parent), withState(tree.NodeCollapsed)))
 	}
 	return result
 }
