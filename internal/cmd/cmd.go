@@ -35,13 +35,8 @@ func New(authDB osin.Storage, actorDb processing.Store, conf config.Options) *Co
 	}
 }
 
-func openlog() io.Writer {
-	wd, err := os.Getwd()
-	if err != nil {
-		return io.Discard
-	}
-	name := filepath.Join(wd, filepath.Base(os.Args[0])+".log")
-	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+func openlog(name string) io.Writer {
+	f, err := os.OpenFile(filepath.Join("/var/log/", name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		return io.Discard
 	}
@@ -77,7 +72,7 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 		conf.BaseURL = u
 	}
 	l.SetLevel(conf.LogLevel)
-	l.SetOutput(openlog())
+	l.SetOutput(openlog(c.App.Name))
 	l.SetFormatter(&logrus.TextFormatter{DisableQuote: true, DisableTimestamp: true})
 	db, aDb, err := Storage(conf, l)
 	if err != nil {
