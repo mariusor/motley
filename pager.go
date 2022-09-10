@@ -161,7 +161,6 @@ func (p *pagerModel) writeActor(s io.Writer) func(act *pub.Actor) error {
 		if len(act.PublicKey.ID) > 0 {
 			fmt.Fprintf(s, "PublicKey: %s", act.PublicKey.PublicKeyPem)
 		}
-		p.writePropertyWithLabel(s, "Streams", act.Streams)
 		return nil
 	}
 }
