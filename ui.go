@@ -194,7 +194,6 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	}
 	if cmd := m.updatePager(msg); cmd != nil {
 		cmds = append(cmds, cmd)
-		m.logFn("pager update cmd: %v", cmds)
 	}
 	if len(cmds) == 0 {
 		return nil
@@ -230,6 +229,12 @@ func (m *model) Back(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func advanceCmd(n *n) tea.Cmd {
+	return func() tea.Msg {
+		return advanceMsg{n}
+	}
+}
+
 func (m *model) Advance(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
 	//	// skip if trying to advance to same element
@@ -237,18 +242,30 @@ func (m *model) Advance(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//}
 	oldTree := m.tree.Advance(m.currentNode)
 	m.breadCrumbs = append(m.breadCrumbs, oldTree)
-	return m, nil
+	return m, advanceCmd(m.currentNode)
+}
+
+func errCmd(err error) tea.Cmd {
+	return func() tea.Msg {
+		return err
+	}
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m.logFn("model msg[%T]: %v", msg, msg)
 	switch msg := msg.(type) {
 	case error:
 		m.pager.showError(msg)
 	case *n:
-		m.logFn("tree new node: %v", msg)
-		m.displayItem(msg)
+		if msg.State()&tree.NodeError == tree.NodeError {
+			return m, errCmd(fmt.Errorf("%s", msg.n))
+		}
 		m.currentNode = msg
+		m.displayItem(msg)
+	case advanceMsg:
+		if msg.State()&tree.NodeError == tree.NodeError {
+			return m, errCmd(fmt.Errorf("%s", msg.n.n))
+		}
+		m.logFn("Advancing to %q", msg.n)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, quitKey):
@@ -268,6 +285,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+type advanceMsg struct {
+	*n
 }
 
 func (m *model) displayItem(n *n) {
