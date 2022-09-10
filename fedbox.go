@@ -185,8 +185,7 @@ func getNameFromItem(it pub.Item) string {
 }
 
 const (
-	NodeError tree.NodeState = -1 << iota
-	NodeWarning
+	NodeError = tree.NodeLastChild << (iota + 1)
 )
 
 func node(it pub.Item, fns ...func(*n)) *n {
