@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -44,14 +45,6 @@ func openlog(name string) io.Writer {
 }
 
 func Before(c *cli.Context) error {
-	ct, err := setup(c, logger)
-	if err != nil {
-		// Ensure we don't print the default help message, which is not useful here
-		c.App.CustomAppHelpTemplate = "Failed"
-		logger.Errorf("Error: %s", err)
-		return err
-	}
-	ctl = *ct
 	return nil
 }
 
@@ -61,27 +54,39 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 		environ = env.DEV
 	}
 	dir := c.String("path")
+	l.SetOutput(openlog(c.App.Name))
+	l.SetFormatter(&logrus.TextFormatter{DisableQuote: true, DisableTimestamp: true})
+
 	conf, err := config.LoadFromEnv(dir, environ, time.Second)
 	if err != nil {
-		l.Errorf("Unable to load config files for environment %s: %s", environ, err)
+		l.Errorf("Unable to load config file for environment %s: %s", environ, err)
+		return nil, fmt.Errorf("unable to load config in path: %s", dir)
 	}
+
+	l.SetLevel(conf.LogLevel)
 	if typ := c.String("type"); typ != "" {
 		conf.Storage = config.StorageType(typ)
 	}
 	if u := c.String("url"); u != "" {
 		conf.BaseURL = u
 	}
-	l.SetLevel(conf.LogLevel)
-	l.SetOutput(openlog(c.App.Name))
-	l.SetFormatter(&logrus.TextFormatter{DisableQuote: true, DisableTimestamp: true})
+
 	db, aDb, err := Storage(conf, l)
+	l.SetLevel(conf.LogLevel)
 	if err != nil {
 		l.Errorf("Unable to access storage: %s", err)
-		return nil, err
+		return nil, fmt.Errorf("unable to access %q storage: %s", conf.Storage, conf.StoragePath)
 	}
 	return New(aDb, db, conf), nil
 }
 
-var TuiAction = func(*cli.Context) error {
+var TuiAction = func(c *cli.Context) error {
+	ct, err := setup(c, logger)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		return err
+	}
+	ctl = *ct
+
 	return tui.Launch(pub.IRI(ctl.Conf.BaseURL), ctl.Storage, ctl.AuthStorage, logger)
 }

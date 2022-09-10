@@ -67,7 +67,7 @@ const (
 
 const defaultPerm = os.ModeDir | os.ModePerm | 0700
 
-func (o Options) BaseStoragePath() string {
+func (o Options) BaseStoragePath() (string, error) {
 	if !filepath.IsAbs(o.StoragePath) {
 		o.StoragePath, _ = filepath.Abs(o.StoragePath)
 	}
@@ -77,29 +77,37 @@ func (o Options) BaseStoragePath() string {
 		err = os.MkdirAll(basePath, defaultPerm)
 	}
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	fi, err = os.Stat(basePath)
 	if !fi.IsDir() {
-		panic(errors.NotValidf("path %s is invalid for storage", o.StoragePath))
+		return "", errors.NotValidf("path %s is invalid for storage", o.StoragePath)
 	}
-	return basePath
+	return basePath, nil
 }
 
-func (o Options) BoltDB() string {
-	return fmt.Sprintf("%s/fedbox.bdb", o.BaseStoragePath())
+func (o Options) BoltDB() (string, error) {
+	base, err := o.BaseStoragePath()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/fedbox.bdb", base), nil
 }
 
-func (o Options) BoltDBOAuth2() string {
-	return fmt.Sprintf("%s/oauth.bdb", o.BaseStoragePath())
+func (o Options) BoltDBOAuth2() (string, error) {
+	base, err := o.BaseStoragePath()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/oauth.bdb", base), nil
 }
 
-func (o Options) Badger() string {
+func (o Options) Badger() (string, error) {
 	return o.BaseStoragePath()
 }
 
-func (o Options) BadgerOAuth2() string {
-	return fmt.Sprintf("%s/%s/%s", o.StoragePath, o.Env, "oauth")
+func (o Options) BadgerOAuth2() (string, error) {
+	return fmt.Sprintf("%s/%s/%s", o.StoragePath, o.Env, "oauth"), nil
 }
 
 func prefKey(k string) string {
@@ -124,6 +132,22 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	if !env.ValidType(e) {
 		e = env.Type(loadKeyFromEnv(KeyENV, ""))
 	}
+	lvl := loadKeyFromEnv(KeyLogLevel, "")
+	switch strings.ToLower(lvl) {
+	case "trace":
+		conf.LogLevel = logrus.TraceLevel
+	case "debug":
+		conf.LogLevel = logrus.DebugLevel
+	case "warn":
+		conf.LogLevel = logrus.WarnLevel
+	case "error":
+		conf.LogLevel = logrus.ErrorLevel
+	case "info":
+		fallthrough
+	default:
+		conf.LogLevel = logrus.InfoLevel
+	}
+
 	if strings.Contains(base, "~") {
 		if u, err := user.Current(); err == nil {
 			base = strings.Replace(base, "~", u.HomeDir, 1)
@@ -152,22 +176,6 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	}
 	if !loadedConfig {
 		return conf, fmt.Errorf("unable to find any configuration files")
-	}
-
-	lvl := loadKeyFromEnv(KeyLogLevel, "")
-	switch strings.ToLower(lvl) {
-	case "trace":
-		conf.LogLevel = logrus.TraceLevel
-	case "debug":
-		conf.LogLevel = logrus.DebugLevel
-	case "warn":
-		conf.LogLevel = logrus.WarnLevel
-	case "error":
-		conf.LogLevel = logrus.ErrorLevel
-	case "info":
-		fallthrough
-	default:
-		conf.LogLevel = logrus.InfoLevel
 	}
 
 	if !env.ValidType(e) {

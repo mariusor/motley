@@ -38,9 +38,13 @@ var (
 )
 
 func getBadgerStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Storage, error) {
-	l.Debugf("Initializing badger storage at %s", c.Badger())
+	path, err := c.Badger()
+	if err != nil {
+		return nil, nil, err
+	}
+	l.Debugf("Initializing badger storage at %s", path)
 	db, err := badger.New(badger.Config{
-		Path:    c.Badger(),
+		Path:    path,
 		BaseURL: c.BaseURL,
 		LogFn:   InfoLogFn(l),
 		ErrFn:   ErrLogFn(l),
@@ -48,8 +52,12 @@ func getBadgerStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.St
 	if err != nil {
 		return nil, nil, err
 	}
+	path, err = c.BadgerOAuth2()
+	if err != nil {
+		return nil, nil, err
+	}
 	oauth := authbadger.New(authbadger.Config{
-		Path:  c.BadgerOAuth2(),
+		Path:  path,
 		Host:  c.Host,
 		LogFn: InfoLogFn(l),
 		ErrFn: ErrLogFn(l),
@@ -58,9 +66,13 @@ func getBadgerStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.St
 }
 
 func getBoltStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Storage, error) {
-	l.Debugf("Initializing boltdb storage at %s", c.BoltDB())
+	path, err := c.BoltDB()
+	if err != nil {
+		return nil, nil, err
+	}
+	l.Debugf("Initializing boltdb storage at %s", path)
 	db, err := boltdb.New(boltdb.Config{
-		Path:    c.BoltDB(),
+		Path:    path,
 		BaseURL: c.BaseURL,
 		LogFn:   InfoLogFn(l),
 		ErrFn:   ErrLogFn(l),
@@ -69,8 +81,12 @@ func getBoltStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Stor
 		return nil, nil, err
 	}
 
+	path, err = c.BoltDBOAuth2()
+	if err != nil {
+		return nil, nil, err
+	}
 	oauth := authboltdb.New(authboltdb.Config{
-		Path:       c.BoltDBOAuth2(),
+		Path:       path,
 		BucketName: c.Host,
 		LogFn:      InfoLogFn(l),
 		ErrFn:      ErrLogFn(l),
@@ -79,15 +95,18 @@ func getBoltStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Stor
 }
 
 func getFsStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.Storage, error) {
-	p := c.BaseStoragePath()
-	l.Debugf("Initializing fs storage at %s", c.BaseStoragePath())
+	path, err := c.BaseStoragePath()
+	if err != nil {
+		return nil, nil, err
+	}
+	l.Debugf("Initializing fs storage at %s", path)
 	oauth := authfs.New(authfs.Config{
-		Path:  p,
+		Path:  path,
 		LogFn: InfoLogFn(l),
 		ErrFn: ErrLogFn(l),
 	})
 	db, err := fs.New(fs.Config{
-		StoragePath: filepath.Dir(p),
+		StoragePath: filepath.Dir(path),
 		BaseURL:     c.BaseURL,
 	})
 	if err != nil {
@@ -102,8 +121,12 @@ func getSqliteStorage(c config.Options, l logrus.FieldLogger) (st.Store, osin.St
 	if err != nil {
 		return nil, nil, err
 	}
+	path, err := c.BaseStoragePath()
+	if err != nil {
+		return nil, nil, err
+	}
 	oauth := authsqlite.New(authsqlite.Config{
-		Path:  c.BaseStoragePath(),
+		Path:  path,
 		LogFn: InfoLogFn(l),
 		ErrFn: ErrLogFn(l),
 	})
