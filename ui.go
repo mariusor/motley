@@ -301,7 +301,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.loadChildrenForNode(newNode); err != nil {
 			return m, errCmd(fmt.Errorf("%s", msg.n.n))
 		}
-		if len(newNode.c) == 0 {
+		if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
 			return m, errCmd(fmt.Errorf("no items in collection %s", iri))
 		}
 		oldTree := m.tree.Advance(newNode)
