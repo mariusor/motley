@@ -15,7 +15,7 @@ require (
 	github.com/go-ap/processing v0.0.0-20220828135254-baa2c3c37d57
 	github.com/joho/godotenv v1.4.0
 	github.com/kr/pretty v0.2.0 // indirect
-	github.com/mariusor/bubbles-tree v0.0.0-20220909061813-8a04ac569b95
+	github.com/mariusor/bubbles-tree v0.0.0-20220910143650-5a25946ef243
 	github.com/mattn/go-runewidth v0.0.13
 	github.com/microcosm-cc/bluemonday v1.0.20 // indirect
 	github.com/muesli/reflow v0.3.0
@@ -25,6 +25,6 @@ require (
 	github.com/yuin/goldmark v1.4.14 // indirect
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
 	golang.org/x/net v0.0.0-20220906165146-f3363e06e74c // indirect
-	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
+	golang.org/x/sys v0.0.0-20220909162455-aba9fc2a8ff2 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20190806201727-b62605953717
 )

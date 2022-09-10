@@ -1,9 +1,11 @@
 package motley
 
 import (
+	"fmt"
 	"path/filepath"
 
 	pub "github.com/go-ap/activitypub"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/openshift/osin"
@@ -64,9 +66,27 @@ func (n *n) Parent() tree.Node {
 	}
 	return n.p
 }
-func (n *n) Name() string {
-	return n.n
+func (n *n) Init() tea.Cmd {
+	return nil
 }
+
+const (
+	Collapsed = "⊞"
+	Expanded  = "⊟"
+)
+
+func (n *n) View() string {
+	hints := n.s
+	annotation := ""
+	if hints&tree.NodeCollapsible == tree.NodeCollapsible {
+		annotation = Expanded
+		if hints&tree.NodeCollapsed == tree.NodeCollapsed {
+			annotation = Collapsed
+		}
+	}
+	return fmt.Sprintf("%-1s %s", annotation, n.n)
+}
+
 func (n *n) Children() tree.Nodes {
 	nodes := make(tree.Nodes, len(n.c))
 	for i, nn := range n.c {
@@ -79,20 +99,24 @@ func (n *n) State() tree.NodeState {
 	return n.s
 }
 
-func (n *n) SetState(st tree.NodeState) {
-	n.s = st
-	if st&tree.NodeSelected == tree.NodeSelected && st&tree.NodeCollapsed == tree.NodeNone {
-		if pub.IsIRI(n.Item) && pub.ValidCollectionIRI(n.Item.GetLink()) {
-			it, err := n.f.s.Load(n.Item.GetLink())
-			if err != nil {
-				// TODO(marius): plug this into an error channel for the top model
-				n.n = err.Error()
-				n.SetState(n.State() | tree.NodeError)
+func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch m := msg.(type) {
+	case tree.NodeState:
+		n.s = m
+		if m&tree.NodeSelected == tree.NodeSelected && m&tree.NodeCollapsed == tree.NodeNone {
+			if pub.IsIRI(n.Item) && pub.ValidCollectionIRI(n.Item.GetLink()) {
+				it, err := n.f.s.Load(n.Item.GetLink())
+				if err != nil {
+					// TODO(marius): plug this into an error channel for the top model
+					n.n = err.Error()
+					n.s = n.s | tree.NodeError
+				}
+				n.Item = it
 			}
-			n.Item = it
+			n.c = getItemElements(n)
 		}
-		n.c = getItemElements(n)
 	}
+	return n, nil
 }
 
 func withName(name string) func(*n) {
