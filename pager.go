@@ -151,11 +151,14 @@ func (p *pagerModel) writeActor(s io.Writer) func(act *pub.Actor) error {
 			return err
 		}
 		p.writeNaturalLanguageValuesWithLabel(s, "PreferredUsername", act.PreferredUsername)
+		p.writePropertyWithLabel(s, "Streams", act.Streams)
 		if act.Endpoints != nil {
-			if act.Endpoints.SharedInbox != nil {
-				p.writeItem(s, act.Endpoints.SharedInbox)
-			}
+			p.writeItem(s, act.Endpoints.SharedInbox)
 		}
+		if len(act.PublicKey.ID) > 0 {
+			fmt.Fprintf(s, "PublicKey: %s", act.PublicKey.PublicKeyPem)
+		}
+		p.writePropertyWithLabel(s, "Streams", act.Streams)
 		return nil
 	}
 }
