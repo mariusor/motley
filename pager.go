@@ -2,6 +2,7 @@ package motley
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	pub "github.com/go-ap/activitypub"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
 	te "github.com/muesli/termenv"
@@ -74,6 +76,174 @@ func (p *pagerModel) setSize(w, h int) {
 		}
 		p.viewport.Height -= statusBarHeight + pagerHelpHeight
 	}
+}
+
+func (p *pagerModel) writePropertyWithLabel(s io.Writer, l string, it pub.Item) {
+	if pub.IsNil(it) {
+		return
+	}
+	if c, ok := it.(pub.ItemCollection); !ok || len(c) == 0 {
+		return
+	}
+	fmt.Fprintf(s, "%s: ", l)
+	p.writeItem(s, it)
+	s.Write([]byte{'\n'})
+}
+
+func (p *pagerModel) writeObject(s io.Writer) func(ob *pub.Object) error {
+	return func(ob *pub.Object) error {
+		fmt.Fprintf(s, "Type: %s\n", ob.Type)
+		fmt.Fprintf(s, "IRI: %s\n", ob.ID)
+		if len(ob.MediaType) > 0 {
+			fmt.Fprintf(s, "MediaType: %s\n", ob.MediaType)
+		}
+
+		p.writePropertyWithLabel(s, "AttributedTo", ob.AttributedTo)
+		p.writePropertyWithLabel(s, "To", ob.To)
+		p.writePropertyWithLabel(s, "CC", ob.CC)
+		p.writePropertyWithLabel(s, "Bto", ob.Bto)
+		p.writePropertyWithLabel(s, "BCC", ob.BCC)
+		p.writePropertyWithLabel(s, "Audience", ob.Audience)
+
+		p.writeNaturalLanguageValuesWithLabel(s, "Name", ob.Name)
+		p.writeNaturalLanguageValuesWithLabel(s, "Summary", ob.Summary)
+		p.writeNaturalLanguageValuesWithLabel(s, "Content", ob.Content)
+		if ob.Source.Content != nil {
+			if len(ob.MediaType) > 0 {
+				fmt.Fprintf(s, "Source[%s]: %s\n", ob.Source.MediaType, ob.Source.Content)
+			} else {
+				fmt.Fprintf(s, "Source: %s\n", ob.Source.Content)
+			}
+		}
+
+		p.writePropertyWithLabel(s, "Context", ob.Context)
+		p.writePropertyWithLabel(s, "InReplyTo", ob.InReplyTo)
+
+		p.writePropertyWithLabel(s, "Tag", ob.Tag)
+		return nil
+	}
+}
+func (p *pagerModel) writeActivity(s io.Writer) func(act *pub.Activity) error {
+	return func(act *pub.Activity) error {
+		if err := pub.OnIntransitiveActivity(act, p.writeIntransitiveActivity(s)); err != nil {
+			return err
+		}
+		p.writePropertyWithLabel(s, "Object", act.Object)
+		return nil
+	}
+}
+func (p *pagerModel) writeIntransitiveActivity(s io.Writer) func(act *pub.IntransitiveActivity) error {
+	return func(act *pub.IntransitiveActivity) error {
+		if err := pub.OnObject(act, p.writeObject(s)); err != nil {
+			return err
+		}
+		p.writePropertyWithLabel(s, "Actor", act.Actor)
+		p.writePropertyWithLabel(s, "Target", act.Target)
+		p.writePropertyWithLabel(s, "Result", act.Result)
+		p.writePropertyWithLabel(s, "Origin", act.Origin)
+		p.writePropertyWithLabel(s, "Instrument", act.Instrument)
+		return nil
+	}
+}
+func (p *pagerModel) writeActor(s io.Writer) func(act *pub.Actor) error {
+	return func(act *pub.Actor) error {
+		if err := pub.OnObject(act, p.writeObject(s)); err != nil {
+			return err
+		}
+		p.writeNaturalLanguageValuesWithLabel(s, "PreferredUsername", act.PreferredUsername)
+		if act.Endpoints != nil {
+			if act.Endpoints.SharedInbox != nil {
+				p.writeItem(s, act.Endpoints.SharedInbox)
+			}
+		}
+		return nil
+	}
+}
+func (p *pagerModel) writeItemCollection(s io.Writer) func(col *pub.ItemCollection) error {
+	return func(col *pub.ItemCollection) error {
+		for _, it := range col.Collection() {
+			if err := p.writeItem(s, it); err != nil {
+				p.logFn("error: %s", err)
+			}
+		}
+		return nil
+	}
+}
+func (p *pagerModel) writeCollection(s io.Writer) func(col pub.CollectionInterface) error {
+	return func(col pub.CollectionInterface) error {
+		for _, it := range col.Collection() {
+			if err := p.writeItem(s, it); err != nil {
+				p.logFn("error: %s", err)
+			}
+		}
+		return nil
+	}
+}
+
+func (p *pagerModel) writeNaturalLanguageValuesWithLabel(s io.Writer, l string, values pub.NaturalLanguageValues) error {
+	ll := len(values)
+	if ll == 0 {
+		return nil
+	}
+	if ll == 1 {
+		fmt.Fprintf(s, "%s: %s\n", l, values[0])
+		return nil
+	}
+	vals := make([]string, len(values))
+	for i, v := range values {
+		if v.Ref != "" || v.Ref != pub.NilLangRef {
+			vals[i] = fmt.Sprintf("[%s]%s", v.Ref, v.Value)
+		}
+		vals[i] = fmt.Sprintf("%s", v.Value)
+	}
+	if ll > 1 {
+		fmt.Fprintf(s, "%s: [ %s ]\n", l, strings.Join(vals, ", "))
+	}
+	return nil
+}
+
+func (p *pagerModel) writeItem(s io.Writer, it pub.Item) error {
+	//m, _ := pub.MarshalJSON(it)
+	//b := bytes.Buffer{}
+	//json.Indent(&b, m, "", "  ")
+	//s.Write(b.Bytes())
+	//s.Write([]byte{'\n'})
+
+	if pub.IsIRI(it) {
+		fmt.Fprintf(s, "%s\n", it.GetLink())
+		return nil
+	}
+
+	if pub.IsItemCollection(it) {
+		return pub.OnItemCollection(it, p.writeItemCollection(s))
+	}
+	if pub.IntransitiveActivityTypes.Contains(it.GetType()) {
+		p.logFn("display intransitive activity")
+		return pub.OnIntransitiveActivity(it, p.writeIntransitiveActivity(s))
+	}
+	if pub.ActivityTypes.Contains(it.GetType()) {
+		p.logFn("display activity")
+		return pub.OnActivity(it, p.writeActivity(s))
+	}
+	if pub.ActorTypes.Contains(it.GetType()) {
+		p.logFn("display actor")
+		return pub.OnActor(it, p.writeActor(s))
+	}
+	if pub.ObjectTypes.Contains(it.GetType()) {
+		p.logFn("display object")
+		return pub.OnObject(it, p.writeObject(s))
+	}
+	return fmt.Errorf("unknown activitypub object of type %T", it)
+}
+
+func (p *pagerModel) showItem(it pub.Item) error {
+	s := strings.Builder{}
+	if err := p.writeItem(&s, it); err != nil {
+		p.logFn("err: %s", err)
+		return nil
+	}
+	p.setContent(s.String())
+	return nil
 }
 
 func (p *pagerModel) setContent(s string) {
