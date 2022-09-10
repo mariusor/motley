@@ -51,6 +51,7 @@ func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {
 }
 
 func (t *treeModel) Advance(current *n) *tree.Model {
+	current.p = nil
 	newTree := tree.New(tree.Nodes{current})
 	newTree.Symbols = t.list.Symbols
 	newTree.KeyMap = t.list.KeyMap
