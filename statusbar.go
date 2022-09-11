@@ -2,16 +2,17 @@ package motley
 
 import (
 	"fmt"
-	"git.sr.ht/~marius/motley/internal/env"
 	"math"
 	"strings"
 	"time"
 
+	"git.sr.ht/~marius/motley/internal/env"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
+	te "github.com/muesli/termenv"
 )
 
 type statusState int
@@ -26,7 +27,7 @@ const (
 type statusModel struct {
 	*commonModel
 
-	env env.Type
+	logo string
 
 	spinner            spinner.Model
 	state              statusState
@@ -35,7 +36,9 @@ type statusModel struct {
 	statusMessageTimer *time.Timer
 }
 
-func newStatusModel(common *commonModel, env env.Type) statusModel {
+var glowLogoTextColor = Color("#ECFD65")
+
+func newStatusModel(common *commonModel) statusModel {
 	// Text input for search
 	sp := spinner.New()
 	sp.Style = lipgloss.Style{}.Foreground(statusBarNoteFg).Background(statusBarBg)
@@ -43,7 +46,6 @@ func newStatusModel(common *commonModel, env env.Type) statusModel {
 
 	return statusModel{
 		commonModel: common,
-		env:         env,
 		spinner:     sp,
 	}
 }
@@ -75,13 +77,10 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 		percentToStringMagnitude float64 = 100.0
 	)
 
-	// Logo
-	name := "FedBOX Admin TUI"
 	haveErr := s.state&statusError == statusError
 
 	if !haveErr {
 	}
-	logo := logoView(name, s.env)
 
 	// Scroll percent
 	// TODO(marius): get percent from treeModel
@@ -98,7 +97,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	// Empty space
 	padding := max(0,
 		s.width-
-			ansi.PrintableRuneWidth(logo)-
+			ansi.PrintableRuneWidth(s.logo)-
 			ansi.PrintableRuneWidth(statusMessage)-
 			ansi.PrintableRuneWidth(scrollPercent),
 	)
@@ -111,7 +110,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	}
 
 	fmt.Fprintf(b, "%s%s%s%s",
-		logo,
+		s.logo,
 		statusMessage,
 		emptySpace,
 		scrollPercent,
@@ -209,4 +208,42 @@ func (s *statusModel) Height() int {
 		height -= pagerHelpHeight
 	}
 	return height
+}
+
+func withPadding(s string) string {
+	return " " + s + " "
+}
+
+func logoView(text string, e env.Type) string {
+	var bg te.Color
+	fg := Color(te.ANSIBrightWhite.String())
+	if e.IsProd() {
+		bg = Color(Red.Dark)
+	}
+	if !e.IsProd() {
+		bg = Color(Green.Dark)
+	}
+	text = fmt.Sprintf("[%s] %s", e, text)
+	return te.String(withPadding(text)).Bold().Foreground(fg).Background(bg).String()
+}
+
+// Lightweight version of reflow's indent function.
+func indent(s string, n int) string {
+	if n <= 0 || s == "" {
+		return s
+	}
+	l := strings.Split(s, "\n")
+	b := strings.Builder{}
+	i := strings.Repeat(" ", n)
+	for _, v := range l {
+		fmt.Fprintf(&b, "%s%s\n", i, v)
+	}
+	return b.String()
+}
+
+func waitForStatusMessageTimeout(appCtx int, t *time.Timer) tea.Cmd {
+	return func() tea.Msg {
+		<-t.C
+		return appCtx
+	}
 }

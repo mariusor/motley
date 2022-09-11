@@ -2,11 +2,10 @@ package motley
 
 import (
 	"fmt"
-	"git.sr.ht/~marius/motley/internal/config"
-	"git.sr.ht/~marius/motley/internal/env"
-	"strings"
 	"time"
 
+	"git.sr.ht/~marius/motley/internal/config"
+	"git.sr.ht/~marius/motley/internal/env"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -127,6 +126,16 @@ func Launch(conf config.Options, r processing.Store, o osin.Storage, l *logrus.L
 	return tea.NewProgram(newModel(FedBOX(base, r, o, l), conf.Env, l)).Start()
 }
 
+func url(it pub.Item) string {
+	name := ""
+	pub.OnObject(it, func(o *pub.Object) error {
+		u, _ := o.URL.GetLink().URL()
+		name = u.Hostname()
+		return nil
+	})
+	return name
+}
+
 func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	if te.HasDarkBackground() {
 		GlamourStyle = "dark"
@@ -142,7 +151,8 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 
 	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	m.pager = newPagerModel(m.commonModel)
-	m.status = newStatusModel(m.commonModel, env)
+	m.status = newStatusModel(m.commonModel)
+	m.status.logo = logoView(url(ff.getService()), env)
 	return m
 }
 
@@ -426,49 +436,6 @@ func newStyle(fg, bg ColorPair, bold bool) func(string) string {
 // Returns a new termenv style with background options only.
 func newFgStyle(c ColorPair) styleFunc {
 	return te.Style{}.Foreground(Color(c.Dark)).Styled
-}
-
-func waitForStatusMessageTimeout(appCtx int, t *time.Timer) tea.Cmd {
-	return func() tea.Msg {
-		<-t.C
-		return appCtx
-	}
-}
-
-var glowLogoTextColor = Color("#ECFD65")
-
-func withPadding(s string) string {
-	return " " + s + " "
-}
-
-func logoView(text string, e env.Type) string {
-	var (
-		fg te.Color
-		bg te.Color
-	)
-	if e.IsProd() {
-		fg = Color(FaintRed.Dark)
-		bg = Color(Red.Dark)
-	}
-	if !e.IsProd() {
-		fg = Color(Green.Dark)
-		bg = Color(darkGreen.Dark)
-	}
-	return te.String(withPadding(text)).Bold().Foreground(fg).Background(bg).String()
-}
-
-// Lightweight version of reflow's indent function.
-func indent(s string, n int) string {
-	if n <= 0 || s == "" {
-		return s
-	}
-	l := strings.Split(s, "\n")
-	b := strings.Builder{}
-	i := strings.Repeat(" ", n)
-	for _, v := range l {
-		fmt.Fprintf(&b, "%s%s\n", i, v)
-	}
-	return b.String()
 }
 
 func min(a, b int) int {
