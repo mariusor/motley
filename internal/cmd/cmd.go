@@ -10,7 +10,6 @@ import (
 	tui "git.sr.ht/~marius/motley"
 	"git.sr.ht/~marius/motley/internal/config"
 	"git.sr.ht/~marius/motley/internal/env"
-	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/processing"
 	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
@@ -88,5 +87,5 @@ var TuiAction = func(c *cli.Context) error {
 	}
 	ctl = *ct
 
-	return tui.Launch(pub.IRI(ctl.Conf.BaseURL), ctl.Storage, ctl.AuthStorage, logger)
+	return tui.Launch(ctl.Conf, ctl.Storage, ctl.AuthStorage, logger)
 }
