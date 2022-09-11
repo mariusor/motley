@@ -183,7 +183,8 @@ func (m *model) setSize(w, h int) {
 	m.height = h
 
 
-	h = h - m.status.Height()
+	// NOTE(marius): dunno why the tree and pager models have a 1 row padding at the bottom
+	h = h - m.status.Height() - 1
 	tw := max(treeWidth, int(0.33*float32(w)))
 	m.tree.setSize(tw, h)
 	m.pager.setSize(w-tw, h)
@@ -400,20 +401,20 @@ func (m *model) displayItem(n *n) {
 
 func (m *model) View() string {
 	return lipgloss.JoinVertical(
-		lipgloss.Left,
+		lipgloss.Top,
 		lipgloss.JoinHorizontal(
-			lipgloss.Left,
+			lipgloss.Top,
 			lipgloss.NewStyle().
-				Border(lipgloss.ThickBorder(), false, true, false, false).
+				Border(lipgloss.NormalBorder(), false, true, false, false).
 				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
-				Padding(0, 0, 0, 1).Render(m.tree.list.View()),
+				Render(m.tree.View()),
 			lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder(), false, false, false, false).
 				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
-				Foreground(lipgloss.AdaptiveColor{Light: "#EE6FF8", Dark: "#EE6FF8"}).
-				Padding(0, 0, 0, 0).Render(m.pager.View()),
+				Render(m.pager.View()),
 		),
-		m.status.View(),
+		lipgloss.NewStyle().
+			Width(m.width).
+			Render(m.status.View()),
 	)
 }
 

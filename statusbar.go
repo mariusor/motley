@@ -129,12 +129,6 @@ func (s *statusModel) updateState(state statusState) tea.Cmd {
 	return nil
 }
 
-func percentChangeCmd(v float64) tea.Cmd {
-	return func() tea.Msg {
-		return v
-	}
-}
-
 func (s *statusModel) updatePercent(msg tea.Msg) tea.Cmd {
 	switch m := msg.(type) {
 	case percentageMsg:
@@ -173,6 +167,7 @@ func (s *statusModel) View() string {
 }
 
 func (s *statusModel) statusHelpView(b *strings.Builder) {
+	// TODO(marius): this help message can be probably generated from the default key bindings.
 	ss := ""
 	col1 := []string{
 		"g/home  go to top",

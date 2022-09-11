@@ -265,7 +265,9 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (p *pagerModel) View() string {
 	var b strings.Builder
 	fmt.Fprint(&b, p.viewport.View()+"\n")
-	return b.String()
+	return lipgloss.NewStyle().
+		Width(p.width).
+		Render(b.String())
 }
 
 func (p *pagerModel) setNoteView(b *strings.Builder) {
