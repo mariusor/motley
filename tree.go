@@ -14,7 +14,6 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 	ls := tree.New(t)
 	ls.Symbols = tree.DefaultSymbols()
 	ls.Symbols.UpAndRight = "╰─"
-	ls.Focus()
 	return treeModel{
 		commonModel: common,
 		list:        &ls,
@@ -25,11 +24,38 @@ func (t *treeModel) Init() tea.Cmd {
 	return nil
 }
 
+type percentageMsg float32
+
+func percentageChanged(f float32) func() tea.Msg {
+	return func() tea.Msg {
+		return percentageMsg(f)
+	}
+}
+
+func treeHeight(n tree.Nodes) int {
+	visible := 0
+	for _, nn := range n {
+		st := nn.State()
+		if st.Is(tree.NodeHidden) {
+			continue
+		}
+		visible++
+		if st.Is(tree.NodeCollapsible) && !st.Is(tree.NodeCollapsed) {
+			visible = treeHeight(nn.Children())
+		}
+	}
+	return visible
+}
+
 func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m, cmd := t.list.Update(msg)
 	t.list = m.(*tree.Model)
-	return t, cmd
+
+	f := float32(t.list.YOffset()+t.list.Height()) / float32(treeHeight(t.list.Children())) * 100.0
+	return t, tea.Batch(cmd, percentageChanged(f))
 }
+
+const treeWidth = 32
 
 func (t *treeModel) View() string {
 	return t.list.View()

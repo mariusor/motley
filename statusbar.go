@@ -17,21 +17,29 @@ import (
 
 type statusState int
 
-const (
-	lockIcon = "🔒"
+func (s statusState) Is(st statusState) bool {
+	return s&st == st
+}
 
-	statusError  statusState = -1
-	statusBrowse statusState = iota
+const (
+	statusBarHeight = 1
+	lockIcon        = "🔒"
+
+	statusError statusState = -1
+	statusNone  statusState = 0
+	statusHelp  statusState = 1 << iota
+	statusLoading
 )
 
 type statusModel struct {
 	*commonModel
 
-	logo string
+	logo  string
+	state statusState
 
-	spinner            spinner.Model
-	state              statusState
-	showHelp           bool
+	spinner spinner.Model
+	percent float32
+
 	statusMessage      string
 	statusMessageTimer *time.Timer
 }
@@ -51,7 +59,7 @@ func newStatusModel(common *commonModel) statusModel {
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
-	s.state = statusError
+	s.state |= statusError
 	return s.showStatusMessage(err.Error())
 }
 
@@ -59,8 +67,6 @@ func (s *statusModel) showError(err error) tea.Cmd {
 // that the returned command should be sent back the through the pager
 // update function.
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
-	// Show a success message to the user
-	s.state |= ^statusError
 	s.statusMessage = statusMessage
 	if s.statusMessageTimer != nil {
 		s.statusMessageTimer.Stop()
@@ -71,21 +77,10 @@ func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
 }
 
 func (s *statusModel) statusBarView(b *strings.Builder) {
-	const (
-		minPercent               float64 = 0.0
-		maxPercent               float64 = 1.0
-		percentToStringMagnitude float64 = 100.0
-	)
+	percent := clamp(int(math.Round(float64(s.percent))), 0, 100)
+	scrollPercent := statusBarMessageScrollPosStyle(fmt.Sprintf(" %d%% ", percent))
 
-	haveErr := s.state&statusError == statusError
-
-	if !haveErr {
-	}
-
-	// Scroll percent
-	// TODO(marius): get percent from treeModel
-	percent := math.Max(minPercent, math.Min(maxPercent, 10))
-	scrollPercent := statusBarMessageScrollPosStyle(fmt.Sprintf(" %3.f%% ", percent*percentToStringMagnitude))
+	haveErr := s.state.Is(statusError)
 
 	var statusMessage string
 	if haveErr {
@@ -121,54 +116,71 @@ func (s *statusModel) unload() {
 	if s.statusMessageTimer != nil {
 		s.statusMessageTimer.Stop()
 	}
-	s.state = statusBrowse
+	s.state ^= statusLoading
 }
 
-func (s *statusModel) updateTicket(msg tea.Msg) tea.Cmd {
-	if s.state > statusBrowse {
-		// If we're still stashing, or if the spinner still needs to
-		// finish, spin it along.
-		newSpinnerModel, cmd := s.spinner.Update(msg)
-		s.spinner = newSpinnerModel
-		return cmd
-	} else if s.state == statusBrowse {
-		// If the spinner's finished and we haven't told the user the
-		// stash was successful, do that.
-		s.state = statusBrowse
-		return s.showStatusMessage("Stashed!")
-	} else if s.state == statusError {
-		return s.showStatusMessage("Error!")
+func (s *statusModel) updateState(state statusState) tea.Cmd {
+	if s.state.Is(state) {
+		s.state ^= state
+	} else {
+		s.state |= state
+	}
+	s.logFn("Updating status state: %d - new %d", state, s.state)
+	return nil
+}
+
+func percentChangeCmd(v float64) tea.Cmd {
+	return func() tea.Msg {
+		return v
+	}
+}
+
+func (s *statusModel) updatePercent(msg tea.Msg) tea.Cmd {
+	switch m := msg.(type) {
+	case percentageMsg:
+		s.percent = float32(m)
 	}
 	return nil
 }
+
+func (s *statusModel) updateTicker(msg tea.Msg) tea.Cmd {
+	switch {
+	case s.state.Is(statusLoading):
+		// If the spinner's finished, and we're not doing any work, we have finished.
+		s.state ^= statusLoading
+		if s.state.Is(statusError) {
+			return s.showStatusMessage("error!")
+		}
+		return s.showStatusMessage("success")
+	default:
+		// If we're still doing work, or if the spinner still needs to finish, spin it along.
+		newSpinnerModel, cmd := s.spinner.Update(msg)
+		s.spinner = newSpinnerModel
+		return cmd
+	}
+	return nil
+}
+
 func (s *statusModel) View() string {
 	b := strings.Builder{}
 
-	// Footer
-	switch s.state {
-	default:
-		s.statusBarView(&b)
+	if s.state.Is(statusHelp) {
+		s.statusHelpView(&b)
 	}
-
-	if s.showHelp {
-		fmt.Fprint(&b, s.helpView())
-	}
+	s.statusBarView(&b)
 
 	return b.String()
 }
 
-func (s *statusModel) helpView() (ss string) {
-	memoOrStash := "s       set memo"
-
+func (s *statusModel) statusHelpView(b *strings.Builder) {
+	ss := ""
 	col1 := []string{
 		"g/home  go to top",
 		"G/end   go to bottom",
 		"",
-		memoOrStash,
 		"esc     back to files",
 		"q       quit",
 	}
-
 	ss += "\n"
 	ss += "k/↑      up                  " + col1[0] + "\n"
 	ss += "j/↓      down                " + col1[1] + "\n"
@@ -176,12 +188,14 @@ func (s *statusModel) helpView() (ss string) {
 	ss += "f/pgdn   page down           " + col1[3] + "\n"
 	ss += "u        ½ page up           " + col1[4] + "\n"
 	ss += "d        ½ page down         "
-
 	if len(col1) > 5 {
 		ss += col1[5]
 	}
 
-	ss = indent(ss, 2)
+	indent(b, helpViewStyle(ss), 2)
+}
+
+func (s *statusModel) helpView() (ss string) {
 
 	// Fill up empty cells with spaces for background coloring
 	if s.width > 0 {
@@ -195,18 +209,19 @@ func (s *statusModel) helpView() (ss string) {
 		ss = strings.Join(lines, "\n")
 	}
 
-	return helpViewStyle(ss)
+	return
 }
 
 func (s *statusModel) Height() int {
 	height := statusBarHeight
-	// TODO(marius): replace status.showHelp for stateShowHelp
-	if s.showHelp {
+	if s.state.Is(statusHelp) {
 		if pagerHelpHeight == 0 {
 			pagerHelpHeight = strings.Count(s.helpView(), "\n")
 		}
-		height -= pagerHelpHeight
+		height += pagerHelpHeight
 	}
+
+	s.logFn("Statusbar height: %d", height)
 	return height
 }
 
@@ -228,17 +243,16 @@ func logoView(text string, e env.Type) string {
 }
 
 // Lightweight version of reflow's indent function.
-func indent(s string, n int) string {
+func indent(b *strings.Builder, s string, n int) {
 	if n <= 0 || s == "" {
-		return s
+		return
 	}
 	l := strings.Split(s, "\n")
-	b := strings.Builder{}
+
 	i := strings.Repeat(" ", n)
 	for _, v := range l {
-		fmt.Fprintf(&b, "%s%s\n", i, v)
+		fmt.Fprintf(b, "%s%s\n", i, v)
 	}
-	return b.String()
 }
 
 func waitForStatusMessageTimeout(appCtx int, t *time.Timer) tea.Cmd {

@@ -51,7 +51,7 @@ func (p *pagerModel) Init() tea.Cmd {
 
 func (p *pagerModel) setSize(w, h int) {
 	p.viewport.Width = w
-	p.viewport.Height = h - statusBarHeight
+	p.viewport.Height = h
 	p.textInput.Width = w - ansi.PrintableRuneWidth(p.textInput.Prompt) - 1
 }
 

@@ -24,11 +24,8 @@ const (
 	statusMessageTimeout = time.Second * 2 // how long to show status messages like "stashed!"
 	ellipsis             = "…"
 
-	darkGray        = "#333333"
-	wrapAt          = 60
-	statusBarHeight = 1
-
-	treeWidth = 32
+	darkGray = "#333333"
+	wrapAt   = 60
 )
 
 var (
@@ -185,10 +182,20 @@ func (m *model) setSize(w, h int) {
 	m.width = w
 	m.height = h
 
-	height := h - m.status.Height()
+
+	h = h - m.status.Height()
 	tw := max(treeWidth, int(0.33*float32(w)))
-	m.tree.setSize(tw, height)
-	m.pager.setSize(w-tw, height)
+	m.tree.setSize(tw, h)
+	m.pager.setSize(w-tw, h)
+
+	if m.pager.viewport.PastBottom() {
+		m.logFn("Pager is past bottom")
+		m.pager.viewport.GotoBottom()
+	}
+	if m.tree.list.PastBottom() {
+		m.logFn("Tree is past bottom")
+		m.tree.list.GotoBottom()
+	}
 }
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
@@ -293,15 +300,20 @@ func (m *model) loadChildrenForNode(nn *n) error {
 	return nil
 }
 
-func (m *model) toggleHelp() {
-	m.status.showHelp = !m.status.showHelp
-	m.setSize(m.width, m.height)
-	if m.pager.viewport.PastBottom() {
-		m.pager.viewport.GotoBottom()
+func resizeCmd(w, h int) tea.Cmd {
+	return func() tea.Msg {
+		return tea.WindowSizeMsg{Width: w, Height: h}
 	}
-	//if m.tree.list.PastBottom() {
-	//	m.tree.list.GotoBottom()
-	//}
+}
+
+func showHelpCmd() tea.Cmd {
+	return func() tea.Msg {
+		return statusHelp
+	}
+}
+
+func (m *model) toggleHelp() tea.Cmd {
+	return tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -341,12 +353,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, quitKey):
-			if m.status.state != statusBrowse {
-				m.status.state = statusBrowse
-			}
 			return m, tea.Quit
 		case key.Matches(msg, helpKey):
-			m.toggleHelp()
+			return m, m.toggleHelp()
 		case key.Matches(msg, advanceKey):
 			return m, advanceCmd(m.currentNode)
 		case key.Matches(msg, backKey):
@@ -354,11 +363,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			return m, tea.Batch(m.update(msg))
 		}
-	// Window size is received when starting up and on every resize
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 	case spinner.TickMsg:
-		return m, m.status.updateTicket(msg)
+		return m, m.status.updateTicker(msg)
+	case statusState:
+		return m, m.status.updateState(msg)
+	case percentageMsg:
+		m.logFn("percentage changed: %.3f", msg)
+		return m, m.status.updatePercent(msg)
 	default:
 		return m, tea.Batch(m.update(msg))
 	}
@@ -450,4 +463,8 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func clamp(v, low, high int) int {
+	return min(high, max(low, v))
 }

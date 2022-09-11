@@ -13,7 +13,7 @@ require (
 	github.com/go-ap/fedbox v0.0.0-20220828135636-ee8474a2af95
 	github.com/go-ap/processing v0.0.0-20220828135254-baa2c3c37d57
 	github.com/joho/godotenv v1.4.0
-	github.com/mariusor/bubbles-tree v0.0.0-20220910173427-623d3dbe6d7d
+	github.com/mariusor/bubbles-tree v0.0.0-20220911132556-8656520cd09d
 	github.com/mattn/go-runewidth v0.0.13
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.12.0
@@ -61,7 +61,7 @@ require (
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
-	github.com/rivo/uniseg v0.3.4 // indirect
+	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/valyala/fastjson v1.6.3 // indirect
 	github.com/yuin/goldmark v1.4.14 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
