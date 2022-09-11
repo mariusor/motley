@@ -25,7 +25,7 @@ func main() {
 		},
 		&cli.StringFlag{
 			Name:  "env",
-			Usage: fmt.Sprintf("The environment to use. Possible values: %q", []env.Type{env.DEV, env.QA, env.PROD}),
+			Usage: fmt.Sprintf("The environment to use. Possible values: %q", []env.Type{env.DEV, env.PROD}),
 			Value: string(env.DEV),
 		},
 		&cli.StringFlag{

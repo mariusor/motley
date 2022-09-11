@@ -2,7 +2,7 @@ package env
 
 import "strings"
 
-// EnvType type alias
+// Type is an alias for string
 type Type string
 
 // DEV environment
@@ -11,15 +11,11 @@ const DEV Type = "dev"
 // PROD environment
 const PROD Type = "prod"
 
-// QA environment
-const QA Type = "qa"
-
-// testing environment
+// TEST environment
 const TEST Type = "test"
 
 var Types = []Type{
 	PROD,
-	QA,
 	DEV,
 	TEST,
 }
@@ -44,12 +40,9 @@ func ValidType(typ Type) bool {
 func (e Type) IsProd() bool {
 	return strings.Contains(string(e), string(PROD))
 }
-func (e Type) IsQA() bool {
-	return strings.Contains(string(e), string(QA))
-}
 func (e Type) IsTest() bool {
 	return strings.Contains(string(e), string(TEST))
 }
 func (e Type) IsDev() bool {
-	return strings.Contains(string(e), string(DEV))
+	return strings.Contains(string(e), string(DEV)) || e.IsTest()
 }
