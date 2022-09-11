@@ -58,6 +58,11 @@ func newStatusModel(common *commonModel) statusModel {
 	}
 }
 
+func (s *statusModel) Init() tea.Cmd {
+	s.logFn("status init")
+	return nil
+}
+
 func (s *statusModel) showError(err error) tea.Cmd {
 	s.state |= statusError
 	return s.showStatusMessage(err.Error())
@@ -247,6 +252,12 @@ func indent(b *strings.Builder, s string, n int) {
 	i := strings.Repeat(" ", n)
 	for _, v := range l {
 		fmt.Fprintf(b, "%s%s\n", i, v)
+	}
+}
+
+func showHelpCmd() tea.Cmd {
+	return func() tea.Msg {
+		return statusHelp
 	}
 }
 

@@ -172,9 +172,12 @@ type model struct {
 }
 
 func (m *model) Init() tea.Cmd {
+	m.logFn("ui init")
 	m.breadCrumbs = make([]*tree.Model, 0)
 	return tea.Batch(
-		m.tree.list.Init(),
+		m.tree.Init(),
+		m.pager.Init(),
+		m.status.Init(),
 	)
 }
 
@@ -182,6 +185,7 @@ func (m *model) setSize(w, h int) {
 	m.width = w
 	m.height = h
 
+	m.logFn("UI wxh: %dx%d", w, h)
 
 	// NOTE(marius): dunno why the tree and pager models have a 1 row padding at the bottom
 	h = h - m.status.Height() - 1
@@ -211,17 +215,25 @@ func (m *model) updateTree(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
+func (m *model) updateStatusBar(msg tea.Msg) tea.Cmd {
+	switch msg := msg.(type) {
+	case error:
+		return m.status.showError(msg)
+	case spinner.TickMsg:
+		return m.status.updateTicker(msg)
+	case statusState:
+		return m.status.updateState(msg)
+	case percentageMsg:
+		return m.status.updatePercent(msg)
+	}
+	return nil
+}
+
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
-	if cmd := m.updateTree(msg); cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-	if cmd := m.updatePager(msg); cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-	if len(cmds) == 0 {
-		return nil
-	}
+	cmds = append(cmds, m.updateTree(msg))
+	cmds = append(cmds, m.updatePager(msg))
+	cmds = append(cmds, m.updateStatusBar(msg))
 	return tea.Batch(cmds...)
 }
 
@@ -307,27 +319,14 @@ func resizeCmd(w, h int) tea.Cmd {
 	}
 }
 
-func showHelpCmd() tea.Cmd {
-	return func() tea.Msg {
-		return statusHelp
-	}
-}
-
-func (m *model) toggleHelp() tea.Cmd {
-	return tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
-}
-
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmds := make([]tea.Cmd, 0)
+
 	switch msg := msg.(type) {
-	case error:
-		m.status.showError(msg)
 	case *n:
-		if msg.State().Is(NodeError) {
-			return m, errCmd(fmt.Errorf("%s", msg.n))
-		}
 		if len(msg.c) == 0 && msg.s.Is(tree.NodeCollapsible) {
 			if err := m.loadChildrenForNode(msg); err != nil {
-				return m, errCmd(err)
+				return m, errCmd(fmt.Errorf("%s", msg.n))
 			}
 		}
 		m.currentNode = msg
@@ -356,47 +355,37 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, quitKey):
 			return m, tea.Quit
 		case key.Matches(msg, helpKey):
-			return m, m.toggleHelp()
+			return m, tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
 		case key.Matches(msg, advanceKey):
 			return m, advanceCmd(m.currentNode)
 		case key.Matches(msg, backKey):
 			return m.Back(msg)
-		default:
-			return m, tea.Batch(m.update(msg))
 		}
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
-	case spinner.TickMsg:
-		return m, m.status.updateTicker(msg)
-	case statusState:
-		return m, m.status.updateState(msg)
-	case percentageMsg:
-		m.logFn("percentage changed: %.3f", msg)
-		return m, m.status.updatePercent(msg)
-	default:
-		return m, tea.Batch(m.update(msg))
 	}
+	cmds = append(cmds, m.update(msg))
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 type advanceMsg struct {
 	*n
 }
 
-func (m *model) displayItem(n *n) {
+func (m *model) displayItem(n *n) tea.Cmd {
 	it := n.Item
 	switch it.(type) {
 	case pub.ItemCollection:
-		m.status.showStatusMessage(fmt.Sprintf("Collection: %s %d items", n.n, len(n.c)))
+		return m.status.showStatusMessage(fmt.Sprintf("Collection: %s %d items", n.n, len(n.c)))
 	case pub.Item:
 		err := m.pager.showItem(it)
 		if err != nil {
-			m.status.showError(err)
-			return
+			return m.status.showError(err)
 		}
-		m.status.showStatusMessage(fmt.Sprintf("%s: %s", it.GetType(), it.GetLink()))
+		return m.status.showStatusMessage(fmt.Sprintf("%s: %s", it.GetType(), it.GetLink()))
 	}
+	return nil
 }
 
 func (m *model) View() string {
@@ -405,10 +394,12 @@ func (m *model) View() string {
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			lipgloss.NewStyle().
+				Width(m.tree.width).
 				Border(lipgloss.NormalBorder(), false, true, false, false).
 				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
 				Render(m.tree.View()),
 			lipgloss.NewStyle().
+				Width(m.pager.width).
 				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
 				Render(m.pager.View()),
 		),

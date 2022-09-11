@@ -46,6 +46,7 @@ func newPagerModel(common *commonModel) pagerModel {
 }
 
 func (p *pagerModel) Init() tea.Cmd {
+	p.logFn("pager init")
 	return nil
 }
 
@@ -53,6 +54,7 @@ func (p *pagerModel) setSize(w, h int) {
 	p.viewport.Width = w
 	p.viewport.Height = h
 	p.textInput.Width = w - ansi.PrintableRuneWidth(p.textInput.Prompt) - 1
+	p.logFn("Pager wxh: %dx%d", w, h)
 }
 
 func (p *pagerModel) writePropertyWithLabel(s io.Writer, l string, it pub.Item) {
@@ -264,7 +266,7 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (p *pagerModel) View() string {
 	var b strings.Builder
-	fmt.Fprint(&b, p.viewport.View()+"\n")
+	fmt.Fprint(&b, p.viewport.View())
 	return lipgloss.NewStyle().
 		Width(p.width).
 		Render(b.String())

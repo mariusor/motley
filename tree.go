@@ -14,6 +14,7 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 	ls := tree.New(t)
 	ls.Symbols = tree.DefaultSymbols()
 	ls.Symbols.UpAndRight = "╰─"
+
 	return treeModel{
 		commonModel: common,
 		list:        &ls,
@@ -21,7 +22,8 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 }
 
 func (t *treeModel) Init() tea.Cmd {
-	return nil
+	t.logFn("tree init")
+	return t.list.Init()
 }
 
 type percentageMsg float32
@@ -48,11 +50,13 @@ func treeHeight(n tree.Nodes) int {
 }
 
 func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m, cmd := t.list.Update(msg)
-	t.list = m.(*tree.Model)
+	if m, cmd := t.list.Update(msg); cmd != nil {
+		t.list = m.(*tree.Model)
+		f := float32(t.list.YOffset()+t.list.Height()) / float32(treeHeight(t.list.Children())) * 100.0
+		return t, tea.Batch(cmd, percentageChanged(f))
+	}
 
-	f := float32(t.list.YOffset()+t.list.Height()) / float32(treeHeight(t.list.Children())) * 100.0
-	return t, tea.Batch(cmd, percentageChanged(f))
+	return t, nil
 }
 
 const treeWidth = 32
@@ -64,6 +68,7 @@ func (t *treeModel) View() string {
 func (t *treeModel) setSize(w, h int) {
 	t.list.SetWidth(w)
 	t.list.SetHeight(h)
+	t.logFn("Tree wxh: %dx%d", w, h)
 }
 
 func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {
