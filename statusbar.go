@@ -25,9 +25,9 @@ const (
 	statusBarHeight = 1
 	lockIcon        = "🔒"
 
-	statusError statusState = -1
 	statusNone  statusState = 0
-	statusHelp  statusState = 1 << iota
+	statusError statusState = 1 << iota
+	statusHelp
 	statusLoading
 )
 
