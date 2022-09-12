@@ -11,8 +11,6 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
-	"github.com/muesli/reflow/ansi"
-	te "github.com/muesli/termenv"
 )
 
 type pagerModel struct {
@@ -28,19 +26,8 @@ func newPagerModel(common *commonModel) pagerModel {
 	vp.YPosition = 0
 	vp.HighPerformanceRendering = false
 
-	// Text input for notes/memos
-	ti := textinput.New()
-	ti.CursorStyle = lipgloss.Style{}.Foreground(Fuchsia)
-	ti.CharLimit = noteCharacterLimit
-	ti.Prompt = te.String(" > ").
-		Foreground(Color(darkGray)).
-		Background(Color(YellowGreen.Dark)).
-		String()
-	ti.Focus()
-
 	return pagerModel{
 		commonModel: common,
-		textInput:   ti,
 		viewport:    vp,
 	}
 }
@@ -53,7 +40,6 @@ func (p *pagerModel) Init() tea.Cmd {
 func (p *pagerModel) setSize(w, h int) {
 	p.viewport.Width = w
 	p.viewport.Height = h
-	p.textInput.Width = w - ansi.PrintableRuneWidth(p.textInput.Prompt) - 1
 	p.logFn("Pager wxh: %dx%d", w, h)
 }
 
@@ -234,7 +220,6 @@ func (p *pagerModel) setContent(s string) {
 func (p *pagerModel) unload() {
 	p.viewport.SetContent("")
 	p.viewport.YOffset = 0
-	p.textInput.Reset()
 }
 
 func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -256,9 +241,6 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, viewport.Sync(p.viewport))
 			}
 		}
-	case tea.WindowSizeMsg:
-		return p, renderWithGlamour(*p, "")
-	default:
 	}
 
 	return p, tea.Batch(cmds...)
@@ -267,13 +249,7 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (p *pagerModel) View() string {
 	var b strings.Builder
 	fmt.Fprint(&b, p.viewport.View())
-	return lipgloss.NewStyle().
-		Width(p.width).
-		Render(b.String())
-}
-
-func (p *pagerModel) setNoteView(b *strings.Builder) {
-	b.WriteString(p.textInput.View())
+	return lipgloss.NewStyle().Width(p.viewport.Width).Render(b.String())
 }
 
 // COMMANDS

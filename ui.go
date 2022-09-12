@@ -187,10 +187,12 @@ func (m *model) setSize(w, h int) {
 
 	m.logFn("UI wxh: %dx%d", w, h)
 
-	h = h - m.status.Height()
+	h = h - m.status.Height() - 2 // 2 for border
+	w = w - 2 - 2                 // 2 for padding, 2 for border
+
 	tw := max(treeWidth, int(0.30*float32(w)))
-	m.tree.setSize(tw, h)
-	m.pager.setSize(w-tw, h)
+	m.tree.setSize(tw-1-1, h)    // 1 for padding, 1 for border
+	m.pager.setSize(w-tw-1-1, h) // 1 for padding, 1 for border
 
 	if m.pager.viewport.PastBottom() {
 		m.logFn("Pager is past bottom")
@@ -386,20 +388,17 @@ func (m *model) displayItem(n *n) tea.Cmd {
 }
 
 func (m *model) View() string {
+	renderWithBorder := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), true, true, true, true).
+		BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
+		Padding(0, 1, 0, 1).Render
+
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			lipgloss.NewStyle().
-				//Border(lipgloss.NormalBorder(), true, true, true, true).
-				//BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
-				//Padding(1, 1, 1, 1).
-				Render(m.tree.View()),
-			lipgloss.NewStyle().
-				//Border(lipgloss.NormalBorder(), true, true, true, true).
-				//BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
-				//Padding(1, 1, 1, 1).
-				Render(m.pager.View()),
+			renderWithBorder(m.tree.View()),
+			renderWithBorder(m.pager.View()),
 		),
 		lipgloss.NewStyle().Render(m.status.View()),
 	)
