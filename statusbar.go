@@ -9,7 +9,6 @@ import (
 	"git.sr.ht/~marius/motley/internal/env"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
 	te "github.com/muesli/termenv"
@@ -49,8 +48,7 @@ var glowLogoTextColor = Color("#ECFD65")
 func newStatusModel(common *commonModel) statusModel {
 	// Text input for search
 	sp := spinner.New()
-	sp.Style = lipgloss.Style{}.Foreground(statusBarNoteFg).Background(statusBarBg)
-	sp.Spinner.FPS = time.Second / 10
+	sp.Spinner = spinner.Pulse
 
 	return statusModel{
 		commonModel: common,
@@ -60,7 +58,7 @@ func newStatusModel(common *commonModel) statusModel {
 
 func (s *statusModel) Init() tea.Cmd {
 	s.logFn("status init")
-	return nil
+	return s.spinner.Tick
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
@@ -82,38 +80,29 @@ func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
 }
 
 func (s *statusModel) statusBarView(b *strings.Builder) {
-	percent := clamp(int(math.Round(float64(s.percent))), 0, 100)
-	scrollPercent := statusBarMessageScrollPosStyle(fmt.Sprintf(" %d%% ", percent))
+	percent := clamp(int(math.Round(s.percent)), 0, 100)
+	scrollPercent := fmt.Sprintf(" %d%% ", percent)
 
 	haveErr := s.state.Is(statusError)
 
-	var statusMessage string
-	if haveErr {
-		statusMessage = statusBarFailStyle(withPadding(s.statusMessage))
-	} else {
-		statusMessage = statusBarMessageStyle(withPadding(s.statusMessage))
-	}
-
+	spinner := s.spinner.View()
 	// Empty space
 	padding := max(0,
 		s.width-
+			ansi.PrintableRuneWidth(spinner)-
 			ansi.PrintableRuneWidth(s.logo)-
-			ansi.PrintableRuneWidth(statusMessage)-
+			ansi.PrintableRuneWidth(s.statusMessage)-
 			ansi.PrintableRuneWidth(scrollPercent),
 	)
 
 	emptySpace := strings.Repeat(" ", padding)
+	render := statusBarMessageStyle
 	if haveErr {
-		emptySpace = statusBarFailStyle(emptySpace)
-	} else {
-		emptySpace = statusBarMessageStyle(emptySpace)
+		render = statusBarFailStyle
 	}
-
-	fmt.Fprintf(b, "%s%s%s%s",
+	fmt.Fprintf(b, "%s%s",
 		s.logo,
-		statusMessage,
-		emptySpace,
-		scrollPercent,
+		render(fmt.Sprintf("%s%s%s%s", s.statusMessage, emptySpace, scrollPercent, spinner)),
 	)
 }
 
@@ -142,20 +131,29 @@ func (s *statusModel) updatePercent(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+func stoppedLoading(st statusState) tea.Cmd {
+	return func() tea.Msg {
+		return st ^ statusLoading
+	}
+}
+
 func (s *statusModel) updateTicker(msg tea.Msg) tea.Cmd {
-	switch {
-	case s.state.Is(statusLoading):
-		// If the spinner's finished, and we're not doing any work, we have finished.
-		s.state ^= statusLoading
-		if s.state.Is(statusError) {
-			return s.showStatusMessage("error!")
-		}
-		return s.showStatusMessage("success")
-	default:
+	switch msg.(type) {
+	case spinner.TickMsg:
 		// If we're still doing work, or if the spinner still needs to finish, spin it along.
-		newSpinnerModel, cmd := s.spinner.Update(msg)
+		newSpinnerModel, tick := s.spinner.Update(msg)
 		s.spinner = newSpinnerModel
-		return cmd
+		if s.state.Is(statusLoading) {
+			return tick
+		}
+	case statusState:
+		switch {
+		case !s.state.Is(statusLoading):
+			if s.state.Is(statusError) {
+				return s.showStatusMessage("error!")
+			}
+			return s.showStatusMessage("success")
+		}
 	}
 	return nil
 }

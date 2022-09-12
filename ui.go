@@ -242,6 +242,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
+		cmds = append(cmds, m.status.spinner.Tick /*, stoppedLoading(m.status.state)*/)
 	case advanceMsg:
 		//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
 		//	// skip if trying to advance to same element
