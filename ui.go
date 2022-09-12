@@ -187,9 +187,8 @@ func (m *model) setSize(w, h int) {
 
 	m.logFn("UI wxh: %dx%d", w, h)
 
-	// NOTE(marius): dunno why the tree and pager models have a 1 row padding at the bottom
-	h = h - m.status.Height() - 1
-	tw := max(treeWidth, int(0.33*float32(w)))
+	h = h - m.status.Height()
+	tw := max(treeWidth, int(0.30*float32(w)))
 	m.tree.setSize(tw, h)
 	m.pager.setSize(w-tw, h)
 
@@ -231,6 +230,50 @@ func (m *model) updateStatusBar(msg tea.Msg) tea.Cmd {
 
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
+
+	switch msg := msg.(type) {
+	case *n:
+		if len(msg.c) == 0 && msg.s.Is(tree.NodeCollapsible) {
+			if err := m.loadChildrenForNode(msg); err != nil {
+				return errCmd(fmt.Errorf("%s", msg.n))
+			}
+		}
+		m.currentNode = msg
+		m.displayItem(msg)
+	case advanceMsg:
+		//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
+		//	// skip if trying to advance to same element
+		//	return m, nil
+		//}
+		//if msg.State().Is(NodeError) {
+		//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
+		//}
+		iri := msg.GetLink().String()
+		newNode := node(msg.Item, withParent(msg.n), withName(iri))
+		if err := m.loadChildrenForNode(newNode); err != nil {
+			return errCmd(fmt.Errorf("%s", msg.n.n))
+		}
+		if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
+			return errCmd(fmt.Errorf("no items in collection %s", iri))
+		}
+		oldTree := m.tree.Advance(newNode)
+		m.breadCrumbs = append(m.breadCrumbs, oldTree)
+		return nodeCmd(newNode)
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, quitKey):
+			return tea.Quit
+		case key.Matches(msg, helpKey):
+			return tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
+		case key.Matches(msg, advanceKey):
+			return advanceCmd(m.currentNode)
+		case key.Matches(msg, backKey):
+			return m.Back(msg)
+		}
+	case tea.WindowSizeMsg:
+		m.setSize(msg.Width, msg.Height)
+		return nil
+	}
 	cmds = append(cmds, m.updateTree(msg))
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
@@ -256,16 +299,16 @@ var (
 	)
 )
 
-func (m *model) Back(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Back(msg tea.Msg) tea.Cmd {
 	if len(m.breadCrumbs) == 0 {
 		m.logFn("No previous tree to go back to.")
-		return m, nil
+		return nil
 	}
 	if oldTree := m.breadCrumbs[len(m.breadCrumbs)-1]; oldTree != nil {
 		m.tree.Back(oldTree)
 		m.breadCrumbs = m.breadCrumbs[:len(m.breadCrumbs)-1]
 	}
-	return m, nil
+	return nil
 }
 
 func advanceCmd(n *n) tea.Cmd {
@@ -320,54 +363,7 @@ func resizeCmd(w, h int) tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	cmds := make([]tea.Cmd, 0)
-
-	switch msg := msg.(type) {
-	case *n:
-		if len(msg.c) == 0 && msg.s.Is(tree.NodeCollapsible) {
-			if err := m.loadChildrenForNode(msg); err != nil {
-				return m, errCmd(fmt.Errorf("%s", msg.n))
-			}
-		}
-		m.currentNode = msg
-		m.displayItem(msg)
-	case advanceMsg:
-		//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
-		//	// skip if trying to advance to same element
-		//	return m, nil
-		//}
-		//if msg.State().Is(NodeError) {
-		//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
-		//}
-		iri := msg.GetLink().String()
-		newNode := node(msg.Item, withParent(msg.n), withName(iri))
-		if err := m.loadChildrenForNode(newNode); err != nil {
-			return m, errCmd(fmt.Errorf("%s", msg.n.n))
-		}
-		if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
-			return m, errCmd(fmt.Errorf("no items in collection %s", iri))
-		}
-		oldTree := m.tree.Advance(newNode)
-		m.breadCrumbs = append(m.breadCrumbs, oldTree)
-		return m, nodeCmd(newNode)
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, quitKey):
-			return m, tea.Quit
-		case key.Matches(msg, helpKey):
-			return m, tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
-		case key.Matches(msg, advanceKey):
-			return m, advanceCmd(m.currentNode)
-		case key.Matches(msg, backKey):
-			return m.Back(msg)
-		}
-	case tea.WindowSizeMsg:
-		m.setSize(msg.Width, msg.Height)
-		return m, nil
-	}
-	cmds = append(cmds, m.update(msg))
-
-	return m, tea.Batch(cmds...)
+	return m, m.update(msg)
 }
 
 type advanceMsg struct {
@@ -395,18 +391,17 @@ func (m *model) View() string {
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			lipgloss.NewStyle().
-				Width(m.tree.width).
-				Border(lipgloss.NormalBorder(), false, true, false, false).
-				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
+				//Border(lipgloss.NormalBorder(), true, true, true, true).
+				//BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
+				//Padding(1, 1, 1, 1).
 				Render(m.tree.View()),
 			lipgloss.NewStyle().
-				Width(m.pager.width).
-				BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
+				//Border(lipgloss.NormalBorder(), true, true, true, true).
+				//BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
+				//Padding(1, 1, 1, 1).
 				Render(m.pager.View()),
 		),
-		lipgloss.NewStyle().
-			Width(m.width).
-			Render(m.status.View()),
+		lipgloss.NewStyle().Render(m.status.View()),
 	)
 }
 
