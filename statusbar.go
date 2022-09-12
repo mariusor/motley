@@ -38,7 +38,7 @@ type statusModel struct {
 	state statusState
 
 	spinner spinner.Model
-	percent float32
+	percent float64
 
 	statusMessage      string
 	statusMessageTimer *time.Timer
@@ -137,7 +137,7 @@ func (s *statusModel) updateState(state statusState) tea.Cmd {
 func (s *statusModel) updatePercent(msg tea.Msg) tea.Cmd {
 	switch m := msg.(type) {
 	case percentageMsg:
-		s.percent = float32(m)
+		s.percent = float64(m) * 100.0
 	}
 	return nil
 }
