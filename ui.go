@@ -363,6 +363,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
+		return m, nil
 	}
 	cmds = append(cmds, m.update(msg))
 
