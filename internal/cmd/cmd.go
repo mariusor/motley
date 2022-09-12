@@ -36,7 +36,7 @@ func New(authDB osin.Storage, actorDb processing.Store, conf config.Options) *Co
 }
 
 func openlog(name string) io.Writer {
-	f, err := os.OpenFile(filepath.Join("/var/log/", name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.OpenFile(filepath.Join("/var/tmp/", name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		return io.Discard
 	}
