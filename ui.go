@@ -204,32 +204,6 @@ func (m *model) setSize(w, h int) {
 	}
 }
 
-func (m *model) updatePager(msg tea.Msg) tea.Cmd {
-	p, cmd := m.pager.Update(msg)
-	m.pager = *(p.(*pagerModel))
-	return cmd
-}
-
-func (m *model) updateTree(msg tea.Msg) tea.Cmd {
-	t, cmd := m.tree.Update(msg)
-	m.tree = *(t.(*treeModel))
-	return cmd
-}
-
-func (m *model) updateStatusBar(msg tea.Msg) tea.Cmd {
-	switch msg := msg.(type) {
-	case error:
-		return m.status.showError(msg)
-	case spinner.TickMsg:
-		return m.status.updateTicker(msg)
-	case statusState:
-		return m.status.updateState(msg)
-	case percentageMsg:
-		return m.status.updatePercent(msg)
-	}
-	return nil
-}
-
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
@@ -239,6 +213,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			if err := m.loadChildrenForNode(msg); err != nil {
 				return errCmd(fmt.Errorf("%s", msg.n))
 			}
+			m.logFn("loaded children %s[%d]", msg.n, len(msg.c))
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
@@ -281,6 +256,32 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
 	return tea.Batch(cmds...)
+}
+
+func (m *model) updatePager(msg tea.Msg) tea.Cmd {
+	p, cmd := m.pager.Update(msg)
+	m.pager = *(p.(*pagerModel))
+	return cmd
+}
+
+func (m *model) updateTree(msg tea.Msg) tea.Cmd {
+	t, cmd := m.tree.Update(msg)
+	m.tree = *(t.(*treeModel))
+	return cmd
+}
+
+func (m *model) updateStatusBar(msg tea.Msg) tea.Cmd {
+	switch msg := msg.(type) {
+	case error:
+		return m.status.showError(msg)
+	case spinner.TickMsg:
+		return m.status.updateTicker(msg)
+	case statusState:
+		return m.status.updateState(msg)
+	case percentageMsg:
+		return m.status.updatePercent(msg)
+	}
+	return nil
 }
 
 var (

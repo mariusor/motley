@@ -129,7 +129,7 @@ func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			//	}
 			//	n.Item = it
 			//}
-			n.c = getItemElements(n)
+			//n.c = getItemElements(n)
 		}
 	}
 	return n, nil
