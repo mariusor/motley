@@ -49,6 +49,14 @@ func newStatusModel(common *commonModel) statusModel {
 	// Text input for search
 	sp := spinner.New()
 	sp.Spinner = spinner.Pulse
+	sp.Spinner.FPS = 10
+	sp.Spinner.Frames = []string{"", "🞄", "•", "⚫", "•", "🞄"}
+	sp.Spinner.Frames = []string{"⨁ ", "⨂ "}
+	sp.Spinner.Frames = []string{"◤", "◥", "◢", "◣"}
+	sp.Spinner.Frames = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
+	sp.Spinner.Frames = []string{"◒", "◐", "◓", "◑"}
+	sp.Spinner.Frames = []string{"🭶", "🭷", "🭸", "🭹", "🭺", "🭻"}
+	sp.Spinner.Frames = []string{"⠦", "⠖", "⠲", "⠴"}
 
 	return statusModel{
 		commonModel: common,
@@ -143,7 +151,7 @@ func (s *statusModel) updateTicker(msg tea.Msg) tea.Cmd {
 		// If we're still doing work, or if the spinner still needs to finish, spin it along.
 		newSpinnerModel, tick := s.spinner.Update(msg)
 		s.spinner = newSpinnerModel
-		if s.state.Is(statusLoading) {
+		if false && s.state.Is(statusLoading) {
 			return tick
 		}
 	case statusState:
