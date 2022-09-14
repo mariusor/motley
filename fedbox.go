@@ -102,7 +102,7 @@ func nodeIsCollapsible(n *n) bool {
 }
 
 func (n *n) View() string {
-	if n == nil || n.Item == nil || n.s.Is(tree.NodeHidden) {
+	if n == nil || n.s.Is(tree.NodeHidden) {
 		return ""
 	}
 	hints := n.s
@@ -112,7 +112,7 @@ func (n *n) View() string {
 		style = faintRedFg
 		annotation = Attention
 	}
-	if nodeIsCollapsible(n) {
+	if n.Item != nil && nodeIsCollapsible(n) {
 		annotation = Expanded
 		if hints.Is(tree.NodeCollapsed) || len(n.c) == 0 {
 			annotation = Collapsed
