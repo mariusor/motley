@@ -88,14 +88,17 @@ func nodeIsError(n *n) bool {
 }
 
 func nodeIsCollapsible(n *n) bool {
-	st := false
 	it := n.Item
 	if len(n.c) > 0 {
 		return true
 	}
-	_, typ := pub.Split(it.GetLink())
-	st = pub.ValidCollection(typ) || fbox.FedBOXCollections.Contains(typ)
-	return st
+	if _, typ := pub.Split(it.GetLink()); len(typ) > 0 {
+		return true
+	}
+	if _, typ := fbox.FedBOXCollections.Split(it.GetLink()); len(typ) > 0 {
+		n.s |= tree.NodeCollapsed | tree.NodeCollapsible
+	}
+	return n.s.Is(tree.NodeCollapsible)
 }
 
 func (n *n) View() string {
@@ -111,7 +114,7 @@ func (n *n) View() string {
 	}
 	if nodeIsCollapsible(n) {
 		annotation = Expanded
-		if hints.Is(tree.NodeCollapsed) {
+		if hints.Is(tree.NodeCollapsed) || len(n.c) == 0 {
 			annotation = Collapsed
 		}
 		if nodeIsError(n) {
