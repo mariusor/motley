@@ -210,17 +210,9 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case *n:
 		if err := m.loadDepsForNode(msg); err != nil {
-			m.logFn("error while loading attributes %s", err)
+			m.logFn("error while loading node children %s", err)
 			msg.s |= NodeError
 			return errCmd(err)
-		}
-		if msg.s.Is(tree.NodeCollapsible) && len(msg.c) == 0 {
-			if err := m.loadChildrenForNode(msg); err != nil {
-				m.logFn("error while loading children %s", err)
-				msg.s |= NodeError
-				return errCmd(err)
-			}
-			m.logFn("loaded children %s[%d]", msg.n, len(msg.c))
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
@@ -463,8 +455,21 @@ func dereferenceItemProperties(f *fedbox, it pub.Item) error {
 	return nil
 }
 
-func (m *model) loadDepsForNode(nn *n) error {
-	return dereferenceItemProperties(m.f, nn.Item)
+func (m *model) loadDepsForNode(node *n) error {
+	if err := dereferenceItemProperties(m.f, node.Item); err != nil {
+		m.logFn("error while loading attributes %s", err)
+		node.s |= NodeError
+		return err
+	}
+	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
+		if err := m.loadChildrenForNode(node); err != nil {
+			m.logFn("error while loading children %s", err)
+			node.s |= NodeError
+			return err
+		}
+		m.logFn("loaded children %s[%d]", node.n, len(node.c))
+	}
+	return nil
 }
 
 func (m *model) loadChildrenForNode(nn *n) error {
