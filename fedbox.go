@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	fbox "github.com/go-ap/fedbox/activitypub"
 	"github.com/go-ap/processing"
@@ -103,13 +104,21 @@ func (n *n) View() string {
 	}
 	hints := n.s
 	annotation := ""
+	style := lipgloss.NewStyle().Render
+	if nodeIsError(n) {
+		style = faintRedFg
+		annotation = Attention
+	}
 	if nodeIsCollapsible(n) {
 		annotation = Expanded
 		if hints.Is(tree.NodeCollapsed) {
 			annotation = Collapsed
 		}
+		if nodeIsError(n) {
+			annotation = Unexpandable
+		}
 	}
-	return fmt.Sprintf("%-1s %s", annotation, n.n)
+	return style(fmt.Sprintf("%-1s %s", annotation, n.n))
 }
 
 func (n *n) Children() tree.Nodes {
@@ -128,19 +137,6 @@ func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m := msg.(type) {
 	case tree.NodeState:
 		n.s = m
-		if m.Is(tree.NodeSelected) && !m.Is(tree.NodeCollapsed) {
-			//if pub.IsIRI(n.Item) && pub.ValidCollectionIRI(n.Item.GetLink()) {
-			//	n
-			//	it, err := n.f.s.Load(n.Item.GetLink())
-			//	if err != nil {
-			//		// TODO(marius): plug this into an error channel for the top model
-			//		n.n = err.Error()
-			//		n.s = n.s | NodeError
-			//	}
-			//	n.Item = it
-			//}
-			//n.c = getItemElements(n)
-		}
 	}
 	return n, nil
 }
@@ -181,10 +177,45 @@ func withChildren(c ...*n) func(*n) {
 }
 
 func getNameFromItem(it pub.Item) string {
-	switch it.GetType() {
-	default:
-		return filepath.Base(it.GetLink().String())
+	name := filepath.Base(it.GetLink().String())
+	var err error
+	typ := it.GetType()
+	switch {
+	case pub.ActorTypes.Contains(typ):
+		err = pub.OnActor(it, func(act *pub.Actor) error {
+			if len(act.PreferredUsername) > 0 {
+				name = fmt.Sprintf("%s", act.PreferredUsername.First())
+			} else if len(act.Name) > 0 {
+				name = fmt.Sprintf("%s", act.Name.First())
+			}
+			return nil
+		})
+	case pub.ActivityTypes.Contains(typ), pub.IntransitiveActivityTypes.Contains(typ):
+		err = pub.OnIntransitiveActivity(it, func(act *pub.IntransitiveActivity) error {
+			name = fmt.Sprintf("%s", typ)
+			return nil
+		})
+	case pub.ObjectTypes.Contains(typ):
+		err = pub.OnObject(it, func(ob *pub.Object) error {
+			if len(ob.Name) > 0 {
+				name = fmt.Sprintf("[%s]%s", typ, ob.Name.First())
+			} else {
+				name = fmt.Sprintf("%s", typ)
+			}
+			return nil
+		})
+	case typ == "":
+		err = pub.OnObject(it, func(ob *pub.Object) error {
+			if len(ob.Name) > 0 {
+				name = fmt.Sprintf("%s", ob.Name.First())
+			}
+			return nil
+		})
 	}
+	if err != nil && len(name) == 0 {
+		return err.Error()
+	}
+	return name
 }
 
 func node(it pub.Item, fns ...func(*n)) *n {

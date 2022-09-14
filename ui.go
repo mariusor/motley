@@ -209,15 +209,22 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 
 	switch msg := msg.(type) {
 	case *n:
-		if len(msg.c) == 0 && msg.s.Is(tree.NodeCollapsible) {
+		if err := m.loadDepsForNode(msg); err != nil {
+			m.logFn("error while loading attributes %s", err)
+			msg.s |= NodeError
+			return errCmd(err)
+		}
+		if msg.s.Is(tree.NodeCollapsible) && len(msg.c) == 0 {
 			if err := m.loadChildrenForNode(msg); err != nil {
-				return errCmd(fmt.Errorf("%s", msg.n))
+				m.logFn("error while loading children %s", err)
+				msg.s |= NodeError
+				return errCmd(err)
 			}
 			m.logFn("loaded children %s[%d]", msg.n, len(msg.c))
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
-		cmds = append(cmds, m.status.spinner.Tick /*, stoppedLoading(m.status.state)*/)
+		cmds = append(cmds, stoppedLoading(m.status.state))
 	case advanceMsg:
 		//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
 		//	// skip if trying to advance to same element
@@ -335,6 +342,122 @@ func nodeCmd(node *n) tea.Cmd {
 	return func() tea.Msg {
 		return node
 	}
+}
+
+func dereferenceIRIs(f *fedbox, iris pub.ItemCollection) pub.ItemCollection {
+	if len(iris) == 0 {
+		return nil
+	}
+	items := make(pub.ItemCollection, 0, len(iris))
+	for _, it := range iris {
+		if deref := dereferenceIRI(f, it); pub.IsItemCollection(deref) {
+			pub.OnItemCollection(deref, func(col *pub.ItemCollection) error {
+				items = append(items, pub.ItemCollectionDeduplication(col)...)
+				return nil
+			})
+		} else {
+			items = append(items, deref)
+		}
+	}
+	return items
+}
+
+func dereferenceIRI(f *fedbox, it pub.Item) pub.Item {
+	if pub.IsNil(it) {
+		return nil
+	}
+	if pub.IsIRI(it) {
+		if pub.PublicNS.Equals(it.GetLink(), false) {
+			return it
+		}
+		if prop, _ := f.s.Load(it.GetLink()); !pub.IsNil(prop) {
+			empty := false
+			if pub.IsItemCollection(prop) {
+				pub.OnItemCollection(prop, func(col *pub.ItemCollection) error {
+					if col.Count() == 0 {
+						empty = true
+					}
+					return nil
+				})
+				if empty {
+					return nil
+				}
+			}
+			return prop
+		}
+	}
+
+	return it
+}
+
+func dereferenceIntransitiveActivityProperties(f *fedbox) func(act *pub.IntransitiveActivity) error {
+	if f == nil {
+		return func(act *pub.IntransitiveActivity) error { return fmt.Errorf("invalid fedbox storage") }
+	}
+	return func(act *pub.IntransitiveActivity) error {
+		pub.OnObject(act, dereferenceObjectProperties(f))
+		act.Actor = dereferenceIRI(f, act.Actor)
+		act.Target = dereferenceIRI(f, act.Target)
+		act.Instrument = dereferenceIRI(f, act.Instrument)
+		act.Result = dereferenceIRI(f, act.Result)
+		return nil
+	}
+}
+
+func dereferenceActivityProperties(f *fedbox) func(act *pub.Activity) error {
+	if f == nil {
+		return func(act *pub.Activity) error { return fmt.Errorf("invalid fedbox storage") }
+	}
+	return func(act *pub.Activity) error {
+		pub.OnIntransitiveActivity(act, dereferenceIntransitiveActivityProperties(f))
+		act.Actor = dereferenceIRI(f, act.Actor)
+		return nil
+	}
+}
+
+func dereferenceObjectProperties(f *fedbox) func(ob *pub.Object) error {
+	if f == nil {
+		return func(ob *pub.Object) error { return fmt.Errorf("invalid fedbox storage") }
+	}
+	return func(ob *pub.Object) error {
+		ob.AttributedTo = dereferenceIRI(f, ob.AttributedTo)
+		ob.InReplyTo = dereferenceIRI(f, ob.InReplyTo)
+
+		ob.Tag = dereferenceIRIs(f, ob.Tag)
+		ob.To = dereferenceIRIs(f, ob.To)
+		ob.CC = dereferenceIRIs(f, ob.CC)
+		ob.Bto = dereferenceIRIs(f, ob.Bto)
+		ob.BCC = dereferenceIRIs(f, ob.BCC)
+		ob.Audience = dereferenceIRIs(f, ob.Audience)
+
+		return nil
+	}
+}
+
+func dereferenceItemProperties(f *fedbox, it pub.Item) error {
+	if pub.IsObject(it) {
+		typ := it.GetType()
+		switch {
+		case pub.ObjectTypes.Contains(typ), pub.ActorTypes.Contains(typ), typ == "":
+			return pub.OnObject(it, dereferenceObjectProperties(f))
+		case pub.IntransitiveActivityTypes.Contains(typ):
+			return pub.OnIntransitiveActivity(it, dereferenceIntransitiveActivityProperties(f))
+		case pub.ActivityTypes.Contains(typ):
+			return pub.OnActivity(it, dereferenceActivityProperties(f))
+		}
+	}
+
+	if pub.IsItemCollection(it) {
+		return pub.OnItemCollection(it, func(col *pub.ItemCollection) error {
+			it = dereferenceIRIs(f, *col)
+			return nil
+		})
+	}
+	return nil
+}
+
+func (m *model) loadDepsForNode(nn *n) error {
+	return dereferenceItemProperties(m.f, nn.Item)
 }
 
 func (m *model) loadChildrenForNode(nn *n) error {
