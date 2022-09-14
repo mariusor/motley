@@ -127,7 +127,6 @@ func (s *statusModel) updateState(state statusState) tea.Cmd {
 	} else {
 		s.state |= state
 	}
-	s.logFn("Updating status state: %d - new %d", state, s.state)
 	return nil
 }
 

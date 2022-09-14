@@ -173,11 +173,9 @@ func (p *pagerModel) writeNaturalLanguageValuesWithLabel(s io.Writer, l string, 
 }
 
 func (p *pagerModel) writeItem(s io.Writer, it pub.Item) error {
-	//m, _ := pub.MarshalJSON(it)
-	//b := bytes.Buffer{}
-	//json.Indent(&b, m, "", "  ")
-	//s.Write(b.Bytes())
-	//s.Write([]byte{'\n'})
+	if it == nil {
+		return nil
+	}
 
 	if pub.IsIRI(it) {
 		fmt.Fprintf(s, "%s\n", it.GetLink())
