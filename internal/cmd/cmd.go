@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -52,30 +53,60 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 	if environ == "" {
 		environ = env.DEV
 	}
-	dir := c.String("path")
+
 	l.SetOutput(openlog(c.App.Name))
 	l.SetFormatter(&logrus.TextFormatter{DisableQuote: true, DisableTimestamp: true})
 
-	conf, err := config.LoadFromEnv(dir, environ, time.Second)
-	if err != nil {
-		l.Errorf("Unable to load config file for environment %s: %s", environ, err)
-		return nil, fmt.Errorf("unable to load config in path: %s", dir)
+	conf := config.Options{
+		LogLevel: logrus.DebugLevel,
 	}
+	var (
+		db  processing.Store
+		aDb osin.Storage
+	)
+	if envFile := c.String("config"); envFile != "" {
+		var err error
+		if conf, err = config.LoadFromEnv(envFile, environ, time.Second); err != nil {
+			l.Errorf("Unable to load config file for environment %s: %s", environ, err)
+			return nil, fmt.Errorf("unable to load config in path: %s", envFile)
+		}
+		db, aDb, err = Storage(conf, l)
+		if err != nil {
+			l.Errorf("Unable to access storage: %s", err)
+			return nil, fmt.Errorf("unable to access %q storage: %s", conf.Storage, conf.StoragePath)
+		}
+	} else {
+		if u := c.String("url"); u != "" {
+			o, err := url.ParseRequestURI(u)
+			if err != nil {
+				return nil, fmt.Errorf("invalid url passed: %w", err)
+			}
+			conf.Host = o.Host
+			conf.BaseURL = u
+		}
+		if dir := c.String("path"); dir != "" {
+			conf.StoragePath = dir
+		}
+		if typ := c.String("type"); typ != "" {
+			conf.Storage = config.StorageType(typ)
+		}
+		var err error
+		db, aDb, err = StorageFromDirectPath(conf, l)
+		if err != nil {
+			l.Errorf("Unable to access storage: %s", err)
+			return nil, fmt.Errorf("unable to access %q storage: %s", conf.Storage, conf.StoragePath)
+		}
+	}
+	//if conf.StoragePath == "" {
+	//	return nil, fmt.Errorf("storage path was not passed to the binary")
+	//}
+	//if conf.Storage == "" {
+	//	return nil, fmt.Errorf("storage type was not passed to the binary")
+	//}
+	//if conf.BaseURL == "" {
+	//	return nil, fmt.Errorf("base url was not passed to the binary")
+	//}
 
-	l.SetLevel(conf.LogLevel)
-	if typ := c.String("type"); typ != "" {
-		conf.Storage = config.StorageType(typ)
-	}
-	if u := c.String("url"); u != "" {
-		conf.BaseURL = u
-	}
-
-	db, aDb, err := Storage(conf, l)
-	l.SetLevel(conf.LogLevel)
-	if err != nil {
-		l.Errorf("Unable to access storage: %s", err)
-		return nil, fmt.Errorf("unable to access %q storage: %s", conf.Storage, conf.StoragePath)
-	}
 	return New(aDb, db, conf), nil
 }
 

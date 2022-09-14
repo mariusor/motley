@@ -67,23 +67,32 @@ const (
 
 const defaultPerm = os.ModeDir | os.ModePerm | 0700
 
-func (o Options) BaseStoragePath() (string, error) {
-	if !filepath.IsAbs(o.StoragePath) {
-		o.StoragePath, _ = filepath.Abs(o.StoragePath)
+func FullStoragePath(dir string) (string, error) {
+	if strings.Contains(dir, "~") {
+		if u, err := user.Current(); err == nil {
+			dir = strings.Replace(dir, "~", u.HomeDir, 1)
+		}
 	}
-	basePath := filepath.Clean(filepath.Join(o.StoragePath, string(o.Storage), string(o.Env), o.Host))
-	fi, err := os.Stat(basePath)
-	if err != nil && os.IsNotExist(err) {
-		err = os.MkdirAll(basePath, defaultPerm)
+	if !filepath.IsAbs(dir) {
+		d, err := filepath.Abs(dir)
+		if err != nil {
+			return dir, err
+		}
+		dir = d
 	}
+
+	fi, err := os.Stat(dir)
 	if err != nil {
 		return "", err
 	}
-	fi, err = os.Stat(basePath)
 	if !fi.IsDir() {
-		return "", errors.NotValidf("path %s is invalid for storage", o.StoragePath)
+		return "", errors.NotValidf("path %s is invalid for storage", dir)
 	}
-	return basePath, nil
+	return dir, nil
+}
+
+func (o Options) BaseStoragePath() (string, error) {
+	return FullStoragePath(filepath.Join(o.StoragePath, string(o.Storage), string(o.Env), o.Host))
 }
 
 func (o Options) BoltDB() (string, error) {

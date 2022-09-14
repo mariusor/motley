@@ -20,22 +20,26 @@ func main() {
 	app.Before = cmd.Before
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:  "url",
-			Usage: "The url used by the application (REQUIRED)",
-		},
-		&cli.StringFlag{
-			Name:  "env",
-			Usage: fmt.Sprintf("The environment to use. Possible values: %q", []env.Type{env.DEV, env.PROD}),
-			Value: string(env.DEV),
+			Name:  "path",
+			Value: ".",
+			Usage: fmt.Sprintf("The path for the storage folder or socket"),
 		},
 		&cli.StringFlag{
 			Name:  "type",
 			Usage: fmt.Sprintf("Type of the backend to use. Possible values: %q", []config.StorageType{config.StorageBoltDB, config.StorageBadger, config.StorageFS}),
 		},
 		&cli.StringFlag{
-			Name:  "path",
-			Value: ".",
-			Usage: fmt.Sprintf("The path for the storage folder or socket"),
+			Name:  "url",
+			Usage: "The url used by the application",
+		},
+		&cli.StringFlag{
+			Name:  "config",
+			Usage: "The config file to use.",
+		},
+		&cli.StringFlag{
+			Name:  "env",
+			Usage: fmt.Sprintf("The environment to use. Possible values: %q", []env.Type{env.DEV, env.PROD}),
+			Value: string(env.DEV),
 		},
 	}
 	app.Action = cmd.TuiAction
