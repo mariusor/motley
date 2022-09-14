@@ -233,6 +233,13 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		//if msg.State().Is(NodeError) {
 		//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
 		//}
+		if msg.n.s.Is(NodeError) {
+			return errCmd(fmt.Errorf("error: %s", msg.n.n))
+		}
+		if msg.n == nil {
+			m.logFn("invalid node to advance to")
+			return errCmd(fmt.Errorf("trying to advance to an invalid node"))
+		}
 		iri := msg.GetLink().String()
 		newNode := node(msg.Item, withParent(msg.n), withName(iri))
 		if err := m.loadChildrenForNode(newNode); err != nil {
