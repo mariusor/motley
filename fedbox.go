@@ -13,6 +13,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	//Unexpandable = "⬚"
+	Collapsed    = "⊞"
+	Expanded     = "⊟"
+	Unexpandable = "⊠"
+	HasChanges   = "⧆"
+	Locked       = "⚿"
+	Attention    = "⊡"
+)
+
+const (
+	NodeError = tree.NodeLastChild << (iota + 1)
+)
+
 var logFn = func(string, ...interface{}) {}
 
 type fedbox struct {
@@ -44,7 +58,6 @@ func (f *fedbox) getService() pub.Item {
 func initNodes(f *fedbox) tree.Nodes {
 	n := node(
 		f.getService(),
-		//withStorage(f),
 		withState(tree.NodeLastChild|tree.NodeSelected),
 	)
 
@@ -57,8 +70,6 @@ type n struct {
 	p *n
 	c []*n
 	s tree.NodeState
-
-	f *fedbox
 }
 
 func (n *n) Parent() tree.Node {
@@ -71,10 +82,9 @@ func (n *n) Init() tea.Cmd {
 	return nil
 }
 
-const (
-	Collapsed = "⊞"
-	Expanded  = "⊟"
-)
+func nodeIsError(n *n) bool {
+	return n.s.Is(NodeError)
+}
 
 func nodeIsCollapsible(n *n) bool {
 	st := false
@@ -141,7 +151,6 @@ func (n *n) setChildren(c ...*n) {
 			nnn.s |= tree.NodeLastChild
 		}
 		nnn.p = n
-		//nnn.f = n.f
 		n.c = append(n.c, nnn)
 	}
 }
@@ -156,12 +165,6 @@ func withParent(p *n) func(*n) {
 	return func(nn *n) {
 		//nn.f = p.f
 		nn.p = p
-	}
-}
-
-func withStorage(f *fedbox) func(*n) {
-	return func(nn *n) {
-		nn.f = f
 	}
 }
 
@@ -183,10 +186,6 @@ func getNameFromItem(it pub.Item) string {
 		return filepath.Base(it.GetLink().String())
 	}
 }
-
-const (
-	NodeError = tree.NodeLastChild << (iota + 1)
-)
 
 func node(it pub.Item, fns ...func(*n)) *n {
 	n := &n{Item: it}
