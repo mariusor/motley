@@ -13,7 +13,7 @@ require (
 	github.com/go-ap/fedbox v0.0.0-20220828135636-ee8474a2af95
 	github.com/go-ap/processing v0.0.0-20220828135254-baa2c3c37d57
 	github.com/joho/godotenv v1.4.0
-	github.com/mariusor/bubbles-tree v0.0.0-20220911175956-e638ccf282cf
+	github.com/mariusor/bubbles-tree v0.0.0-20220915144112-9a4464acba16
 	github.com/mattn/go-runewidth v0.0.13
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.12.0
@@ -70,7 +70,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.0.0-20220906165146-f3363e06e74c // indirect
-	golang.org/x/sys v0.0.0-20220909162455-aba9fc2a8ff2 // indirect
+	golang.org/x/sys v0.0.0-20220913175220-63ea55921009 // indirect
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.12 // indirect

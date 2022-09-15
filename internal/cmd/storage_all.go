@@ -109,6 +109,7 @@ func getFsStorageAtPath(dir, url string) (st.Store, error) {
 		return fs.New(fs.Config{StoragePath: dir, BaseURL: url})
 	}
 }
+
 func getFsOauthStorageAtPath(dir string, l logrus.FieldLogger) osin.Storage {
 	return authfs.New(authfs.Config{
 		Path:  dir,
