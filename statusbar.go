@@ -15,7 +15,7 @@ import (
 	te "github.com/muesli/termenv"
 )
 
-type statusState int
+type statusState uint8
 
 func (s statusState) Is(st statusState) bool {
 	return s&st == st
@@ -52,16 +52,19 @@ var glowLogoTextColor = Color("#ECFD65")
 func newStatusModel(common *commonModel) statusModel {
 	// Text input for search
 	sp := spinner.New()
-	sp.Spinner = spinner.Line
 	sp.Style = lipgloss.NewStyle().Bold(true)
-	//sp.Spinner.FPS = time.Second / 4
 	//sp.Spinner.Frames = []string{"", "🞄", "•", "⚫", "•", "🞄"}
 	//sp.Spinner.Frames = []string{"⨁ ", "⨂ "}
 	//sp.Spinner.Frames = []string{"◤", "◥", "◢", "◣"}
 	//sp.Spinner.Frames = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
 	//sp.Spinner.Frames = []string{"◒", "◐", "◓", "◑"}
 	//sp.Spinner.Frames = []string{"🭶", "🭷", "🭸", "🭹", "🭺", "🭻"}
-	//sp.Spinner.Frames = []string{"⠦", "⠖", "⠲", "⠴"}
+	sp.Spinner = spinner.Spinner{
+		Frames: []string{"⠦", "⠖", "⠲", "⠴"},
+		FPS:    time.Second / 4,
+	}
+	sp.Spinner = spinner.Line
+	sp.Spinner.FPS = time.Second / 4
 
 	common.logFn("initializing status bar")
 	return statusModel{
@@ -72,7 +75,7 @@ func newStatusModel(common *commonModel) statusModel {
 
 func (s *statusModel) Init() tea.Cmd {
 	s.logFn("status init")
-	return s.spinner.Tick
+	return nil
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
@@ -85,12 +88,8 @@ func (s *statusModel) showError(err error) tea.Cmd {
 // update function.
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
 	s.statusMessage = statusMessage
-	if s.statusMessageTimer != nil {
-		s.statusMessageTimer.Stop()
-	}
-	s.statusMessageTimer = time.NewTimer(statusMessageTimeout)
 
-	return waitForStatusMessageTimeout(1, s.statusMessageTimer)
+	return waitForStatusMessageTimeout(1)
 }
 
 func (s *statusModel) statusBarView(b *strings.Builder) {
@@ -121,10 +120,13 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 }
 
 func (s *statusModel) unload() {
-	if s.statusMessageTimer != nil {
-		s.statusMessageTimer.Stop()
-	}
 	s.state ^= statusLoading
+}
+
+func (s *statusModel) spin(msg tea.Msg) tea.Cmd {
+	newSpinnerModel, tick := s.spinner.Update(msg)
+	s.spinner = newSpinnerModel
+	return tick
 }
 
 func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -133,11 +135,25 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error:
 		cmd = s.showError(msg)
 	case spinner.TickMsg:
-		cmd = s.updateTicker(msg)
+		// If we're still doing work, or if the spinner still needs to finish, spin it along.
+		if s.state.Is(statusLoading) {
+			cmd = s.spin(msg)
+		}
 	case statusState:
-		cmd = s.updateState(msg)
+		if msg.Is(statusLoading) {
+			s.logFn("starting spinning: %b", msg)
+			cmd = s.spinner.Tick
+		} else {
+			s.logFn("stopping spinning: %b", msg)
+		}
+
+		st := s.state
+		if st != s.state {
+			s.state |= msg
+			s.logFn("updated state: %d", st, s.state)
+		}
 	case percentageMsg:
-		cmd = s.updatePercent(msg)
+		s.percent = float64(msg) * 100.0
 	}
 	return s, cmd
 }
@@ -152,47 +168,13 @@ func (s *statusModel) toggleState(state statusState) tea.Cmd {
 	return nil
 }
 
-func (s *statusModel) updateState(state statusState) tea.Cmd {
-	st := s.state
-	s.state = state
-	s.logFn("updated state: %d->%d", st, s.state)
-	return nil
+func (s *statusModel) startedLoading() tea.Msg {
+	return statusLoading
 }
 
-func (s *statusModel) updatePercent(msg tea.Msg) tea.Cmd {
-	switch m := msg.(type) {
-	case percentageMsg:
-		s.percent = float64(m) * 100.0
-	}
-	return nil
-}
-
-func stoppedLoading(st statusState) tea.Cmd {
-	return func() tea.Msg {
-		return st ^ statusLoading
-	}
-}
-
-func (s *statusModel) updateTicker(msg tea.Msg) tea.Cmd {
-	switch msg.(type) {
-	case spinner.TickMsg:
-		// If we're still doing work, or if the spinner still needs to finish, spin it along.
-		s.logFn("is loading: %t :: %d", s.state.Is(statusLoading), s.state)
-		if s.state.Is(statusLoading) {
-			newSpinnerModel, tick := s.spinner.Update(msg)
-			s.spinner = newSpinnerModel
-			return tick
-		}
-	case statusState:
-		switch {
-		case !s.state.Is(statusLoading):
-			if s.state.Is(statusError) {
-				return s.showStatusMessage("error!")
-			}
-			return s.showStatusMessage("success")
-		}
-	}
-	return nil
+func (s *statusModel) stoppedLoading() tea.Msg {
+	s.logFn("sending stop loading state: %d", s.state^statusLoading)
+	return ^statusLoading
 }
 
 func (s *statusModel) View() string {
@@ -296,9 +278,8 @@ func showHelpCmd() tea.Cmd {
 	}
 }
 
-func waitForStatusMessageTimeout(appCtx int, t *time.Timer) tea.Cmd {
+func waitForStatusMessageTimeout(appCtx int) tea.Cmd {
 	return func() tea.Msg {
-		<-t.C
 		return appCtx
 	}
 }

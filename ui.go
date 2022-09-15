@@ -215,7 +215,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
-		cmds = append(cmds, stoppedLoading(m.status.state))
+		cmds = append(cmds, m.status.stoppedLoading)
 	case advanceMsg:
 		//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
 		//	// skip if trying to advance to same element
@@ -257,7 +257,10 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		m.setSize(msg.Width, msg.Height)
 		return nil
 	}
-	cmds = append(cmds, m.updateTree(msg))
+
+	if cmd := m.updateTree(msg); cmd != nil {
+		cmds = append(cmds, cmd, m.status.startedLoading)
+	}
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
 	return tea.Batch(cmds...)
