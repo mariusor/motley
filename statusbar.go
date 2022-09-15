@@ -9,6 +9,7 @@ import (
 	"git.sr.ht/~marius/motley/internal/env"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
 	te "github.com/muesli/termenv"
@@ -23,11 +24,14 @@ func (s statusState) Is(st statusState) bool {
 const (
 	statusBarHeight = 1
 	lockIcon        = "🔒"
+)
 
-	statusNone  statusState = 0
+const (
 	statusError statusState = 1 << iota
 	statusHelp
 	statusLoading
+
+	statusNone statusState = 0
 )
 
 type statusModel struct {
@@ -48,16 +52,18 @@ var glowLogoTextColor = Color("#ECFD65")
 func newStatusModel(common *commonModel) statusModel {
 	// Text input for search
 	sp := spinner.New()
-	sp.Spinner = spinner.Pulse
-	sp.Spinner.FPS = 10
-	sp.Spinner.Frames = []string{"", "🞄", "•", "⚫", "•", "🞄"}
-	sp.Spinner.Frames = []string{"⨁ ", "⨂ "}
-	sp.Spinner.Frames = []string{"◤", "◥", "◢", "◣"}
-	sp.Spinner.Frames = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
-	sp.Spinner.Frames = []string{"◒", "◐", "◓", "◑"}
-	sp.Spinner.Frames = []string{"🭶", "🭷", "🭸", "🭹", "🭺", "🭻"}
-	sp.Spinner.Frames = []string{"⠦", "⠖", "⠲", "⠴"}
+	sp.Spinner = spinner.Line
+	sp.Style = lipgloss.NewStyle().Bold(true)
+	//sp.Spinner.FPS = time.Second / 4
+	//sp.Spinner.Frames = []string{"", "🞄", "•", "⚫", "•", "🞄"}
+	//sp.Spinner.Frames = []string{"⨁ ", "⨂ "}
+	//sp.Spinner.Frames = []string{"◤", "◥", "◢", "◣"}
+	//sp.Spinner.Frames = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
+	//sp.Spinner.Frames = []string{"◒", "◐", "◓", "◑"}
+	//sp.Spinner.Frames = []string{"🭶", "🭷", "🭸", "🭹", "🭺", "🭻"}
+	//sp.Spinner.Frames = []string{"⠦", "⠖", "⠲", "⠴"}
 
+	common.logFn("initializing status bar")
 	return statusModel{
 		commonModel: common,
 		spinner:     sp,
@@ -121,12 +127,35 @@ func (s *statusModel) unload() {
 	s.state ^= statusLoading
 }
 
-func (s *statusModel) updateState(state statusState) tea.Cmd {
+func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case error:
+		cmd = s.showError(msg)
+	case spinner.TickMsg:
+		cmd = s.updateTicker(msg)
+	case statusState:
+		cmd = s.updateState(msg)
+	case percentageMsg:
+		cmd = s.updatePercent(msg)
+	}
+	return s, cmd
+}
+func (s *statusModel) toggleState(state statusState) tea.Cmd {
+	st := s.state
 	if s.state.Is(state) {
 		s.state ^= state
 	} else {
 		s.state |= state
 	}
+	s.logFn("toggled state %d: %d->%d", state, st, s.state)
+	return nil
+}
+
+func (s *statusModel) updateState(state statusState) tea.Cmd {
+	st := s.state
+	s.state = state
+	s.logFn("updated state: %d->%d", st, s.state)
 	return nil
 }
 
@@ -148,9 +177,10 @@ func (s *statusModel) updateTicker(msg tea.Msg) tea.Cmd {
 	switch msg.(type) {
 	case spinner.TickMsg:
 		// If we're still doing work, or if the spinner still needs to finish, spin it along.
-		newSpinnerModel, tick := s.spinner.Update(msg)
-		s.spinner = newSpinnerModel
-		if false && s.state.Is(statusLoading) {
+		s.logFn("is loading: %t :: %d", s.state.Is(statusLoading), s.state)
+		if s.state.Is(statusLoading) {
+			newSpinnerModel, tick := s.spinner.Update(msg)
+			s.spinner = newSpinnerModel
 			return tick
 		}
 	case statusState:

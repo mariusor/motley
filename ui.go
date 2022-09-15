@@ -7,7 +7,6 @@ import (
 	"git.sr.ht/~marius/motley/internal/config"
 	"git.sr.ht/~marius/motley/internal/env"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
@@ -277,17 +276,9 @@ func (m *model) updateTree(msg tea.Msg) tea.Cmd {
 }
 
 func (m *model) updateStatusBar(msg tea.Msg) tea.Cmd {
-	switch msg := msg.(type) {
-	case error:
-		return m.status.showError(msg)
-	case spinner.TickMsg:
-		return m.status.updateTicker(msg)
-	case statusState:
-		return m.status.updateState(msg)
-	case percentageMsg:
-		return m.status.updatePercent(msg)
-	}
-	return nil
+	s, cmd := m.status.Update(msg)
+	m.status = *(s.(*statusModel))
+	return cmd
 }
 
 var (
