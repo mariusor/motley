@@ -29,7 +29,7 @@ const (
 const (
 	statusError statusState = 1 << iota
 	statusHelp
-	statusLoading
+	statusBusy
 
 	statusNone statusState = 0
 )
@@ -49,8 +49,7 @@ type statusModel struct {
 
 var glowLogoTextColor = Color("#ECFD65")
 
-func newStatusModel(common *commonModel) statusModel {
-	// Text input for search
+func initializeSpinner() spinner.Model {
 	sp := spinner.New()
 	sp.Style = lipgloss.NewStyle().Bold(true)
 	//sp.Spinner.Frames = []string{"", "🞄", "•", "⚫", "•", "🞄"}
@@ -59,17 +58,19 @@ func newStatusModel(common *commonModel) statusModel {
 	//sp.Spinner.Frames = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
 	//sp.Spinner.Frames = []string{"◒", "◐", "◓", "◑"}
 	//sp.Spinner.Frames = []string{"🭶", "🭷", "🭸", "🭹", "🭺", "🭻"}
-	sp.Spinner = spinner.Spinner{
-		Frames: []string{"⠦", "⠖", "⠲", "⠴"},
-		FPS:    time.Second / 4,
-	}
+	//sp.Spinner.Frames = []string{"⠦", "⠖", "⠲", "⠴"},
 	sp.Spinner = spinner.Line
 	sp.Spinner.FPS = time.Second / 4
+	return sp
+}
+
+func newStatusModel(common *commonModel) statusModel {
+	// Text input for search
 
 	common.logFn("initializing status bar")
 	return statusModel{
 		commonModel: common,
-		spinner:     sp,
+		spinner:     initializeSpinner(),
 	}
 }
 
@@ -119,10 +120,6 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	)
 }
 
-func (s *statusModel) unload() {
-	s.state ^= statusLoading
-}
-
 func (s *statusModel) spin(msg tea.Msg) tea.Cmd {
 	newSpinnerModel, tick := s.spinner.Update(msg)
 	s.spinner = newSpinnerModel
@@ -134,47 +131,31 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case error:
 		cmd = s.showError(msg)
+		s.spinner = initializeSpinner()
 	case spinner.TickMsg:
-		// If we're still doing work, or if the spinner still needs to finish, spin it along.
-		if s.state.Is(statusLoading) {
+		if s.state.Is(statusBusy) {
 			cmd = s.spin(msg)
+		} else {
+			s.spinner = initializeSpinner()
 		}
 	case statusState:
-		if msg.Is(statusLoading) {
-			s.logFn("starting spinning: %b", msg)
+		s.state = msg
+		if msg.Is(statusBusy) {
+			s.spinner = initializeSpinner()
 			cmd = s.spinner.Tick
-		} else {
-			s.logFn("stopping spinning: %b", msg)
-		}
-
-		st := s.state
-		if st != s.state {
-			s.state |= msg
-			s.logFn("updated state: %d", st, s.state)
 		}
 	case percentageMsg:
 		s.percent = float64(msg) * 100.0
 	}
 	return s, cmd
 }
-func (s *statusModel) toggleState(state statusState) tea.Cmd {
-	st := s.state
-	if s.state.Is(state) {
-		s.state ^= state
-	} else {
-		s.state |= state
-	}
-	s.logFn("toggled state %d: %d->%d", state, st, s.state)
-	return nil
-}
 
 func (s *statusModel) startedLoading() tea.Msg {
-	return statusLoading
+	return s.state | statusBusy
 }
 
 func (s *statusModel) stoppedLoading() tea.Msg {
-	s.logFn("sending stop loading state: %d", s.state^statusLoading)
-	return ^statusLoading
+	return s.state ^ statusBusy
 }
 
 func (s *statusModel) View() string {
