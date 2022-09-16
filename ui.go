@@ -306,13 +306,11 @@ func getRootNodeName(n *n) string {
 }
 
 func (m *model) Advance(msg advanceMsg) tea.Cmd {
-	//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
-	//	// skip if trying to advance to same element
-	//	return m, nil
-	//}
-	//if msg.State().Is(NodeError) {
-	//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
-	//}
+	if top := m.tree.list.Children()[0]; top == m.currentNode {
+		m.logFn("will not advance to top of the tree")
+		return nil
+	}
+
 	if msg.n == nil {
 		m.logFn("invalid node to advance to")
 		return errCmd(fmt.Errorf("trying to advance to an invalid node"))
