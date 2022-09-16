@@ -66,13 +66,13 @@ func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {
 func (t *treeModel) Advance(current *n) *tree.Model {
 	current.p = nil
 
+	current.s |= tree.NodeSelected
 	newTree := tree.New(tree.Nodes{current})
 	newTree.Symbols = t.list.Symbols
 	newTree.KeyMap = t.list.KeyMap
 	newTree.Styles = t.list.Styles
 	newTree.SetWidth(t.list.Width())
 	newTree.SetHeight(t.list.Height())
-	newTree.Focus()
 
 	oldTree := t.list
 	t.list = &newTree

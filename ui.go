@@ -217,31 +217,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		m.displayItem(msg)
 		cmds = append(cmds, m.status.stoppedLoading)
 	case advanceMsg:
-		//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
-		//	// skip if trying to advance to same element
-		//	return m, nil
-		//}
-		//if msg.State().Is(NodeError) {
-		//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
-		//}
-		if msg.n.s.Is(NodeError) {
-			return errCmd(fmt.Errorf("error: %s", msg.n.n))
-		}
-		if msg.n == nil {
-			m.logFn("invalid node to advance to")
-			return errCmd(fmt.Errorf("trying to advance to an invalid node"))
-		}
-		iri := msg.GetLink().String()
-		newNode := node(msg.Item, withParent(msg.n), withName(iri))
-		if err := m.loadChildrenForNode(newNode); err != nil {
-			return errCmd(fmt.Errorf("%s", msg.n.n))
-		}
-		if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
-			return errCmd(fmt.Errorf("no items in collection %s", iri))
-		}
-		oldTree := m.tree.Advance(newNode)
-		m.breadCrumbs = append(m.breadCrumbs, oldTree)
-		return nodeCmd(newNode)
+		cmds = append(cmds, m.Advance(msg))
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, quitKey):
@@ -321,8 +297,40 @@ func advanceCmd(n *n) tea.Cmd {
 	}
 }
 
-func (m *model) Advance(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return nil, nil
+func getRootNodeName(n *n) string {
+	name := n.n
+	if len(name) == 0 || name == "." {
+		name = n.Item.GetLink().String()
+	}
+	return name
+}
+
+func (m *model) Advance(msg advanceMsg) tea.Cmd {
+	//if m.breadCrumbs[len(m.breadCrumbs)-1].Children()[0].Name() == m.currentNode.Name() {
+	//	// skip if trying to advance to same element
+	//	return m, nil
+	//}
+	//if msg.State().Is(NodeError) {
+	//	return m, errCmd(fmt.Errorf("%s", msg.n.n))
+	//}
+	if msg.n == nil {
+		m.logFn("invalid node to advance to")
+		return errCmd(fmt.Errorf("trying to advance to an invalid node"))
+	}
+	if msg.n.s.Is(NodeError) {
+		return errCmd(fmt.Errorf("error: %s", msg.n.n))
+	}
+	name := getRootNodeName(msg.n)
+	newNode := node(msg.Item, withParent(msg.n), withName(name))
+	if err := m.loadChildrenForNode(newNode); err != nil {
+		return errCmd(fmt.Errorf("%s", msg.n.n))
+	}
+	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
+		return errCmd(fmt.Errorf("no items in collection %s", name))
+	}
+	oldTree := m.tree.Advance(newNode)
+	m.breadCrumbs = append(m.breadCrumbs, oldTree)
+	return nodeCmd(newNode)
 }
 
 func errCmd(err error) tea.Cmd {
