@@ -82,17 +82,13 @@ func (s *statusModel) Init() tea.Cmd {
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
-	s.state |= statusError
-	return s.showStatusMessage(err.Error())
+	s.statusMessage = withPadding(err.Error())
+	return s.stateError
 }
 
-// Perform stuff that needs to happen after a successful markdown stash. Note
-// that the returned command should be sent back the through the pager
-// update function.
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
-	s.statusMessage = statusMessage
-
-	return waitForStatusMessageTimeout(1)
+	s.statusMessage = withPadding(statusMessage)
+	return s.noError
 }
 
 func (s *statusModel) statusBarView(b *strings.Builder) {
@@ -130,26 +126,40 @@ func (s *statusModel) spin(msg tea.Msg) tea.Cmd {
 
 func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case error:
 		cmd = s.showError(msg)
-		s.spinner = initializeSpinner()
 	case spinner.TickMsg:
 		if s.state.Is(statusBusy) {
 			cmd = s.spin(msg)
-		} else {
-			s.spinner = initializeSpinner()
 		}
+		s.spinner = initializeSpinner()
 	case statusState:
+		if !msg.Is(statusError) && s.state.Is(statusError) {
+			s.state ^= statusError
+		}
 		s.state = msg
 		if msg.Is(statusBusy) {
-			s.spinner = initializeSpinner()
 			cmd = s.spinner.Tick
 		}
 	case percentageMsg:
 		s.percent = float64(msg) * 100.0
 	}
+
 	return s, cmd
+}
+
+func (s *statusModel) noError() tea.Msg {
+	return func() tea.Msg {
+		return s.state ^ statusError
+	}
+}
+
+func (s *statusModel) stateError() tea.Msg {
+	return func() tea.Msg {
+		return s.state | statusError
+	}
 }
 
 func (s *statusModel) startedLoading() tea.Msg {
@@ -232,13 +242,15 @@ func withPadding(s string) string {
 func logoView(text string, e env.Type) string {
 	var bg te.Color
 	fg := Color(te.ANSIBrightWhite.String())
-	if e.IsProd() {
-		bg = Color(Red.Dark)
+	bg = Color(Red.Dark)
+	if e != "" {
+		if !e.IsProd() {
+			bg = Color(Green.Dark)
+		}
+		text = fmt.Sprintf("[%s] %s", e, text)
+	} else {
+		text = fmt.Sprintf("%s", text)
 	}
-	if !e.IsProd() {
-		bg = Color(Green.Dark)
-	}
-	text = fmt.Sprintf("[%s] %s", e, text)
 	return te.String(withPadding(text)).Bold().Foreground(fg).Background(bg).String()
 }
 
@@ -258,11 +270,5 @@ func indent(b *strings.Builder, s string, n int) {
 func showHelpCmd() tea.Cmd {
 	return func() tea.Msg {
 		return statusHelp
-	}
-}
-
-func waitForStatusMessageTimeout(appCtx int) tea.Cmd {
-	return func() tea.Msg {
-		return appCtx
 	}
 }

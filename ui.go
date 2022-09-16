@@ -210,8 +210,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	case *n:
 		if err := m.loadDepsForNode(msg); err != nil {
 			m.logFn("error while loading node children %s", err)
-			msg.s |= NodeError
-			return errCmd(err)
+			return errCmd(fmt.Errorf("Collection %s: %w", msg.n, err))
 		}
 		m.currentNode = msg
 		m.displayItem(msg)
@@ -512,13 +511,11 @@ type advanceMsg struct {
 func (m *model) displayItem(n *n) tea.Cmd {
 	it := n.Item
 	switch it.(type) {
-	case pub.ItemCollection:
-		return m.status.showStatusMessage(fmt.Sprintf("Collection: %s %d items", n.n, len(n.c)))
+	case pub.ItemCollection, pub.IRI:
+		m.pager.showItem(it)
+		return m.status.showStatusMessage(fmt.Sprintf("Collection %s: %d items", n.n, len(n.c)))
 	case pub.Item:
-		err := m.pager.showItem(it)
-		if err != nil {
-			return m.status.showError(err)
-		}
+		m.pager.showItem(it)
 		return m.status.showStatusMessage(fmt.Sprintf("%s: %s", it.GetType(), it.GetLink()))
 	}
 	return nil
