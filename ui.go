@@ -223,6 +223,14 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		cmds = append(cmds, m.Advance(msg))
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, movePane):
+			if m.tree.list.Focused() {
+				m.tree.list.Styles = tree.Styles{}
+				m.tree.list.Blur()
+			} else {
+				m.tree.list.Styles = tree.DefaultStyles()
+				m.tree.list.Focus()
+			}
 		case key.Matches(msg, quitKey):
 			return tea.Quit
 		case key.Matches(msg, helpKey):
@@ -279,6 +287,10 @@ var (
 	quitKey = key.NewBinding(
 		key.WithKeys("q", "esc", "ctrl+c"),
 		key.WithHelp("esc", "exit"),
+	)
+	movePane = key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "change current pane"),
 	)
 )
 
