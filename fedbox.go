@@ -313,3 +313,152 @@ func getItemElements(parent *n) []*n {
 	//}
 	return result
 }
+
+func (m *model) loadDepsForNode(node *n) error {
+	if err := dereferenceItemProperties(m.f, node.Item); err != nil {
+		m.logFn("error while loading attributes %s", err)
+		node.s |= NodeError
+		return err
+	}
+	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
+		if err := m.loadChildrenForNode(node); err != nil {
+			m.logFn("error while loading children %s", err)
+			node.s |= NodeError
+			return err
+		}
+		m.logFn("loaded children %s[%d]", node.n, len(node.c))
+	}
+	return nil
+}
+
+func (m *model) loadChildrenForNode(nn *n) error {
+	iri := nn.Item.GetLink()
+	col, err := m.f.s.Load(iri)
+	if err != nil {
+		return err
+	}
+	if pub.IsItemCollection(col) {
+		children := make([]*n, 0)
+		pub.OnItemCollection(col, func(col *pub.ItemCollection) error {
+			for _, it := range *col {
+				children = append(children, node(it, withState(tree.NodeCollapsed)))
+			}
+			return nil
+		})
+		nn.setChildren(children...)
+	}
+
+	return nil
+}
+
+func dereferenceIRIs(f *fedbox, iris pub.ItemCollection) pub.ItemCollection {
+	if len(iris) == 0 {
+		return nil
+	}
+	items := make(pub.ItemCollection, 0, len(iris))
+	for _, it := range iris {
+		if deref := dereferenceIRI(f, it); pub.IsItemCollection(deref) {
+			pub.OnItemCollection(deref, func(col *pub.ItemCollection) error {
+				items = append(items, pub.ItemCollectionDeduplication(col)...)
+				return nil
+			})
+		} else {
+			items = append(items, deref)
+		}
+	}
+	return items
+}
+
+func dereferenceIRI(f *fedbox, it pub.Item) pub.Item {
+	if pub.IsNil(it) {
+		return nil
+	}
+	if pub.IsIRI(it) {
+		if pub.PublicNS.Equals(it.GetLink(), false) {
+			return it
+		}
+		if prop, _ := f.s.Load(it.GetLink()); !pub.IsNil(prop) {
+			empty := false
+			if pub.IsItemCollection(prop) {
+				pub.OnItemCollection(prop, func(col *pub.ItemCollection) error {
+					if col.Count() == 0 {
+						empty = true
+					}
+					return nil
+				})
+				if empty {
+					return nil
+				}
+			}
+			return prop
+		}
+	}
+
+	return it
+}
+
+func dereferenceIntransitiveActivityProperties(f *fedbox) func(act *pub.IntransitiveActivity) error {
+	if f == nil {
+		return func(act *pub.IntransitiveActivity) error { return fmt.Errorf("invalid fedbox storage") }
+	}
+	return func(act *pub.IntransitiveActivity) error {
+		pub.OnObject(act, dereferenceObjectProperties(f))
+		act.Actor = dereferenceIRI(f, act.Actor)
+		act.Target = dereferenceIRI(f, act.Target)
+		act.Instrument = dereferenceIRI(f, act.Instrument)
+		act.Result = dereferenceIRI(f, act.Result)
+		return nil
+	}
+}
+
+func dereferenceActivityProperties(f *fedbox) func(act *pub.Activity) error {
+	if f == nil {
+		return func(act *pub.Activity) error { return fmt.Errorf("invalid fedbox storage") }
+	}
+	return func(act *pub.Activity) error {
+		pub.OnIntransitiveActivity(act, dereferenceIntransitiveActivityProperties(f))
+		act.Actor = dereferenceIRI(f, act.Actor)
+		return nil
+	}
+}
+
+func dereferenceObjectProperties(f *fedbox) func(ob *pub.Object) error {
+	if f == nil {
+		return func(ob *pub.Object) error { return fmt.Errorf("invalid fedbox storage") }
+	}
+	return func(ob *pub.Object) error {
+		ob.AttributedTo = dereferenceIRI(f, ob.AttributedTo)
+		ob.InReplyTo = dereferenceIRI(f, ob.InReplyTo)
+
+		ob.Tag = dereferenceIRIs(f, ob.Tag)
+		ob.To = dereferenceIRIs(f, ob.To)
+		ob.CC = dereferenceIRIs(f, ob.CC)
+		ob.Bto = dereferenceIRIs(f, ob.Bto)
+		ob.BCC = dereferenceIRIs(f, ob.BCC)
+		ob.Audience = dereferenceIRIs(f, ob.Audience)
+
+		return nil
+	}
+}
+
+func dereferenceItemProperties(f *fedbox, it pub.Item) error {
+	if pub.IsObject(it) {
+		typ := it.GetType()
+		switch {
+		case pub.ObjectTypes.Contains(typ), pub.ActorTypes.Contains(typ), typ == "":
+			return pub.OnObject(it, dereferenceObjectProperties(f))
+		case pub.IntransitiveActivityTypes.Contains(typ):
+			return pub.OnIntransitiveActivity(it, dereferenceIntransitiveActivityProperties(f))
+		case pub.ActivityTypes.Contains(typ):
+			return pub.OnActivity(it, dereferenceActivityProperties(f))
+		}
+	}
+
+	if pub.IsItemCollection(it) {
+		return pub.OnItemCollection(it, func(col *pub.ItemCollection) error {
+			it = dereferenceIRIs(f, *col)
+			return nil
+		})
+	}
+	return nil
+}
