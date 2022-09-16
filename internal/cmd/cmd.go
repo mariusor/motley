@@ -59,6 +59,7 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 
 	conf := config.Options{
 		LogLevel: logrus.DebugLevel,
+		Env:      environ,
 	}
 	var (
 		db  processing.Store
