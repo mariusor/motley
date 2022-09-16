@@ -52,14 +52,16 @@ var glowLogoTextColor = Color("#ECFD65")
 func initializeSpinner() spinner.Model {
 	sp := spinner.New()
 	sp.Style = lipgloss.NewStyle().Bold(true)
+	sp.Spinner = spinner.Line
 	//sp.Spinner.Frames = []string{"", "🞄", "•", "⚫", "•", "🞄"}
-	//sp.Spinner.Frames = []string{"⨁ ", "⨂ "}
+	//sp.Spinner.Frames = []string{"⨁", "⨂"}
 	//sp.Spinner.Frames = []string{"◤", "◥", "◢", "◣"}
 	//sp.Spinner.Frames = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
 	//sp.Spinner.Frames = []string{"◒", "◐", "◓", "◑"}
 	//sp.Spinner.Frames = []string{"🭶", "🭷", "🭸", "🭹", "🭺", "🭻"}
 	//sp.Spinner.Frames = []string{"⠦", "⠖", "⠲", "⠴"},
-	sp.Spinner = spinner.Line
+	//sp.Spinner.Frames = []string{"+", "×"}
+	//sp.Spinner.Frames = []string{"-", "︲"}
 	sp.Spinner.FPS = time.Second / 4
 	return sp
 }
