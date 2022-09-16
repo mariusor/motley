@@ -203,6 +203,10 @@ func (m *model) setSize(w, h int) {
 	}
 }
 
+type loadingFromStorage struct {
+	c <-chan pub.Item
+}
+
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
