@@ -122,7 +122,7 @@ func Launch(conf config.Options, r processing.Store, o osin.Storage, l *logrus.L
 	return tea.NewProgram(newModel(FedBOX(base, r, o, l), conf.Env, l)).Start()
 }
 
-func url(it pub.Item) string {
+func pubUrl(it pub.Item) string {
 	name := ""
 	pub.OnObject(it, func(o *pub.Object) error {
 		u, _ := o.URL.GetLink().URL()
@@ -148,7 +148,7 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	m.pager = newPagerModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
-	m.status.logo = logoView(url(ff.getService()), env)
+	m.status.logo = logoView(pubUrl(ff.getService()), env)
 	return m
 }
 
