@@ -1,17 +1,23 @@
 package motley
 
 import (
+	"context"
 	"fmt"
+	"net/url"
+	"path"
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
+	"github.com/go-ap/errors"
 	fbox "github.com/go-ap/fedbox/activitypub"
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
+	"github.com/mariusor/qstring"
 	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -28,6 +34,8 @@ const (
 	NodeError = tree.NodeLastChild << (iota + 1)
 )
 
+type loggerFn func(string, ...interface{})
+
 var logFn = func(string, ...interface{}) {}
 
 type fedbox struct {
@@ -35,7 +43,7 @@ type fedbox struct {
 	iri   pub.IRI
 	s     processing.Store
 	o     osin.Storage
-	logFn func(string, ...interface{})
+	logFn loggerFn
 }
 
 func FedBOX(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) *fedbox {
@@ -87,15 +95,22 @@ func nodeIsError(n *n) bool {
 	return n.s.Is(NodeError)
 }
 
+func iriIsCollection(iri pub.IRI) bool {
+	if _, typ := pub.Split(iri); len(typ) > 0 {
+		return true
+	}
+	if _, typ := fbox.FedBOXCollections.Split(iri); len(typ) > 0 {
+		return true
+	}
+	return false
+}
+
 func nodeIsCollapsible(n *n) bool {
 	it := n.Item
 	if len(n.c) > 0 {
 		return true
 	}
-	if _, typ := pub.Split(it.GetLink()); len(typ) > 0 {
-		return true
-	}
-	if _, typ := fbox.FedBOXCollections.Split(it.GetLink()); len(typ) > 0 {
+	if iriIsCollection(it.GetLink()) {
 		n.s |= tree.NodeCollapsed | tree.NodeCollapsible
 	}
 	return n.s.Is(tree.NodeCollapsible)
@@ -333,21 +348,22 @@ func (m *model) loadDepsForNode(node *n) error {
 
 func (m *model) loadChildrenForNode(nn *n) error {
 	iri := nn.Item.GetLink()
-	col, err := m.f.s.Load(iri)
-	if err != nil {
-		return err
-	}
-	if pub.IsItemCollection(col) {
-		children := make([]*n, 0)
-		pub.OnItemCollection(col, func(col *pub.ItemCollection) error {
-			for _, it := range *col {
-				children = append(children, node(it, withState(tree.NodeCollapsed)))
+	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
+		return func(ctx context.Context, col pub.CollectionInterface) error {
+			for _, it := range col.Collection() {
+				*children = append(*children, node(it, withState(tree.NodeCollapsed)))
 			}
 			return nil
-		})
-		nn.setChildren(children...)
+		}
 	}
 
+	children := make([]*n, 0)
+	if err := m.f.LoadFromSearch(context.Background(), accum(&children), iri); err != nil {
+		return err
+	}
+	if len(children) > 0 {
+		nn.setChildren(children...)
+	}
 	return nil
 }
 
@@ -377,6 +393,7 @@ func dereferenceIRI(f *fedbox, it pub.Item) pub.Item {
 		if pub.PublicNS.Equals(it.GetLink(), false) {
 			return it
 		}
+
 		if prop, _ := f.s.Load(it.GetLink()); !pub.IsNil(prop) {
 			empty := false
 			if pub.IsItemCollection(prop) {
@@ -441,6 +458,12 @@ func dereferenceObjectProperties(f *fedbox) func(ob *pub.Object) error {
 	}
 }
 
+type StopLoad struct{}
+
+func (s StopLoad) Error() string {
+	return "stop load"
+}
+
 func dereferenceItemProperties(f *fedbox, it pub.Item) error {
 	if pub.IsObject(it) {
 		typ := it.GetType()
@@ -459,6 +482,129 @@ func dereferenceItemProperties(f *fedbox, it pub.Item) error {
 			it = dereferenceIRIs(f, *col)
 			return nil
 		})
+	}
+	return nil
+}
+
+func getCollectionPrevNext(col pub.Item) (prev, next string) {
+	qFn := func(i pub.Item) url.Values {
+		if i == nil {
+			return url.Values{}
+		}
+		if u, err := i.GetLink().URL(); err == nil {
+			return u.Query()
+		}
+		return url.Values{}
+	}
+	beforeFn := func(i pub.Item) string {
+		return qFn(i).Get("before")
+	}
+	afterFn := func(i pub.Item) string {
+		return qFn(i).Get("after")
+	}
+	nextFromLastFn := func(i pub.Item) string {
+		if u, err := i.GetLink().URL(); err == nil {
+			_, next = path.Split(u.Path)
+			return next
+		}
+		return ""
+	}
+	switch col.GetType() {
+	case pub.OrderedCollectionPageType:
+		if c, ok := col.(*pub.OrderedCollectionPage); ok {
+			prev = beforeFn(c.Prev)
+			if int(c.TotalItems) > len(c.OrderedItems) {
+				next = afterFn(c.Next)
+			}
+		}
+	case pub.OrderedCollectionType:
+		if c, ok := col.(*pub.OrderedCollection); ok {
+			if len(c.OrderedItems) > 0 && int(c.TotalItems) > len(c.OrderedItems) {
+				next = nextFromLastFn(c.OrderedItems[len(c.OrderedItems)-1])
+			}
+		}
+	case pub.CollectionPageType:
+		if c, ok := col.(*pub.CollectionPage); ok {
+			prev = beforeFn(c.Prev)
+			if int(c.TotalItems) > len(c.Items) {
+				next = afterFn(c.Next)
+			}
+		}
+	case pub.CollectionType:
+		if c, ok := col.(*pub.Collection); ok {
+			if len(c.Items) > 0 && int(c.TotalItems) > len(c.Items) {
+				next = nextFromLastFn(c.Items[len(c.Items)-1])
+			}
+		}
+	}
+	// NOTE(marius): we check if current Collection id contains a cursor, and if `next` points to the same URL
+	//   we don't take it into consideration.
+	if next != "" {
+		f := struct {
+			Next string `qstring:"after"`
+		}{}
+		if err := qstring.Unmarshal(qFn(col.GetLink()), &f); err == nil && next == f.Next {
+			next = ""
+		}
+	}
+	return prev, next
+}
+
+const MaxItems = 100
+
+type accumFn func(context.Context, pub.CollectionInterface) error
+
+func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IRI, accumFn accumFn) func() error {
+	return func() error {
+		col, err := f.s.Load(loadIRI)
+		if err != nil {
+			return errors.Annotatef(err, "failed to load search: %s", loadIRI)
+		}
+
+		if pub.IsItemCollection(col) {
+			maxItems := 0
+			err = pub.OnCollectionIntf(col, func(c pub.CollectionInterface) error {
+				maxItems = int(c.Count())
+				return accumFn(ctx, c)
+			})
+			if err != nil {
+				return err
+			}
+
+			var next string
+
+			if maxItems-MaxItems < 5 {
+				if _, next = getCollectionPrevNext(col); len(next) > 0 {
+					g.Go(f.searchFn(ctx, g, loadIRI, accumFn))
+				}
+			} else {
+				return StopLoad{}
+			}
+		}
+		return accumFn(ctx, &pub.ItemCollection{col})
+	}
+}
+
+func emptyAccum(ctx context.Context, c pub.CollectionInterface) error {
+	return nil
+}
+
+func (f *fedbox) LoadFromSearch(ctx context.Context, accum accumFn, iris ...pub.IRI) error {
+	var cancelFn func()
+
+	ctx, cancelFn = context.WithCancel(ctx)
+	g, gtx := errgroup.WithContext(ctx)
+
+	for _, iri := range iris {
+		g.Go(f.searchFn(gtx, g, iri, accum))
+	}
+	if err := g.Wait(); err != nil {
+		if errors.Is(err, StopLoad{}) {
+			f.logFn("stopped loading search")
+			cancelFn()
+		} else {
+			f.logFn("Failed to load search: %s", err)
+		}
 	}
 	return nil
 }
