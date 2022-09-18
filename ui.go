@@ -122,16 +122,6 @@ func Launch(conf config.Options, r processing.Store, o osin.Storage, l *logrus.L
 	return tea.NewProgram(newModel(FedBOX(base, r, o, l), conf.Env, l)).Start()
 }
 
-func pubUrl(it pub.Item) string {
-	name := ""
-	pub.OnObject(it, func(o *pub.Object) error {
-		u, _ := o.URL.GetLink().URL()
-		name = u.Hostname()
-		return nil
-	})
-	return name
-}
-
 func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	if te.HasDarkBackground() {
 		GlamourStyle = "dark"
@@ -142,6 +132,8 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	m := new(model)
 	m.commonModel = new(commonModel)
 	m.commonModel.logFn = l.Infof
+
+	m.sub = make(chan pub.ItemCollection, 10)
 
 	m.f = ff
 
@@ -164,6 +156,7 @@ type model struct {
 
 	currentNode *n
 	breadCrumbs []*tree.Model
+	sub         chan pub.ItemCollection
 
 	tree   treeModel
 	pager  pagerModel
@@ -204,7 +197,14 @@ func (m *model) setSize(w, h int) {
 }
 
 type loadingFromStorage struct {
-	c <-chan pub.Item
+	parent *n
+	pipe   chan pub.ItemCollection
+}
+
+func loadingFromStorageCmd(node *n, sub chan pub.ItemCollection) tea.Cmd {
+	return func() tea.Msg {
+		return loadingFromStorage{parent: node, pipe: sub}
+	}
 }
 
 func (m *model) update(msg tea.Msg) tea.Cmd {
@@ -212,15 +212,31 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 
 	switch msg := msg.(type) {
 	case *n:
-		if err := m.loadDepsForNode(msg); err != nil {
-			m.logFn("error while loading node children: %s", err)
-			return errCmd(fmt.Errorf("Collection %s: %w", msg.n, err))
-		}
 		m.currentNode = msg
 		m.displayItem(msg)
+		m.loadDepsForNode(msg)
+		if msg.s.Is(tree.NodeCollapsible) && len(msg.c) == 0 {
+			if err := m.dispatchLoadedItemCollection(msg.GetLink(), m.sub); err != nil {
+				m.logFn("error while loading children %s", err)
+				msg.s |= NodeError
+				cmds = append(cmds, errCmd(err))
+			} else {
+				cmds = append(cmds, loadingFromStorageCmd(msg, m.sub))
+			}
+		}
+	case loadingFromStorage:
+		items := <-msg.pipe
+		if len(items) > 0 {
+			children := make([]*n, len(items))
+			for i, it := range items.Collection() {
+				children[i] = node(it, withState(tree.NodeCollapsed))
+			}
+			msg.parent.setChildren(children...)
+		}
 		cmds = append(cmds, m.status.stoppedLoading)
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, movePane):
@@ -232,7 +248,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 				m.tree.list.Focus()
 			}
 		case key.Matches(msg, quitKey):
-			return tea.Quit
+			return quitCmd
 		case key.Matches(msg, helpKey):
 			return tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
 		case key.Matches(msg, advanceKey):
@@ -240,9 +256,12 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, backKey):
 			return m.Back(msg)
 		}
+
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
 		return nil
+	case quitMsg:
+		return tea.Quit
 	}
 
 	if cmd := m.updateTree(msg); cmd != nil {
@@ -366,6 +385,12 @@ func resizeCmd(w, h int) tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, m.update(msg)
+}
+
+type quitMsg struct{}
+
+func quitCmd() tea.Msg {
+	return quitMsg{}
 }
 
 type advanceMsg struct {

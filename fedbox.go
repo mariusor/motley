@@ -323,27 +323,26 @@ func getItemElements(parent *n) []*n {
 			return nil
 		})
 	}
-	//if pub.IsIRI(it) {
-	//	result = append(result)
-	//}
 	return result
 }
 
-func (m *model) loadDepsForNode(node *n) error {
+func (m *model) loadDepsForNode(node *n) tea.Cmd {
 	if err := dereferenceItemProperties(m.f, node.Item); err != nil {
 		m.logFn("error while loading attributes %s", err)
 		node.s |= NodeError
-		return err
-	}
-	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
-		if err := m.loadChildrenForNode(node); err != nil {
-			m.logFn("error while loading children %s", err)
-			node.s |= NodeError
-			return err
-		}
-		m.logFn("loaded children %s[%d]", node.n, len(node.c))
+		return errCmd(err)
 	}
 	return nil
+}
+
+func (m *model) dispatchLoadedItemCollection(iri pub.IRI, sub chan pub.ItemCollection) error {
+	accum := func(sub chan pub.ItemCollection) func(ctx context.Context, col pub.CollectionInterface) error {
+		return func(ctx context.Context, col pub.CollectionInterface) error {
+			sub <- col.Collection()
+			return nil
+		}
+	}
+	return m.f.LoadFromSearch(context.Background(), accum(sub), iri)
 }
 
 func (m *model) loadChildrenForNode(nn *n) error {
@@ -607,4 +606,14 @@ func (f *fedbox) LoadFromSearch(ctx context.Context, accum accumFn, iris ...pub.
 		}
 	}
 	return nil
+}
+
+func pubUrl(it pub.Item) string {
+	name := ""
+	pub.OnObject(it, func(o *pub.Object) error {
+		u, _ := o.URL.GetLink().URL()
+		name = u.Hostname()
+		return nil
+	})
+	return name
 }
