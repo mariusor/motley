@@ -225,18 +225,20 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			}
 		}
 	case loadingFromStorage:
-		items := <-msg.pipe
-		if len(items) > 0 {
-			children := make([]*n, len(items))
-			for i, it := range items.Collection() {
-				children[i] = node(it, withState(tree.NodeCollapsed))
+		select {
+		case items := <-m.sub:
+			if len(items) > 0 {
+				children := make([]*n, len(items))
+				for i, it := range items.Collection() {
+					children[i] = node(it, withState(tree.NodeCollapsed))
+				}
+				m.currentNode.setChildren(children...)
 			}
-			msg.parent.setChildren(children...)
+			cmds = append(cmds, m.status.stoppedLoading)
+		default:
 		}
-		cmds = append(cmds, m.status.stoppedLoading)
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))
-
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, movePane):
