@@ -476,12 +476,14 @@ func dereferenceItemProperties(f *fedbox, it pub.Item) error {
 		}
 	}
 
-	if pub.IsItemCollection(it) {
-		return pub.OnItemCollection(it, func(col *pub.ItemCollection) error {
-			it = dereferenceIRIs(f, *col)
-			return nil
-		})
-	}
+	/*
+		if pub.IsItemCollection(it) {
+			return pub.OnItemCollection(it, func(col *pub.ItemCollection) error {
+				it = dereferenceIRIs(f, *col)
+				return nil
+			})
+		}
+	*/
 	return nil
 }
 
