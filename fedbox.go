@@ -332,14 +332,13 @@ func getItemElements(parent *n) []*n {
 }
 
 func (m *model) loadDepsForNode(node *n) tea.Cmd {
-	node.s |= NodeSyncing
-	if err := dereferenceItemProperties(m.f, node.Item); err != nil {
-		m.logFn("error while loading attributes %s", err)
-		node.s ^= NodeSyncing
-		node.s |= NodeError
-		return errCmd(err)
-	}
-	node.s ^= NodeSyncing
+	go func() {
+		if err := dereferenceItemProperties(m.f, node.Item); err != nil {
+			m.logFn("error while loading attributes %s", err)
+			node.s |= NodeError
+			//return errCmd(err)
+		}
+	}()
 	return nil
 }
 
