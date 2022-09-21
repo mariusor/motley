@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -333,23 +334,13 @@ func getItemElements(parent *n) []*n {
 
 func (m *model) loadDepsForNode(node *n) tea.Cmd {
 	go func() {
-		if err := dereferenceItemProperties(m.f, node.Item); err != nil {
+		if err := dereferenceItemProperties(context.Background(), m.f, node.Item); err != nil {
 			m.logFn("error while loading attributes %s", err)
 			node.s |= NodeError
 			//return errCmd(err)
 		}
 	}()
 	return nil
-}
-
-func (m *model) dispatchLoadedItemCollection(iri pub.IRI, sub chan pub.ItemCollection) error {
-	accum := func(sub chan pub.ItemCollection) func(ctx context.Context, col pub.CollectionInterface) error {
-		return func(ctx context.Context, col pub.CollectionInterface) error {
-			sub <- col.Collection()
-			return nil
-		}
-	}
-	return m.f.LoadFromSearch(context.Background(), accum(sub), iri)
 }
 
 func (m *model) loadChildrenForNode(nn *n) error {
@@ -364,8 +355,9 @@ func (m *model) loadChildrenForNode(nn *n) error {
 		}
 	}
 
+	tx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
 	children := make([]*n, 0)
-	if err := m.f.LoadFromSearch(context.Background(), accum(&children), iri); err != nil {
+	if err := m.f.LoadFromSearch(tx, accum(&children), iri); err != nil {
 		nn.s ^= NodeSyncing
 		return err
 	}
@@ -376,13 +368,13 @@ func (m *model) loadChildrenForNode(nn *n) error {
 	return nil
 }
 
-func dereferenceIRIs(f *fedbox, iris pub.ItemCollection) pub.ItemCollection {
+func dereferenceIRIs(ctx context.Context, f *fedbox, iris pub.ItemCollection) pub.ItemCollection {
 	if len(iris) == 0 {
 		return nil
 	}
 	items := make(pub.ItemCollection, 0, len(iris))
 	for _, it := range iris {
-		if deref := dereferenceIRI(f, it); pub.IsItemCollection(deref) {
+		if deref := dereferenceIRI(ctx, f, it); pub.IsItemCollection(deref) {
 			pub.OnItemCollection(deref, func(col *pub.ItemCollection) error {
 				items = append(items, pub.ItemCollectionDeduplication(col)...)
 				return nil
@@ -394,7 +386,7 @@ func dereferenceIRIs(f *fedbox, iris pub.ItemCollection) pub.ItemCollection {
 	return items
 }
 
-func dereferenceIRI(f *fedbox, it pub.Item) pub.Item {
+func dereferenceIRI(ctx context.Context, f *fedbox, it pub.Item) pub.Item {
 	if pub.IsNil(it) {
 		return nil
 	}
@@ -402,7 +394,7 @@ func dereferenceIRI(f *fedbox, it pub.Item) pub.Item {
 		if pub.PublicNS.Equals(it.GetLink(), false) {
 			return it
 		}
-		f.LoadFromSearch(context.Background(), func(ctx context.Context, col pub.CollectionInterface) error {
+		f.LoadFromSearch(ctx, func(ctx context.Context, col pub.CollectionInterface) error {
 			it = col
 			return nil
 		}, it.GetLink())
@@ -411,47 +403,92 @@ func dereferenceIRI(f *fedbox, it pub.Item) pub.Item {
 	return it
 }
 
-func dereferenceIntransitiveActivityProperties(f *fedbox) func(act *pub.IntransitiveActivity) error {
+func dereferenceIntransitiveActivityProperties(ctx context.Context, f *fedbox) func(act *pub.IntransitiveActivity) error {
 	if f == nil {
 		return func(act *pub.IntransitiveActivity) error { return fmt.Errorf("invalid fedbox storage") }
 	}
+	g, gtx := errgroup.WithContext(ctx)
 	return func(act *pub.IntransitiveActivity) error {
-		pub.OnObject(act, dereferenceObjectProperties(f))
-		act.Actor = dereferenceIRI(f, act.Actor)
-		act.Target = dereferenceIRI(f, act.Target)
-		act.Instrument = dereferenceIRI(f, act.Instrument)
-		act.Result = dereferenceIRI(f, act.Result)
-		return nil
+		g.Go(func() error {
+			return pub.OnObject(act, dereferenceObjectProperties(gtx, f))
+		})
+		g.Go(func() error {
+			act.Actor = dereferenceIRI(gtx, f, act.Actor)
+			return nil
+		})
+		g.Go(func() error {
+			act.Target = dereferenceIRI(gtx, f, act.Target)
+			return nil
+		})
+		g.Go(func() error {
+			act.Instrument = dereferenceIRI(gtx, f, act.Instrument)
+			return nil
+		})
+		g.Go(func() error {
+			act.Result = dereferenceIRI(gtx, f, act.Result)
+			return nil
+		})
+		return g.Wait()
 	}
 }
 
-func dereferenceActivityProperties(f *fedbox) func(act *pub.Activity) error {
+func dereferenceActivityProperties(ctx context.Context, f *fedbox) func(act *pub.Activity) error {
 	if f == nil {
 		return func(act *pub.Activity) error { return fmt.Errorf("invalid fedbox storage") }
 	}
+	g, gtx := errgroup.WithContext(ctx)
 	return func(act *pub.Activity) error {
-		pub.OnIntransitiveActivity(act, dereferenceIntransitiveActivityProperties(f))
-		act.Actor = dereferenceIRI(f, act.Actor)
-		return nil
+		g.Go(func() error {
+			return pub.OnIntransitiveActivity(act, dereferenceIntransitiveActivityProperties(ctx, f))
+		})
+		g.Go(func() error {
+			act.Actor = dereferenceIRI(gtx, f, act.Actor)
+			return nil
+		})
+		return g.Wait()
 	}
 }
 
-func dereferenceObjectProperties(f *fedbox) func(ob *pub.Object) error {
+func dereferenceObjectProperties(ctx context.Context, f *fedbox) func(ob *pub.Object) error {
 	if f == nil {
 		return func(ob *pub.Object) error { return fmt.Errorf("invalid fedbox storage") }
 	}
+	g, gtx := errgroup.WithContext(ctx)
 	return func(ob *pub.Object) error {
-		ob.AttributedTo = dereferenceIRI(f, ob.AttributedTo)
-		ob.InReplyTo = dereferenceIRI(f, ob.InReplyTo)
+		g.Go(func() error {
+			ob.AttributedTo = dereferenceIRI(gtx, f, ob.AttributedTo)
+			return nil
+		})
+		g.Go(func() error {
+			ob.InReplyTo = dereferenceIRI(gtx, f, ob.InReplyTo)
+			return nil
+		})
+		g.Go(func() error {
+			ob.Tag = dereferenceIRIs(gtx, f, ob.Tag)
+			return nil
+		})
+		g.Go(func() error {
+			ob.To = dereferenceIRIs(ctx, f, ob.To)
+			return nil
+		})
+		g.Go(func() error {
+			ob.CC = dereferenceIRIs(ctx, f, ob.CC)
+			return nil
+		})
+		g.Go(func() error {
+			ob.Bto = dereferenceIRIs(ctx, f, ob.Bto)
+			return nil
+		})
+		g.Go(func() error {
+			ob.BCC = dereferenceIRIs(ctx, f, ob.BCC)
+			return nil
+		})
+		g.Go(func() error {
+			ob.Audience = dereferenceIRIs(ctx, f, ob.Audience)
+			return nil
+		})
 
-		ob.Tag = dereferenceIRIs(f, ob.Tag)
-		ob.To = dereferenceIRIs(f, ob.To)
-		ob.CC = dereferenceIRIs(f, ob.CC)
-		ob.Bto = dereferenceIRIs(f, ob.Bto)
-		ob.BCC = dereferenceIRIs(f, ob.BCC)
-		ob.Audience = dereferenceIRIs(f, ob.Audience)
-
-		return nil
+		return g.Wait()
 	}
 }
 
@@ -461,16 +498,16 @@ func (s StopLoad) Error() string {
 	return "stop load"
 }
 
-func dereferenceItemProperties(f *fedbox, it pub.Item) error {
+func dereferenceItemProperties(ctx context.Context, f *fedbox, it pub.Item) error {
 	if pub.IsObject(it) {
 		typ := it.GetType()
 		switch {
 		case pub.ObjectTypes.Contains(typ), pub.ActorTypes.Contains(typ), typ == "":
-			return pub.OnObject(it, dereferenceObjectProperties(f))
+			return pub.OnObject(it, dereferenceObjectProperties(ctx, f))
 		case pub.IntransitiveActivityTypes.Contains(typ):
-			return pub.OnIntransitiveActivity(it, dereferenceIntransitiveActivityProperties(f))
+			return pub.OnIntransitiveActivity(it, dereferenceIntransitiveActivityProperties(ctx, f))
 		case pub.ActivityTypes.Contains(typ):
-			return pub.OnActivity(it, dereferenceActivityProperties(f))
+			return pub.OnActivity(it, dereferenceActivityProperties(ctx, f))
 		}
 	}
 
