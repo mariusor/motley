@@ -390,15 +390,16 @@ func dereferenceIRI(ctx context.Context, f *fedbox, it pub.Item) pub.Item {
 	if pub.IsNil(it) {
 		return nil
 	}
-	if pub.IsIRI(it) {
-		if pub.PublicNS.Equals(it.GetLink(), false) {
-			return it
-		}
-		f.LoadFromSearch(ctx, func(ctx context.Context, col pub.CollectionInterface) error {
-			it = col
-			return nil
-		}, it.GetLink())
+	if !pub.IsIRI(it) {
+		return it
 	}
+	if pub.PublicNS.Equals(it.GetLink(), false) {
+		return it
+	}
+	f.LoadFromSearch(ctx, func(ctx context.Context, col pub.CollectionInterface) error {
+		it = col
+		return nil
+	}, it.GetLink())
 
 	return it
 }
