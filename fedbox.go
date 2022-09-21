@@ -332,11 +332,14 @@ func getItemElements(parent *n) []*n {
 }
 
 func (m *model) loadDepsForNode(node *n) tea.Cmd {
+	node.s |= NodeSyncing
 	if err := dereferenceItemProperties(m.f, node.Item); err != nil {
 		m.logFn("error while loading attributes %s", err)
+		node.s ^= NodeSyncing
 		node.s |= NodeError
 		return errCmd(err)
 	}
+	node.s ^= NodeSyncing
 	return nil
 }
 
@@ -400,22 +403,10 @@ func dereferenceIRI(f *fedbox, it pub.Item) pub.Item {
 		if pub.PublicNS.Equals(it.GetLink(), false) {
 			return it
 		}
-
-		if prop, _ := f.s.Load(it.GetLink()); !pub.IsNil(prop) {
-			empty := false
-			if pub.IsItemCollection(prop) {
-				pub.OnItemCollection(prop, func(col *pub.ItemCollection) error {
-					if col.Count() == 0 {
-						empty = true
-					}
-					return nil
-				})
-				if empty {
-					return nil
-				}
-			}
-			return prop
-		}
+		f.LoadFromSearch(context.Background(), func(ctx context.Context, col pub.CollectionInterface) error {
+			it = col
+			return nil
+		}, it.GetLink())
 	}
 
 	return it
