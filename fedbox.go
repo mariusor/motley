@@ -357,7 +357,7 @@ func (m *model) loadChildrenForNode(nn *n) error {
 
 	tx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
 	children := make([]*n, 0)
-	if err := m.f.LoadFromSearch(tx, accum(&children), iri); err != nil {
+	if err := accumFn(accum(&children)).LoadFromSearch(tx, m.f, iri); err != nil {
 		nn.s ^= NodeSyncing
 		return err
 	}
@@ -396,10 +396,11 @@ func dereferenceIRI(ctx context.Context, f *fedbox, it pub.Item) pub.Item {
 	if pub.PublicNS.Equals(it.GetLink(), false) {
 		return it
 	}
-	f.LoadFromSearch(ctx, func(ctx context.Context, col pub.CollectionInterface) error {
+	loadFn := func(ctx context.Context, col pub.CollectionInterface) error {
 		it = col
 		return nil
-	}, it.GetLink())
+	}
+	accumFn(loadFn).LoadFromSearch(ctx, f, it.GetLink())
 
 	return it
 }
@@ -627,14 +628,14 @@ func emptyAccum(ctx context.Context, c pub.CollectionInterface) error {
 	return nil
 }
 
-func (f *fedbox) LoadFromSearch(ctx context.Context, accum accumFn, iris ...pub.IRI) error {
+func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iris ...pub.IRI) error {
 	var cancelFn func()
 
 	ctx, cancelFn = context.WithCancel(ctx)
 	g, gtx := errgroup.WithContext(ctx)
 
 	for _, iri := range iris {
-		g.Go(f.searchFn(gtx, g, iri, accum))
+		g.Go(f.searchFn(gtx, g, iri, a))
 	}
 	if err := g.Wait(); err != nil {
 		if errors.Is(err, StopLoad{}) {
