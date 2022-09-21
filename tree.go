@@ -78,3 +78,12 @@ func (t *treeModel) Advance(current *n) *tree.Model {
 	t.list = &newTree
 	return oldTree
 }
+
+func (t *treeModel) IsSyncing() bool {
+	for _, n := range t.list.Children() {
+		if n.State().Is(NodeSyncing) {
+			return true
+		}
+	}
+	return false
+}

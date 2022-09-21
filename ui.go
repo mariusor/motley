@@ -133,8 +133,6 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	m.commonModel = new(commonModel)
 	m.commonModel.logFn = l.Infof
 
-	m.sub = make(chan pub.ItemCollection, 10)
-
 	m.f = ff
 
 	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
@@ -156,7 +154,6 @@ type model struct {
 
 	currentNode *n
 	breadCrumbs []*tree.Model
-	sub         chan pub.ItemCollection
 
 	tree   treeModel
 	pager  pagerModel
@@ -196,17 +193,6 @@ func (m *model) setSize(w, h int) {
 	}
 }
 
-type loadingFromStorage struct {
-	parent *n
-	pipe   chan pub.ItemCollection
-}
-
-func loadingFromStorageCmd(node *n, sub chan pub.ItemCollection) tea.Cmd {
-	return func() tea.Msg {
-		return loadingFromStorage{parent: node, pipe: sub}
-	}
-}
-
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
@@ -216,26 +202,13 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		m.displayItem(msg)
 		m.loadDepsForNode(msg)
 		if msg.s.Is(tree.NodeCollapsible) && len(msg.c) == 0 {
-			if err := m.dispatchLoadedItemCollection(msg.GetLink(), m.sub); err != nil {
-				m.logFn("error while loading children %s", err)
+			if err := m.loadChildrenForNode(msg); err != nil {
 				msg.s |= NodeError
+				m.logFn("error while loading children %s", err)
 				cmds = append(cmds, errCmd(err))
 			} else {
-				cmds = append(cmds, loadingFromStorageCmd(msg, m.sub))
+				cmds = append(cmds)
 			}
-		}
-	case loadingFromStorage:
-		select {
-		case items := <-m.sub:
-			if len(items) > 0 {
-				children := make([]*n, len(items))
-				for i, it := range items.Collection() {
-					children[i] = node(it, withState(tree.NodeCollapsed))
-				}
-				m.currentNode.setChildren(children...)
-			}
-			cmds = append(cmds, m.status.stoppedLoading)
-		default:
 		}
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))
@@ -267,7 +240,12 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	}
 
 	if cmd := m.updateTree(msg); cmd != nil {
-		cmds = append(cmds, cmd, m.status.startedLoading)
+		cmds = append(cmds, cmd)
+		if m.tree.IsSyncing() {
+			cmds = append(cmds, m.status.startedLoading)
+		} else {
+			cmds = append(cmds, m.status.stoppedLoading)
+		}
 	}
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))

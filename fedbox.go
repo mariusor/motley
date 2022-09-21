@@ -22,16 +22,18 @@ import (
 
 const (
 	//Unexpandable = "⬚"
+	//HasChanges   = "⧆"
+	//Locked       = "⚿"
 	Collapsed    = "⊞"
 	Expanded     = "⊟"
 	Unexpandable = "⊠"
-	HasChanges   = "⧆"
-	Locked       = "⚿"
 	Attention    = "⊡"
 )
 
 const (
-	NodeError = tree.NodeLastChild << (iota + 1)
+	NodeSyncing = tree.NodeLastChild << (iota + 1)
+	NodeSynced
+	NodeError
 )
 
 type loggerFn func(string, ...interface{})
@@ -135,6 +137,9 @@ func (n *n) View() string {
 		if nodeIsError(n) {
 			annotation = Unexpandable
 		}
+	}
+	if n.s.Is(NodeSyncing) {
+		annotation = Attention
 	}
 	return style(fmt.Sprintf("%-1s %s", annotation, n.n))
 }
@@ -347,6 +352,7 @@ func (m *model) dispatchLoadedItemCollection(iri pub.IRI, sub chan pub.ItemColle
 
 func (m *model) loadChildrenForNode(nn *n) error {
 	iri := nn.Item.GetLink()
+	nn.s |= NodeSyncing
 	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
 		return func(ctx context.Context, col pub.CollectionInterface) error {
 			for _, it := range col.Collection() {
@@ -358,11 +364,13 @@ func (m *model) loadChildrenForNode(nn *n) error {
 
 	children := make([]*n, 0)
 	if err := m.f.LoadFromSearch(context.Background(), accum(&children), iri); err != nil {
+		nn.s ^= NodeSyncing
 		return err
 	}
 	if len(children) > 0 {
 		nn.setChildren(children...)
 	}
+	nn.s ^= NodeSyncing
 	return nil
 }
 
@@ -578,6 +586,7 @@ func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IR
 				if _, next = getCollectionPrevNext(col); len(next) > 0 {
 					g.Go(f.searchFn(ctx, g, loadIRI, accumFn))
 				}
+				return nil
 			} else {
 				return StopLoad{}
 			}
@@ -604,7 +613,7 @@ func (f *fedbox) LoadFromSearch(ctx context.Context, accum accumFn, iris ...pub.
 			f.logFn("stopped loading search")
 			cancelFn()
 		} else {
-			f.logFn("Failed to load search: %s", err)
+			f.logFn("%s", err)
 		}
 	}
 	return nil
