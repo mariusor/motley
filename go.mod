@@ -13,7 +13,7 @@ require (
 	github.com/go-ap/fedbox v0.0.0-20220828135636-ee8474a2af95
 	github.com/go-ap/processing v0.0.0-20220917143841-eaa4e873bb7b
 	github.com/joho/godotenv v1.4.0
-	github.com/mariusor/bubbles-tree v0.0.0-20220922145527-1ff792574883
+	github.com/mariusor/bubbles-tree v0.0.0-20220922174609-d65cd3a430d3
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/muesli/reflow v0.3.0
