@@ -333,13 +333,21 @@ func getItemElements(parent *n) []*n {
 }
 
 func (m *model) loadDepsForNode(node *n) tea.Cmd {
-	go func() {
-		if err := dereferenceItemProperties(context.Background(), m.f, node.Item); err != nil {
+	g, gtx := errgroup.WithContext(context.Background())
+	g.Go(func() error {
+		node.s |= NodeSyncing
+		if err := dereferenceItemProperties(gtx, m.f, node.Item); err != nil {
 			m.logFn("error while loading attributes %s", err)
 			node.s |= NodeError
-			//return errCmd(err)
+			return err
 		}
-	}()
+		return nil
+	})
+	err := g.Wait()
+	node.s ^= NodeSyncing
+	if err != nil {
+		return errCmd(err)
+	}
 	return nil
 }
 
@@ -361,9 +369,7 @@ func (m *model) loadChildrenForNode(nn *n) error {
 		nn.s ^= NodeSyncing
 		return err
 	}
-	if len(children) > 0 {
-		nn.setChildren(children...)
-	}
+	nn.setChildren(children...)
 	nn.s ^= NodeSyncing
 	return nil
 }
@@ -513,14 +519,12 @@ func dereferenceItemProperties(ctx context.Context, f *fedbox, it pub.Item) erro
 		}
 	}
 
-	/*
-		if pub.IsItemCollection(it) {
-			return pub.OnItemCollection(it, func(col *pub.ItemCollection) error {
-				it = dereferenceIRIs(f, *col)
-				return nil
-			})
-		}
-	*/
+	if pub.IsItemCollection(it) {
+		return pub.OnItemCollection(it, func(col *pub.ItemCollection) error {
+			it = dereferenceIRIs(ctx, f, *col)
+			return nil
+		})
+	}
 	return nil
 }
 

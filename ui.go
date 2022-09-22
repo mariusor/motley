@@ -193,14 +193,23 @@ func (m *model) setSize(w, h int) {
 	}
 }
 
+type paintMsg struct{}
+
+func paintCmd() tea.Msg {
+	return paintMsg{}
+}
+
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
 	switch msg := msg.(type) {
+	case paintMsg:
+		if m.currentNode != nil {
+			m.logFn("current node: %s", m.currentNode.n)
+			m.displayItem(m.currentNode)
+		}
 	case *n:
 		m.currentNode = msg
-		m.displayItem(msg)
-		m.loadDepsForNode(msg)
 		if msg.s.Is(tree.NodeCollapsible) && len(msg.c) == 0 {
 			if err := m.loadChildrenForNode(msg); err != nil {
 				msg.s |= NodeError
@@ -210,6 +219,8 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 				cmds = append(cmds, m.status.spinner.Tick)
 			}
 		}
+		m.loadDepsForNode(m.currentNode)
+		cmds = append(cmds, paintCmd)
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))
 	case tea.KeyMsg:
@@ -243,9 +254,10 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		cmds = append(cmds, cmd)
 		if m.tree.IsSyncing() {
 			cmds = append(cmds, m.status.startedLoading)
-		} else {
-			cmds = append(cmds, m.status.stoppedLoading)
 		}
+	}
+	if m.status.state.Is(statusBusy) && !m.tree.IsSyncing() {
+		cmds = append(cmds, m.status.stoppedLoading, paintCmd)
 	}
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
