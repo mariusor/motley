@@ -161,10 +161,11 @@ func (p *pagerModel) writeNaturalLanguageValuesWithLabel(s io.Writer, l string, 
 	}
 	vals := make([]string, len(values))
 	for i, v := range values {
-		if v.Ref != "" || v.Ref != pub.NilLangRef {
+		if v.Ref == "" || v.Ref == pub.NilLangRef {
+			vals[i] = fmt.Sprintf("%s", v.Value)
+		} else {
 			vals[i] = fmt.Sprintf("[%s]%s", v.Ref, v.Value)
 		}
-		vals[i] = fmt.Sprintf("%s", v.Value)
 	}
 	if ll > 1 {
 		fmt.Fprintf(s, "%s: [ %s ]\n", l, strings.Join(vals, ", "))
