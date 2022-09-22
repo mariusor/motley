@@ -156,8 +156,9 @@ type commonModel struct {
 type model struct {
 	*commonModel
 
-	currentNode *n
-	breadCrumbs []*tree.Model
+	currentNode         *n
+	currentNodePosition int
+	breadCrumbs         []*tree.Model
 
 	tree   treeModel
 	pager  pagerModel
@@ -223,11 +224,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		switch {
 		case key.Matches(msg, movePane):
 			if m.tree.list.Focused() {
-				m.tree.list.Styles = tree.Styles{}
+				m.currentNodePosition = m.tree.list.Cursor()
 				m.tree.list.Blur()
 			} else {
-				m.tree.list.Styles = tree.DefaultStyles()
 				m.tree.list.Focus()
+				m.tree.list.MoveDown(m.currentNodePosition + 1) // the model.Tree sets cursor to -1 when bluring
 			}
 		case key.Matches(msg, quitKey):
 			return quitCmd
