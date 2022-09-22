@@ -214,6 +214,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			m.displayItem(m.currentNode)
 		}
 	case *n:
+		m.currentNodePosition = m.tree.list.Cursor()
 		m.currentNode = msg
 		ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
 		cmd := m.loadDepsForNode(ctx, m.currentNode)
@@ -224,11 +225,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		switch {
 		case key.Matches(msg, movePane):
 			if m.tree.list.Focused() {
-				m.currentNodePosition = m.tree.list.Cursor()
 				m.tree.list.Blur()
 			} else {
 				m.tree.list.Focus()
-				m.tree.list.MoveDown(m.currentNodePosition + 1) // the model.Tree sets cursor to -1 when bluring
+				// the model.Tree sets cursor to -1 when bluring, so we need to add an extra +1
+				cmds = append(cmds, m.tree.list.SetCursor(m.currentNodePosition))
 			}
 		case key.Matches(msg, quitKey):
 			return quitCmd
@@ -242,7 +243,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 
 	case tea.WindowSizeMsg:
 		m.setSize(msg.Width, msg.Height)
-		return nil
+		return m.tree.list.SetCursor(m.currentNodePosition)
 	case quitMsg:
 		return tea.Quit
 	}
