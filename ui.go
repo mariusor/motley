@@ -207,7 +207,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 				m.logFn("error while loading children %s", err)
 				cmds = append(cmds, errCmd(err))
 			} else {
-				cmds = append(cmds)
+				cmds = append(cmds, m.status.spinner.Tick)
 			}
 		}
 	case advanceMsg:

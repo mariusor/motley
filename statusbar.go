@@ -134,14 +134,15 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if s.state.Is(statusBusy) {
 			cmd = s.spin(msg)
 		}
-		s.spinner = initializeSpinner()
 	case statusState:
+		s.state = msg
 		if !msg.Is(statusError) && s.state.Is(statusError) {
 			s.state ^= statusError
 		}
-		s.state = msg
 		if msg.Is(statusBusy) {
 			cmd = s.spinner.Tick
+		} else {
+			initializeSpinner()
 		}
 	case percentageMsg:
 		s.percent = float64(msg) * 100.0
