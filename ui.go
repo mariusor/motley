@@ -1,6 +1,7 @@
 package motley
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -210,17 +211,9 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		}
 	case *n:
 		m.currentNode = msg
-		if msg.s.Is(tree.NodeCollapsible) && len(msg.c) == 0 {
-			if err := m.loadChildrenForNode(msg); err != nil {
-				msg.s |= NodeError
-				m.logFn("error while loading children %s", err)
-				cmds = append(cmds, errCmd(err))
-			} else {
-				cmds = append(cmds, m.status.spinner.Tick)
-			}
-		}
-		m.loadDepsForNode(m.currentNode)
-		cmds = append(cmds, paintCmd)
+		ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
+		cmd := m.loadDepsForNode(ctx, m.currentNode)
+		cmds = append(cmds, paintCmd, cmd)
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))
 	case tea.KeyMsg:
@@ -346,7 +339,7 @@ func (m *model) Advance(msg advanceMsg) tea.Cmd {
 	}
 	name := getRootNodeName(msg.n)
 	newNode := node(msg.Item, withParent(msg.n), withName(name))
-	if err := m.loadChildrenForNode(newNode); err != nil {
+	if err := m.loadChildrenForNode(context.Background(), newNode); err != nil {
 		return errCmd(fmt.Errorf("%s", msg.n.n))
 	}
 	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {

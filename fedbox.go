@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -138,9 +137,9 @@ func (n *n) View() string {
 		if nodeIsError(n) {
 			annotation = Unexpandable
 		}
-	}
-	if n.s.Is(NodeSyncing) {
-		annotation = Attention
+		if n.s.Is(NodeSyncing) {
+			annotation = Attention
+		}
 	}
 	return style(fmt.Sprintf("%-1s %s", annotation, n.n))
 }
@@ -332,10 +331,10 @@ func getItemElements(parent *n) []*n {
 	return result
 }
 
-func (m *model) loadDepsForNode(node *n) tea.Cmd {
-	g, gtx := errgroup.WithContext(context.Background())
+func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
+	g, gtx := errgroup.WithContext(ctx)
+	node.s |= NodeSyncing
 	g.Go(func() error {
-		node.s |= NodeSyncing
 		if err := dereferenceItemProperties(gtx, m.f, node.Item); err != nil {
 			m.logFn("error while loading attributes %s", err)
 			node.s |= NodeError
@@ -343,16 +342,26 @@ func (m *model) loadDepsForNode(node *n) tea.Cmd {
 		}
 		return nil
 	})
+
+	g.Go(func() error {
+		if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
+			if err := m.loadChildrenForNode(ctx, node); err != nil {
+				node.s |= NodeError
+				m.logFn("error while loading children %s", err)
+				return err
+			}
+		}
+		return nil
+	})
 	go func() {
 		g.Wait()
 		node.s ^= NodeSyncing
 	}()
-	return nil
+	return m.status.spinner.Tick
 }
 
-func (m *model) loadChildrenForNode(nn *n) error {
+func (m *model) loadChildrenForNode(ctx context.Context, nn *n) error {
 	iri := nn.Item.GetLink()
-	nn.s |= NodeSyncing
 	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
 		return func(ctx context.Context, col pub.CollectionInterface) error {
 			for _, it := range col.Collection() {
@@ -362,14 +371,11 @@ func (m *model) loadChildrenForNode(nn *n) error {
 		}
 	}
 
-	tx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
 	children := make([]*n, 0)
-	if err := accumFn(accum(&children)).LoadFromSearch(tx, m.f, iri); err != nil {
-		nn.s ^= NodeSyncing
+	if err := accumFn(accum(&children)).LoadFromSearch(ctx, m.f, iri); err != nil {
 		return err
 	}
 	nn.setChildren(children...)
-	nn.s ^= NodeSyncing
 	return nil
 }
 
@@ -414,24 +420,13 @@ func dereferenceIntransitiveActivityProperties(ctx context.Context, f *fedbox) f
 	if f == nil {
 		return func(act *pub.IntransitiveActivity) error { return fmt.Errorf("invalid fedbox storage") }
 	}
-	g, gtx := errgroup.WithContext(ctx)
 	return func(act *pub.IntransitiveActivity) error {
+		g, gtx := errgroup.WithContext(ctx)
 		g.Go(func() error {
-			return pub.OnObject(act, dereferenceObjectProperties(gtx, f))
-		})
-		g.Go(func() error {
+			pub.OnObject(act, dereferenceObjectProperties(gtx, f))
 			act.Actor = dereferenceIRI(gtx, f, act.Actor)
-			return nil
-		})
-		g.Go(func() error {
 			act.Target = dereferenceIRI(gtx, f, act.Target)
-			return nil
-		})
-		g.Go(func() error {
 			act.Instrument = dereferenceIRI(gtx, f, act.Instrument)
-			return nil
-		})
-		g.Go(func() error {
 			act.Result = dereferenceIRI(gtx, f, act.Result)
 			return nil
 		})
@@ -443,12 +438,10 @@ func dereferenceActivityProperties(ctx context.Context, f *fedbox) func(act *pub
 	if f == nil {
 		return func(act *pub.Activity) error { return fmt.Errorf("invalid fedbox storage") }
 	}
-	g, gtx := errgroup.WithContext(ctx)
 	return func(act *pub.Activity) error {
+		g, gtx := errgroup.WithContext(ctx)
 		g.Go(func() error {
-			return pub.OnIntransitiveActivity(act, dereferenceIntransitiveActivityProperties(ctx, f))
-		})
-		g.Go(func() error {
+			pub.OnIntransitiveActivity(act, dereferenceIntransitiveActivityProperties(ctx, f))
 			act.Actor = dereferenceIRI(gtx, f, act.Actor)
 			return nil
 		})
@@ -460,41 +453,19 @@ func dereferenceObjectProperties(ctx context.Context, f *fedbox) func(ob *pub.Ob
 	if f == nil {
 		return func(ob *pub.Object) error { return fmt.Errorf("invalid fedbox storage") }
 	}
-	g, gtx := errgroup.WithContext(ctx)
 	return func(ob *pub.Object) error {
+		g, gtx := errgroup.WithContext(ctx)
 		g.Go(func() error {
 			ob.AttributedTo = dereferenceIRI(gtx, f, ob.AttributedTo)
-			return nil
-		})
-		g.Go(func() error {
 			ob.InReplyTo = dereferenceIRI(gtx, f, ob.InReplyTo)
-			return nil
-		})
-		g.Go(func() error {
 			ob.Tag = dereferenceIRIs(gtx, f, ob.Tag)
-			return nil
-		})
-		g.Go(func() error {
 			ob.To = dereferenceIRIs(ctx, f, ob.To)
-			return nil
-		})
-		g.Go(func() error {
 			ob.CC = dereferenceIRIs(ctx, f, ob.CC)
-			return nil
-		})
-		g.Go(func() error {
 			ob.Bto = dereferenceIRIs(ctx, f, ob.Bto)
-			return nil
-		})
-		g.Go(func() error {
 			ob.BCC = dereferenceIRIs(ctx, f, ob.BCC)
-			return nil
-		})
-		g.Go(func() error {
 			ob.Audience = dereferenceIRIs(ctx, f, ob.Audience)
 			return nil
 		})
-
 		return g.Wait()
 	}
 }
