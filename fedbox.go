@@ -343,11 +343,10 @@ func (m *model) loadDepsForNode(node *n) tea.Cmd {
 		}
 		return nil
 	})
-	err := g.Wait()
-	node.s ^= NodeSyncing
-	if err != nil {
-		return errCmd(err)
-	}
+	go func() {
+		g.Wait()
+		node.s ^= NodeSyncing
+	}()
 	return nil
 }
 
