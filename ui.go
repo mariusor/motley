@@ -395,18 +395,26 @@ func (m *model) displayItem(n *n) tea.Cmd {
 	return nil
 }
 
-func (m *model) View() string {
-	renderWithBorder := lipgloss.NewStyle().
+func renderWithBorder(s string, focused bool) string {
+	borderColour := lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
+	if !focused {
+		borderColour = NewColorPair("#6B3A6F", "#F6C9FF")
+		//borderColour = lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
+	}
+	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
-		BorderForeground(lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}).
-		Padding(0, 1, 0, 1).Render
+		BorderForeground(borderColour).
+		Padding(0, 1, 0, 1).Render(s)
+}
+
+func (m *model) View() string {
 
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			renderWithBorder(m.tree.View()),
-			renderWithBorder(m.pager.View()),
+			renderWithBorder(m.tree.View(), m.tree.list.Focused()),
+			renderWithBorder(m.pager.View(), !m.tree.list.Focused()),
 		),
 		lipgloss.NewStyle().Render(m.status.View()),
 	)
