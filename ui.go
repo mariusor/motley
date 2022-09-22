@@ -24,27 +24,13 @@ const (
 	statusMessageTimeout = time.Second * 2 // how long to show status messages like "stashed!"
 	ellipsis             = "…"
 
-	darkGray = "#333333"
-	wrapAt   = 60
+	wrapAt = 60
 )
 
 var (
-	normalFg    = newFgStyle(NewColorPair("#dddddd", "#1a1a1a"))
-	dimNormalFg = newFgStyle(NewColorPair("#777777", "#A49FA5"))
-
-	brightGrayFg    = newFgStyle(NewColorPair("#979797", "#847A85"))
-	dimBrightGrayFg = newFgStyle(NewColorPair("#4D4D4D", "#C2B8C2"))
-
-	grayFg     = newFgStyle(NewColorPair("#626262", "#909090"))
-	midGrayFg  = newFgStyle(NewColorPair("#4A4A4A", "#B2B2B2"))
-	darkGrayFg = newFgStyle(NewColorPair("#3C3C3C", "#DDDADA"))
-
 	greenFg        = newFgStyle(NewColorPair("#04B575", "#04B575"))
 	semiDimGreenFg = newFgStyle(NewColorPair("#036B46", "#35D79C"))
 	dimGreenFg     = newFgStyle(NewColorPair("#0B5137", "#72D2B0"))
-
-	fuchsiaFg    = newFgStyle(Fuchsia)
-	dimFuchsiaFg = newFgStyle(NewColorPair("#99519E", "#F1A8FF"))
 
 	dullFuchsiaFg    = newFgStyle(NewColorPair("#AD58B4", "#F793FF"))
 	dimDullFuchsiaFg = newFgStyle(NewColorPair("#6B3A6F", "#F6C9FF"))
@@ -59,6 +45,9 @@ var (
 	dullYellowFg = newFgStyle(NewColorPair("#9BA92F", "#6BCB94")) // renders light green on light backgrounds
 	redFg        = newFgStyle(Red)
 	faintRedFg   = newFgStyle(FaintRed)
+
+	hintFg    = lipgloss.NewStyle().Background(hintColor)
+	hintDimFg = lipgloss.NewStyle().Background(hintDimColor)
 )
 
 var (
@@ -72,11 +61,25 @@ var (
 
 // Colors for dark and light backgrounds.
 var (
+	normalFgColor    = NewColorPair("#dddddd", "#1a1a1a")
+	dimNormalFgColor = NewColorPair("#777777", "#A49FA5")
+
+	hintColor    = Indigo       //NewColorPair("#F793FF", "#AD58B4")
+	hintDimColor = SubtleIndigo //NewColorPair("#6B3A6F", "#F6C9FF")
+
+	brightGrayColor    = NewColorPair("#979797", "#847A85")
+	dimBrightGrayColor = NewColorPair("#4D4D4D", "#C2B8C2")
+
+	grayFgColor     = NewColorPair("#626262", "#909090")
+	midGrayFgColor  = NewColorPair("#4A4A4A", "#B2B2B2")
+	darkGrayFgColor = NewColorPair("#3C3C3C", "#DDDADA")
+
 	Indigo       = NewColorPair("#7571F9", "#5A56E0")
 	SubtleIndigo = NewColorPair("#514DC1", "#7D79F6")
 	Cream        = NewColorPair("#FFFDF5", "#FFFDF5")
 	YellowGreen  = NewColorPair("#ECFD65", "#04B575")
 	Fuchsia      = NewColorPair("#EE6FF8", "#EE6FF8")
+	DimFuchsia   = NewColorPair("#99519E", "#F1A8FF")
 	Green        = NewColorPair("#04B575", "#04B575")
 	Red          = NewColorPair("#ED567A", "#FF4672")
 	FaintRed     = NewColorPair("#C74665", "#FF6F91")
@@ -396,10 +399,9 @@ func (m *model) displayItem(n *n) tea.Cmd {
 }
 
 func renderWithBorder(s string, focused bool) string {
-	borderColour := lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
+	borderColour := hintColor
 	if !focused {
-		borderColour = NewColorPair("#6B3A6F", "#F6C9FF")
-		//borderColour = lipgloss.AdaptiveColor{Light: "#F793FF", Dark: "#AD58B4"}
+		borderColour = hintDimColor
 	}
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
@@ -408,7 +410,6 @@ func renderWithBorder(s string, focused bool) string {
 }
 
 func (m *model) View() string {
-
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.JoinHorizontal(

@@ -46,6 +46,11 @@ func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 const treeWidth = 32
 
 func (t *treeModel) View() string {
+	if t.list.Focused() {
+		t.list.Styles.Selected = hintFg
+	} else {
+		t.list.Styles.Selected = hintDimFg
+	}
 	return t.list.View()
 }
 
