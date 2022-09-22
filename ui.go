@@ -14,7 +14,6 @@ import (
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/muesli/reflow/wordwrap"
-	te "github.com/muesli/termenv"
 	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 )
@@ -28,35 +27,18 @@ const (
 )
 
 var (
-	greenFg        = newFgStyle(NewColorPair("#04B575", "#04B575"))
-	semiDimGreenFg = newFgStyle(NewColorPair("#036B46", "#35D79C"))
-	dimGreenFg     = newFgStyle(NewColorPair("#0B5137", "#72D2B0"))
-
-	dullFuchsiaFg    = newFgStyle(NewColorPair("#AD58B4", "#F793FF"))
-	dimDullFuchsiaFg = newFgStyle(NewColorPair("#6B3A6F", "#F6C9FF"))
-
-	indigoFg    = newFgStyle(Indigo)
-	dimIndigoFg = newFgStyle(NewColorPair("#494690", "#9498FF"))
-
-	subtleIndigoFg    = newFgStyle(NewColorPair("#514DC1", "#7D79F6"))
-	dimSubtleIndigoFg = newFgStyle(NewColorPair("#383584", "#BBBDFF"))
-
-	yellowFg     = newFgStyle(YellowGreen)                        // renders light green on light backgrounds
-	dullYellowFg = newFgStyle(NewColorPair("#9BA92F", "#6BCB94")) // renders light green on light backgrounds
-	redFg        = newFgStyle(Red)
-	faintRedFg   = newFgStyle(FaintRed)
+	faintRedFg = newFgStyle(FaintRed)
 
 	hintFg    = lipgloss.NewStyle().Background(hintColor)
 	hintDimFg = lipgloss.NewStyle().Background(hintDimColor)
 )
 
 var (
-	// Color wraps termenv.ColorProfile.Color, which produces a termenv color
-	// for use in termenv styling.
+	// Color wraps lipgloss.ColorProfile.Color, which produces a color for use in termenv styling.
 	Color = lipgloss.ColorProfile().Color
 
 	// HasDarkBackground stores whether the terminal has a dark background.
-	HasDarkBackground = te.HasDarkBackground()
+	HasDarkBackground = lipgloss.HasDarkBackground()
 )
 
 // Colors for dark and light backgrounds.
@@ -101,24 +83,14 @@ var (
 )
 
 var (
-	pagerHelpHeight int
-
 	mintGreen = NewColorPair("#89F0CB", "#89F0CB")
 	darkGreen = NewColorPair("#1C8760", "#1C8760")
 
-	statusBarNoteFg = NewColorPair("#7D7D7D", "#656565")
-	statusBarBg     = NewColorPair("#242424", "#E6E6E6")
-
-	// Styling funcs.
-	statusBarScrollPosStyle        = newStyle(NewColorPair("#5A5A5A", "#949494"), statusBarBg, false)
-	statusBarOKStyle               = newStyle(statusBarNoteFg, statusBarBg, false)
-	statusBarFailStyle             = newStyle(NewColorPair("#1B1B1B", "#f2f2f2"), FaintRed, false)
-	statusBarStashDotStyle         = newStyle(Green, statusBarBg, false)
-	statusBarMessageStyle          = newStyle(mintGreen, darkGreen, false)
-	statusBarMessageStashIconStyle = newStyle(mintGreen, darkGreen, false)
-	statusBarMessageScrollPosStyle = newStyle(mintGreen, darkGreen, false)
-	statusBarMessageHelpStyle      = newStyle(NewColorPair("#B6FFE4", "#B6FFE4"), Green, false)
-	helpViewStyle                  = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
+	statusBarNoteFg       = NewColorPair("#7D7D7D", "#656565")
+	pagerHelpHeight       int
+	statusBarFailStyle    = newStyle(NewColorPair("#1B1B1B", "#f2f2f2"), FaintRed, false)
+	statusBarMessageStyle = newStyle(mintGreen, darkGreen, false)
+	helpViewStyle         = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
 func Launch(conf config.Options, r processing.Store, o osin.Storage, l *logrus.Logger) error {
@@ -127,7 +99,7 @@ func Launch(conf config.Options, r processing.Store, o osin.Storage, l *logrus.L
 }
 
 func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
-	if te.HasDarkBackground() {
+	if lipgloss.HasDarkBackground() {
 		GlamourStyle = "dark"
 	} else {
 		GlamourStyle = "light"
@@ -438,11 +410,6 @@ func Wrap(s string) string {
 	return wordwrap.String(s, wrapAt)
 }
 
-// Keyword applies special formatting to imporant words or phrases.
-func Keyword(s string) string {
-	return te.String(s).Foreground(Color(Green.Dark)).String()
-}
-
 type styleFunc func(string) string
 
 // Returns a termenv style with foreground and background options.
@@ -454,7 +421,7 @@ func newStyle(fg, bg ColorPair, bold bool) func(string) string {
 
 // Returns a new termenv style with background options only.
 func newFgStyle(c ColorPair) styleFunc {
-	return te.Style{}.Foreground(Color(c.Dark)).Styled
+	return lipgloss.Style{}.Foreground(c).Render
 }
 
 func min(a, b int) int {
