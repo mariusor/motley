@@ -410,8 +410,6 @@ func Wrap(s string) string {
 	return wordwrap.String(s, wrapAt)
 }
 
-type styleFunc func(string) string
-
 // Returns a termenv style with foreground and background options.
 func newStyle(fg, bg ColorPair, bold bool) func(string) string {
 	s := lipgloss.Style{}.Foreground(fg).Background(bg)
@@ -420,8 +418,8 @@ func newStyle(fg, bg ColorPair, bold bool) func(string) string {
 }
 
 // Returns a new termenv style with background options only.
-func newFgStyle(c ColorPair) styleFunc {
-	return lipgloss.Style{}.Foreground(c).Render
+func newFgStyle(c ColorPair) lipgloss.Style {
+	return lipgloss.Style{}.Foreground(c)
 }
 
 func min(a, b int) int {

@@ -21,13 +21,13 @@ import (
 )
 
 const (
-	//Unexpandable = "⬚"
 	//HasChanges   = "⧆"
 	//Locked       = "⚿"
 	Collapsed    = "⊞"
 	Expanded     = "⊟"
-	Unexpandable = "⊠"
-	Attention    = "⊡"
+	Unexpandable = "⬚"
+	//Unexpandable = "⊠"
+	Attention = "⊡"
 )
 
 const (
@@ -124,24 +124,27 @@ func (n *n) View() string {
 	}
 	hints := n.s
 	annotation := ""
-	style := lipgloss.NewStyle().Render
+	st := lipgloss.NewStyle()
 	if nodeIsError(n) {
-		style = faintRedFg
+		st = faintRedFg
 		annotation = Attention
 	}
+
 	if n.Item != nil && nodeIsCollapsible(n) {
 		annotation = Expanded
-		if hints.Is(tree.NodeCollapsed) || len(n.c) == 0 {
+		if hints.Is(tree.NodeCollapsed) {
 			annotation = Collapsed
 		}
-		if nodeIsError(n) {
+		if len(n.c) == 0 {
 			annotation = Unexpandable
+			st = st.Faint(true)
 		}
 		if n.s.Is(NodeSyncing) {
 			annotation = Attention
 		}
 	}
-	return style(fmt.Sprintf("%-1s %s", annotation, n.n))
+
+	return fmt.Sprintf("%-1s %s", annotation, st.Render(n.n))
 }
 
 func (n *n) Children() tree.Nodes {
