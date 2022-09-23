@@ -13,11 +13,11 @@ require (
 	github.com/go-ap/fedbox v0.0.0-20220828135636-ee8474a2af95
 	github.com/go-ap/processing v0.0.0-20220917143841-eaa4e873bb7b
 	github.com/joho/godotenv v1.4.0
-	github.com/mariusor/bubbles-tree v0.0.0-20220922174609-d65cd3a430d3
+	github.com/mariusor/bubbles-tree v0.0.0-20220923105104-048b30296311
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.12.0
+	github.com/muesli/termenv v0.13.0
 	github.com/openshift/osin v1.0.1
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
@@ -28,6 +28,7 @@ require (
 	git.sr.ht/~mariusor/go-xsd-duration v0.0.0-20220703122237-02e73435a078 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect

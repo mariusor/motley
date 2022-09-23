@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/ansi"
+	"github.com/muesli/reflow/margin"
 	te "github.com/muesli/termenv"
 )
 
@@ -82,12 +83,12 @@ func (s *statusModel) Init() tea.Cmd {
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
-	s.statusMessage = withPadding(err.Error())
+	s.statusMessage = withPadding(err.Error(), s.width)
 	return s.stateError
 }
 
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
-	s.statusMessage = withPadding(statusMessage)
+	s.statusMessage = withPadding(statusMessage, s.width)
 	return s.noError
 }
 
@@ -238,8 +239,8 @@ func (s *statusModel) Height() int {
 	return height
 }
 
-func withPadding(s string) string {
-	return " " + s + " "
+func withPadding(s string, w int) string {
+	return margin.String(s, uint(w), 1) + " "
 }
 
 func logoView(text string, e env.Type) string {
@@ -254,7 +255,7 @@ func logoView(text string, e env.Type) string {
 	} else {
 		text = fmt.Sprintf("%s", text)
 	}
-	return te.String(withPadding(text)).Bold().Foreground(fg).Background(bg).String()
+	return te.String(withPadding(text, len(text))).Bold().Foreground(fg).Background(bg).String()
 }
 
 // Lightweight version of reflow's indent function.
