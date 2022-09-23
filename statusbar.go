@@ -11,8 +11,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	rw "github.com/mattn/go-runewidth"
-	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/margin"
+	"github.com/muesli/reflow/truncate"
 	te "github.com/muesli/termenv"
 )
 
@@ -83,12 +83,12 @@ func (s *statusModel) Init() tea.Cmd {
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
-	s.statusMessage = withPadding(err.Error(), s.width)
+	s.statusMessage = err.Error()
 	return s.stateError
 }
 
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
-	s.statusMessage = withPadding(statusMessage, s.width)
+	s.statusMessage = statusMessage
 	return s.noError
 }
 
@@ -96,27 +96,22 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	percent := clamp(int(math.Round(s.percent)), 0, 100)
 	scrollPercent := fmt.Sprintf(" %d%% ", percent)
 
-	haveErr := s.state.Is(statusError)
-
 	spinner := s.spinner.View()
 	// Empty space
-	padding := max(0,
-		s.width-
-			ansi.PrintableRuneWidth(spinner)-
-			ansi.PrintableRuneWidth(s.logo)-
-			ansi.PrintableRuneWidth(s.statusMessage)-
-			ansi.PrintableRuneWidth(scrollPercent),
-	)
+	w := s.width - lipgloss.Width(spinner) - lipgloss.Width(s.logo) - lipgloss.Width(scrollPercent) - 1
 
-	emptySpace := strings.Repeat(" ", padding)
 	render := statusBarMessageStyle
-	if haveErr {
+	if s.state.Is(statusError) {
 		render = statusBarFailStyle
 	}
-	fmt.Fprintf(b, "%s%s",
-		s.logo,
-		render(fmt.Sprintf("%s%s%s%s", s.statusMessage, emptySpace, scrollPercent, spinner)),
-	)
+	b.WriteString(s.logo)
+	b.WriteString(render(
+		lipgloss.JoinHorizontal(lipgloss.Left,
+			margin.String(truncate.StringWithTail(s.statusMessage, uint(w), ellipsis), uint(w), 1),
+			scrollPercent,
+			margin.String(spinner, 3, 1),
+		),
+	))
 }
 
 func (s *statusModel) spin(msg tea.Msg) tea.Cmd {
