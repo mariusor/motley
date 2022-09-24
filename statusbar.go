@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	pub "github.com/go-ap/activitypub"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/margin"
 	"github.com/muesli/reflow/truncate"
@@ -120,6 +121,38 @@ func (s *statusModel) spin(msg tea.Msg) tea.Cmd {
 	return tick
 }
 
+type statusNode struct {
+	*n
+}
+
+func (a statusNode) View() string {
+	s := strings.Builder{}
+	switch it := a.Item; it.(type) {
+	case pub.ItemCollection, pub.IRI:
+		fmt.Fprintf(&s, "Collection %s: %d items", a.n.n, len(a.n.c))
+	case pub.Item:
+		switch typ := a.GetType(); {
+		case pub.IntransitiveActivityTypes.Contains(typ) || pub.ActivityTypes.Contains(typ):
+			pub.OnActivity(a.Item, func(act *pub.Activity) error {
+				ob := node(act.Object)
+				fmt.Fprintf(&s, "%s >> %s", typ, statusNode{ob}.View())
+				return nil
+			})
+		case pub.ActorTypes.Contains(typ) || pub.ObjectTypes.Contains(typ):
+			pub.OnObject(a.Item, func(ob *pub.Object) error {
+				fmt.Fprintf(&s, "%s: %s", typ, ob.Name.First().String())
+				return nil
+			})
+		case typ == "":
+			pub.OnObject(a.Item, func(ob *pub.Object) error {
+				fmt.Fprintf(&s, "%s", ob.Name.First().String())
+				return nil
+			})
+		}
+	}
+	return s.String()
+}
+
 func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -129,6 +162,10 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		if s.state.Is(statusBusy) {
 			cmd = s.spin(msg)
+		}
+	case paintMsg:
+		if n := msg.n; n != nil {
+			cmd = s.showStatusMessage(statusNode{n}.View())
 		}
 	case statusState:
 		if !msg.Is(statusError) && s.state.Is(statusError) {

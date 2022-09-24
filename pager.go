@@ -202,7 +202,7 @@ func (p *pagerModel) writeItem(s io.Writer, it pub.Item) error {
 	return fmt.Errorf("unknown activitypub object of type %T", it)
 }
 
-func (p *pagerModel) showItem(it pub.Item) error {
+func (p *pagerModel) showItem(it pub.Item) tea.Cmd {
 	s := strings.Builder{}
 	if err := p.writeItem(&s, it); err != nil {
 		p.logFn("err: %s", err)
@@ -227,6 +227,10 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case paintMsg:
+		if n := msg.n; n != nil {
+			cmds = append(cmds, p.showItem(n.Item))
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "home", "g":

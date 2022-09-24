@@ -170,27 +170,26 @@ func (m *model) setSize(w, h int) {
 	}
 }
 
-type paintMsg struct{}
+type paintMsg struct {
+	*n
+}
 
-func paintCmd() tea.Msg {
-	return paintMsg{}
+func paintCmd(n *n) tea.Cmd {
+	return func() tea.Msg {
+		return paintMsg{n}
+	}
 }
 
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
 	switch msg := msg.(type) {
-	case paintMsg:
-		if m.currentNode != nil {
-			m.logFn("current node: %s", m.currentNode.n)
-			m.displayItem(m.currentNode)
-		}
 	case *n:
 		m.currentNodePosition = m.tree.list.Cursor()
 		m.currentNode = msg
 		ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
 		cmd := m.loadDepsForNode(ctx, m.currentNode)
-		cmds = append(cmds, paintCmd, cmd)
+		cmds = append(cmds, paintCmd(m.currentNode), cmd)
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))
 	case tea.KeyMsg:
@@ -227,7 +226,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		}
 	}
 	if m.status.state.Is(statusBusy) && !m.tree.IsSyncing() {
-		cmds = append(cmds, m.status.stoppedLoading, paintCmd)
+		cmds = append(cmds, m.status.stoppedLoading, paintCmd(m.currentNode))
 	}
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
@@ -357,19 +356,6 @@ func quitCmd() tea.Msg {
 
 type advanceMsg struct {
 	*n
-}
-
-func (m *model) displayItem(n *n) tea.Cmd {
-	it := n.Item
-	switch it.(type) {
-	case pub.ItemCollection, pub.IRI:
-		m.pager.showItem(it)
-		return m.status.showStatusMessage(fmt.Sprintf("Collection %s: %d items", n.n, len(n.c)))
-	case pub.Item:
-		m.pager.showItem(it)
-		return m.status.showStatusMessage(fmt.Sprintf("%s: %s", it.GetType(), it.GetLink()))
-	}
-	return nil
 }
 
 func renderWithBorder(s string, focused bool) string {
