@@ -42,7 +42,17 @@ func (p *pagerModel) setSize(w, h int) {
 	p.logFn("Pager wxh: %dx%d", w, h)
 }
 
-func (p *pagerModel) writePropertyWithLabel(s io.Writer, l string, it pub.Item) {
+type pagerNode struct {
+	*n
+}
+
+func (p pagerNode) View() string {
+	s := strings.Builder{}
+	p.writeItem(&s, p.n.Item)
+	return lipgloss.NewStyle().Render(s.String())
+}
+
+func (p pagerNode) writePropertyWithLabel(s io.Writer, l string, it pub.Item) {
 	if pub.IsNil(it) {
 		return
 	}
@@ -54,7 +64,7 @@ func (p *pagerModel) writePropertyWithLabel(s io.Writer, l string, it pub.Item) 
 	s.Write([]byte{'\n'})
 }
 
-func (p *pagerModel) writeObject(s io.Writer) func(ob *pub.Object) error {
+func (p pagerNode) writeObject(s io.Writer) func(ob *pub.Object) error {
 	return func(ob *pub.Object) error {
 		fmt.Fprintf(s, "Type: %s\n", ob.Type)
 		fmt.Fprintf(s, "IRI: %s\n", ob.ID)
@@ -90,7 +100,7 @@ func (p *pagerModel) writeObject(s io.Writer) func(ob *pub.Object) error {
 		return nil
 	}
 }
-func (p *pagerModel) writeActivity(s io.Writer) func(act *pub.Activity) error {
+func (p pagerNode) writeActivity(s io.Writer) func(act *pub.Activity) error {
 	return func(act *pub.Activity) error {
 		if err := pub.OnIntransitiveActivity(act, p.writeIntransitiveActivity(s)); err != nil {
 			return err
@@ -99,7 +109,7 @@ func (p *pagerModel) writeActivity(s io.Writer) func(act *pub.Activity) error {
 		return nil
 	}
 }
-func (p *pagerModel) writeIntransitiveActivity(s io.Writer) func(act *pub.IntransitiveActivity) error {
+func (p pagerNode) writeIntransitiveActivity(s io.Writer) func(act *pub.IntransitiveActivity) error {
 	return func(act *pub.IntransitiveActivity) error {
 		if err := pub.OnObject(act, p.writeObject(s)); err != nil {
 			return err
@@ -112,7 +122,7 @@ func (p *pagerModel) writeIntransitiveActivity(s io.Writer) func(act *pub.Intran
 		return nil
 	}
 }
-func (p *pagerModel) writeActor(s io.Writer) func(act *pub.Actor) error {
+func (p pagerNode) writeActor(s io.Writer) func(act *pub.Actor) error {
 	return func(act *pub.Actor) error {
 		if err := pub.OnObject(act, p.writeObject(s)); err != nil {
 			return err
@@ -128,28 +138,28 @@ func (p *pagerModel) writeActor(s io.Writer) func(act *pub.Actor) error {
 		return nil
 	}
 }
-func (p *pagerModel) writeItemCollection(s io.Writer) func(col *pub.ItemCollection) error {
+func (p pagerNode) writeItemCollection(s io.Writer) func(col *pub.ItemCollection) error {
 	return func(col *pub.ItemCollection) error {
 		for _, it := range col.Collection() {
 			if err := p.writeItem(s, it); err != nil {
-				p.logFn("error: %s", err)
+				//p.logFn("error: %s", err)
 			}
 		}
 		return nil
 	}
 }
-func (p *pagerModel) writeCollection(s io.Writer) func(col pub.CollectionInterface) error {
+func (p pagerNode) writeCollection(s io.Writer) func(col pub.CollectionInterface) error {
 	return func(col pub.CollectionInterface) error {
 		for _, it := range col.Collection() {
 			if err := p.writeItem(s, it); err != nil {
-				p.logFn("error: %s", err)
+				//p.logFn("error: %s", err)
 			}
 		}
 		return nil
 	}
 }
 
-func (p *pagerModel) writeNaturalLanguageValuesWithLabel(s io.Writer, l string, values pub.NaturalLanguageValues) error {
+func (p pagerNode) writeNaturalLanguageValuesWithLabel(s io.Writer, l string, values pub.NaturalLanguageValues) error {
 	ll := len(values)
 	if ll == 0 {
 		return nil
@@ -172,7 +182,7 @@ func (p *pagerModel) writeNaturalLanguageValuesWithLabel(s io.Writer, l string, 
 	return nil
 }
 
-func (p *pagerModel) writeItem(s io.Writer, it pub.Item) error {
+func (p pagerNode) writeItem(s io.Writer, it pub.Item) error {
 	if it == nil {
 		return nil
 	}
@@ -201,13 +211,9 @@ func (p *pagerModel) writeItem(s io.Writer, it pub.Item) error {
 	return fmt.Errorf("unknown activitypub object of type %T", it)
 }
 
-func (p *pagerModel) showItem(it pub.Item) tea.Cmd {
-	s := strings.Builder{}
-	if err := p.writeItem(&s, it); err != nil {
-		p.logFn("err: %s", err)
-		return nil
-	}
-	p.setContent(s.String())
+func (p *pagerModel) updateNode(n *n) tea.Cmd {
+	nn := pagerNode{n}
+	p.setContent(nn.View())
 	return nil
 }
 
@@ -227,9 +233,7 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case paintMsg:
-		if n := msg.n; n != nil {
-			cmds = append(cmds, p.showItem(n.Item))
-		}
+		cmds = append(cmds, p.updateNode(msg.n))
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "home", "g":
