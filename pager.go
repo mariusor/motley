@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 )
@@ -253,56 +252,4 @@ func (p *pagerModel) View() string {
 	var b strings.Builder
 	fmt.Fprint(&b, p.viewport.View())
 	return lipgloss.NewStyle().Width(p.viewport.Width).Render(b.String())
-}
-
-// COMMANDS
-
-func renderWithGlamour(m pagerModel, md string) tea.Cmd {
-	return func() tea.Msg {
-		s, err := glamourRender(m, md)
-		if err != nil {
-			return err
-		}
-		return s
-	}
-}
-
-// This is where the magic happens.
-func glamourRender(m pagerModel, markdown string) (string, error) {
-	// initialize glamour
-	var gs glamour.TermRendererOption
-	if GlamourStyle == "auto" {
-		gs = glamour.WithAutoStyle()
-	} else {
-		gs = glamour.WithStylePath(GlamourStyle)
-	}
-
-	width := max(0, min(int(GlamourMaxWidth), m.viewport.Width))
-	r, err := glamour.NewTermRenderer(
-		gs,
-		glamour.WithWordWrap(width),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	out, err := r.Render(markdown)
-	if err != nil {
-		return "", err
-	}
-
-	// trim lines
-	lines := strings.Split(out, "\n")
-
-	var content string
-	for i, s := range lines {
-		content += strings.TrimSpace(s)
-
-		// don't add an artificial newline after the last split
-		if i+1 < len(lines) {
-			content += "\n"
-		}
-	}
-
-	return content, nil
 }
