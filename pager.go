@@ -38,7 +38,7 @@ func (p *pagerModel) Init() tea.Cmd {
 
 func (p *pagerModel) setSize(w, h int) {
 	p.viewport.Width = w
-	p.viewport.Height = h
+	p.viewport.Height = h - 2 // padding
 	p.logFn("Pager wxh: %dx%d", w, h)
 }
 
@@ -254,6 +254,10 @@ func (p *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (p *pagerModel) View() string {
 	var b strings.Builder
-	fmt.Fprint(&b, p.viewport.View())
+
+	fmt.Fprint(&b,
+		lipgloss.NewStyle().Padding(1).Height(p.viewport.Height-2).
+			Render(p.viewport.View()),
+	)
 	return lipgloss.NewStyle().Width(p.viewport.Width).Render(b.String())
 }
