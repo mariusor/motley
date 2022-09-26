@@ -99,7 +99,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 
 	spinner := s.spinner.View()
 	// Empty space
-	w := s.width - lipgloss.Width(spinner) - lipgloss.Width(s.logo) - lipgloss.Width(scrollPercent) - 1
+	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(s.logo)-lipgloss.Width(scrollPercent)-1)
 
 	render := statusBarMessageStyle
 	if s.state.Is(statusError) {
