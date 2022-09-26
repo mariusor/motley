@@ -22,11 +22,12 @@ import (
 const (
 	//HasChanges   = "⧆"
 	//Locked       = "⚿"
+	//Unexpandable = "⊠"
+
 	Collapsed    = "⊞"
 	Expanded     = "⊟"
 	Unexpandable = "⬚"
-	//Unexpandable = "⊠"
-	Attention = "⊡"
+	Attention    = "⊡"
 )
 
 const (
