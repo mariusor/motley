@@ -3,6 +3,7 @@ package motley
 import (
 	"context"
 	"fmt"
+	"github.com/go-ap/filters"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
-	fbox "github.com/go-ap/fedbox/activitypub"
 	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/mariusor/qstring"
@@ -101,7 +101,7 @@ func iriIsCollection(iri pub.IRI) bool {
 	if _, typ := pub.Split(iri); len(typ) > 0 {
 		return true
 	}
-	if _, typ := fbox.FedBOXCollections.Split(iri); len(typ) > 0 {
+	if _, typ := filters.FedBOXCollections.Split(iri); len(typ) > 0 {
 		return true
 	}
 	return false

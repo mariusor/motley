@@ -61,17 +61,15 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 		LogLevel: logrus.DebugLevel,
 		Env:      environ,
 	}
-	var (
-		db  processing.Store
-		aDb osin.Storage
-	)
+	var db processing.Store
+
 	if envFile := c.String("config"); envFile != "" {
 		var err error
 		if conf, err = config.LoadFromEnv(envFile, environ, time.Second); err != nil {
 			l.Errorf("Unable to load config file for environment %s: %s", environ, err)
 			return nil, fmt.Errorf("unable to load config in path: %s", envFile)
 		}
-		db, aDb, err = Storage(conf, l)
+		db, err = Storage(conf, l)
 		if err != nil {
 			l.Errorf("Unable to access storage: %s", err)
 			return nil, fmt.Errorf("unable to access %q storage: %s", conf.Storage, conf.StoragePath)
@@ -92,7 +90,7 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 			conf.Storage = config.StorageType(typ)
 		}
 		var err error
-		db, aDb, err = StorageFromDirectPath(conf, l)
+		db, err = StorageFromDirectPath(conf, l)
 		if err != nil {
 			l.Errorf("Unable to access storage: %s", err)
 			return nil, fmt.Errorf("unable to access %q storage: %s", conf.Storage, conf.StoragePath)
@@ -108,7 +106,7 @@ func setup(c *cli.Context, l *logrus.Logger) (*Control, error) {
 	//	return nil, fmt.Errorf("base url was not passed to the binary")
 	//}
 
-	return New(aDb, db, conf), nil
+	return New(db.(osin.Storage), db, conf), nil
 }
 
 var TuiAction = func(c *cli.Context) error {
