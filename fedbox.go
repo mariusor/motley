@@ -574,7 +574,7 @@ func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IR
 			return errors.Annotatef(err, "failed to load search: %s", loadIRI)
 		}
 
-		if pub.IsItemCollection(col) {
+		if col.IsCollection() {
 			maxItems := 0
 			err = pub.OnCollectionIntf(col, func(c pub.CollectionInterface) error {
 				maxItems = int(c.Count())
@@ -618,6 +618,7 @@ func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iris ...pub.IRI)
 			cancelFn()
 		} else {
 			f.logFn("%s", err)
+			return err
 		}
 	}
 	return nil
