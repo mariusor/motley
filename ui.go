@@ -71,10 +71,10 @@ var (
 
 // Functions for styling strings.
 var (
-	IndigoFg       func(string) string = lipgloss.Style{}.Foreground(Indigo).Render
-	SubtleIndigoFg                     = lipgloss.Style{}.Foreground(SubtleIndigo).Render
-	RedFg                              = lipgloss.Style{}.Foreground(Red).Render
-	FaintRedFg                         = lipgloss.Style{}.Foreground(FaintRed).Render
+	IndigoFg       = lipgloss.Style{}.Foreground(Indigo).Render
+	SubtleIndigoFg = lipgloss.Style{}.Foreground(SubtleIndigo).Render
+	RedFg          = lipgloss.Style{}.Foreground(Red).Render
+	FaintRedFg     = lipgloss.Style{}.Foreground(FaintRed).Render
 )
 
 var (
@@ -397,7 +397,7 @@ func Wrap(s string) string {
 }
 
 // Returns a termenv style with foreground and background options.
-func newStyle(fg, bg ColorPair, bold bool) func(string) string {
+func newStyle(fg, bg ColorPair, bold bool) func(...string) string {
 	s := lipgloss.Style{}.Foreground(fg).Background(bg)
 	s = s.Bold(bold)
 	return s.Render
