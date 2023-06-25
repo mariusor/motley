@@ -3,7 +3,6 @@ package motley
 import (
 	"context"
 	"fmt"
-	"github.com/go-ap/filters"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -12,10 +11,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
-	"github.com/go-ap/processing"
+	f "github.com/go-ap/fedbox"
+	"github.com/go-ap/filters"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/mariusor/qstring"
-	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -43,14 +42,13 @@ var logFn = func(string, ...interface{}) {}
 type fedbox struct {
 	tree  map[pub.IRI]pub.Item
 	iri   pub.IRI
-	s     processing.Store
-	o     osin.Storage
+	s     f.FullStorage
 	logFn loggerFn
 }
 
-func FedBOX(base pub.IRI, r processing.Store, o osin.Storage, l *logrus.Logger) *fedbox {
+func FedBOX(base pub.IRI, r f.FullStorage, l *logrus.Logger) *fedbox {
 	logFn = l.Infof
-	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, o: o, logFn: l.Infof}
+	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, logFn: l.Infof}
 }
 
 func (f *fedbox) getService() pub.Item {

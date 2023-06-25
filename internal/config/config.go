@@ -43,26 +43,25 @@ type Options struct {
 type StorageType string
 
 const (
-	KeyENV          = "ENV"
-	KeyTimeOut      = "TIME_OUT"
-	KeyLogLevel     = "LOG_LEVEL"
-	KeyHostname     = "HOSTNAME"
-	KeyHTTPS        = "HTTPS"
-	KeyCertPath     = "CERT_PATH"
-	KeyKeyPath      = "KEY_PATH"
-	KeyListen       = "LISTEN"
-	KeyDBHost       = "DB_HOST"
-	KeyDBPort       = "DB_PORT"
-	KeyDBName       = "DB_NAME"
-	KeyDBUser       = "DB_USER"
-	KeyDBPw         = "DB_PASSWORD"
-	KeyStorage      = "STORAGE"
-	KeyStoragePath  = "STORAGE_PATH"
-	StorageBoltDB   = StorageType("boltdb")
-	StorageFS       = StorageType("fs")
-	StorageBadger   = StorageType("badger")
-	StoragePostgres = StorageType("postgres")
-	StorageSqlite   = StorageType("sqlite")
+	KeyENV         = "ENV"
+	KeyTimeOut     = "TIME_OUT"
+	KeyLogLevel    = "LOG_LEVEL"
+	KeyHostname    = "HOSTNAME"
+	KeyHTTPS       = "HTTPS"
+	KeyCertPath    = "CERT_PATH"
+	KeyKeyPath     = "KEY_PATH"
+	KeyListen      = "LISTEN"
+	KeyDBHost      = "DB_HOST"
+	KeyDBPort      = "DB_PORT"
+	KeyDBName      = "DB_NAME"
+	KeyDBUser      = "DB_USER"
+	KeyDBPw        = "DB_PASSWORD"
+	KeyStorage     = "STORAGE"
+	KeyStoragePath = "STORAGE_PATH"
+	StorageFS      = StorageType("fs")
+	StorageSqlite  = StorageType("sqlite")
+	StorageBoltDB  = StorageType("boltdb")
+	StorageBadger  = StorageType("badger")
 )
 
 const defaultPerm = os.ModeDir | os.ModePerm | 0700

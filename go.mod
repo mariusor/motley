@@ -3,6 +3,7 @@ module git.sr.ht/~marius/motley
 go 1.19
 
 require (
+	github.com/alecthomas/kong v0.8.0
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
@@ -10,7 +11,6 @@ require (
 	github.com/go-ap/errors v0.0.0-20221205040414-01c1adfc98ea
 	github.com/go-ap/fedbox v0.0.0-20230624184347-4c9681fd53f9
 	github.com/go-ap/filters v0.0.0-20230624183827-42dc76100860
-	github.com/go-ap/processing v0.0.0-20230624183720-f155e5e6dd15
 	github.com/go-ap/storage-badger v0.0.0-20230624184045-6db937bf4ca3
 	github.com/go-ap/storage-boltdb v0.0.0-20230624184030-cfb0d088468e
 	github.com/go-ap/storage-fs v0.0.0-20230624183918-cb56561fffde
@@ -21,10 +21,8 @@ require (
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.1
-	github.com/openshift/osin v1.0.1
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/sync v0.3.0
-	gopkg.in/urfave/cli.v2 v2.0.0-20190806201727-b62605953717
 )
 
 require (
@@ -32,7 +30,6 @@ require (
 	git.sr.ht/~mariusor/lw v0.0.0-20230317075520-07e173563bf8 // indirect
 	git.sr.ht/~mariusor/wrapper v0.0.0-20230104101555-9bfc303f6588 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -43,6 +40,7 @@ require (
 	github.com/go-ap/auth v0.0.0-20230623141119-f4b6096796e8 // indirect
 	github.com/go-ap/client v0.0.0-20230623140942-8775194a9f6a // indirect
 	github.com/go-ap/jsonld v0.0.0-20221030091449-f2a191312c73 // indirect
+	github.com/go-ap/processing v0.0.0-20230624183720-f155e5e6dd15 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-chi/chi/v5 v5.0.8 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
@@ -63,6 +61,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.17 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
+	github.com/openshift/osin v1.0.1 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

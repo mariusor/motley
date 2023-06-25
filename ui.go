@@ -3,6 +3,7 @@ package motley
 import (
 	"context"
 	"fmt"
+	f "github.com/go-ap/fedbox"
 	"time"
 
 	"git.sr.ht/~marius/motley/internal/config"
@@ -11,10 +12,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
-	"github.com/go-ap/processing"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/muesli/reflow/wordwrap"
-	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 )
 
@@ -93,9 +92,10 @@ var (
 	helpViewStyle         = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-func Launch(conf config.Options, r processing.Store, o osin.Storage, l *logrus.Logger) error {
+func Launch(conf config.Options, r f.FullStorage, l *logrus.Logger) error {
 	base := pub.IRI(conf.BaseURL)
-	return tea.NewProgram(newModel(FedBOX(base, r, o, l), conf.Env, l)).Start()
+	_, err := tea.NewProgram(newModel(FedBOX(base, r, l), conf.Env, l)).Run()
+	return err
 }
 
 func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
