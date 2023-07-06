@@ -52,7 +52,11 @@ func (p pagerNode) View() string {
 	return lipgloss.NewStyle().Render(s.String())
 }
 
-func (p pagerNode) writePropertyWithLabel(s io.Writer, l string, it pub.Item) {
+func (p pagerNode) writeActorItemIdentifier(s io.Writer, it pub.Item) {
+	p.writeActorIdentifier(s, it)
+}
+
+func (p pagerNode) writeItemWithLabel(s io.Writer, l string, it pub.Item) {
 	if pub.IsNil(it) {
 		return
 	}
@@ -66,18 +70,24 @@ func (p pagerNode) writePropertyWithLabel(s io.Writer, l string, it pub.Item) {
 
 func (p pagerNode) writeObject(s io.Writer) func(ob *pub.Object) error {
 	return func(ob *pub.Object) error {
-		fmt.Fprintf(s, "Type: %s\n", ob.Type)
 		fmt.Fprintf(s, "IRI: %s\n", ob.ID)
+		if len(ob.Type) > 0 {
+			m := textinput.New()
+			m.Prompt = "Type: "
+			m.SetValue(string(ob.Type))
+			fmt.Fprintf(s, "%s\n", m.View())
+		}
 		if len(ob.MediaType) > 0 {
 			fmt.Fprintf(s, "MediaType: %s\n", ob.MediaType)
 		}
 
-		p.writePropertyWithLabel(s, "AttributedTo", ob.AttributedTo)
-		p.writePropertyWithLabel(s, "To", ob.To)
-		p.writePropertyWithLabel(s, "CC", ob.CC)
-		p.writePropertyWithLabel(s, "Bto", ob.Bto)
-		p.writePropertyWithLabel(s, "BCC", ob.BCC)
-		p.writePropertyWithLabel(s, "Audience", ob.Audience)
+		p.writeActorItemIdentifier(s, ob.AttributedTo)
+		fmt.Fprintf(s, "Recipients: ")
+		p.writeActorItemIdentifier(s, ob.To)
+		p.writeItemWithLabel(s, "CC", ob.CC)
+		p.writeItemWithLabel(s, "Bto", ob.Bto)
+		p.writeItemWithLabel(s, "BCC", ob.BCC)
+		p.writeItemWithLabel(s, "Audience", ob.Audience)
 
 		p.writeNaturalLanguageValuesWithLabel(s, "Name", ob.Name)
 		p.writeNaturalLanguageValuesWithLabel(s, "Summary", ob.Summary)
@@ -91,12 +101,12 @@ func (p pagerNode) writeObject(s io.Writer) func(ob *pub.Object) error {
 			}
 		}
 
-		p.writePropertyWithLabel(s, "URL", ob.URL)
+		p.writeItemWithLabel(s, "URL", ob.URL)
 
-		p.writePropertyWithLabel(s, "Context", ob.Context)
-		p.writePropertyWithLabel(s, "InReplyTo", ob.InReplyTo)
+		p.writeItemWithLabel(s, "Context", ob.Context)
+		p.writeItemWithLabel(s, "InReplyTo", ob.InReplyTo)
 
-		p.writePropertyWithLabel(s, "Tag", ob.Tag)
+		p.writeItemWithLabel(s, "Tag", ob.Tag)
 		return nil
 	}
 }
@@ -105,7 +115,7 @@ func (p pagerNode) writeActivity(s io.Writer) func(act *pub.Activity) error {
 		if err := pub.OnIntransitiveActivity(act, p.writeIntransitiveActivity(s)); err != nil {
 			return err
 		}
-		p.writePropertyWithLabel(s, "Object", act.Object)
+		p.writeItemWithLabel(s, "Object", act.Object)
 		return nil
 	}
 }
@@ -114,28 +124,17 @@ func (p pagerNode) writeIntransitiveActivity(s io.Writer) func(act *pub.Intransi
 		if err := pub.OnObject(act, p.writeObject(s)); err != nil {
 			return err
 		}
-		p.writePropertyWithLabel(s, "Actor", act.Actor)
-		p.writePropertyWithLabel(s, "Target", act.Target)
-		p.writePropertyWithLabel(s, "Result", act.Result)
-		p.writePropertyWithLabel(s, "Origin", act.Origin)
-		p.writePropertyWithLabel(s, "Instrument", act.Instrument)
+		p.writeItemWithLabel(s, "Actor", act.Actor)
+		p.writeItemWithLabel(s, "Target", act.Target)
+		p.writeItemWithLabel(s, "Result", act.Result)
+		p.writeItemWithLabel(s, "Origin", act.Origin)
+		p.writeItemWithLabel(s, "Instrument", act.Instrument)
 		return nil
 	}
 }
 func (p pagerNode) writeActor(s io.Writer) func(act *pub.Actor) error {
 	return func(act *pub.Actor) error {
-		if err := pub.OnObject(act, p.writeObject(s)); err != nil {
-			return err
-		}
-		p.writeNaturalLanguageValuesWithLabel(s, "PreferredUsername", act.PreferredUsername)
-		p.writePropertyWithLabel(s, "Streams", act.Streams)
-		if act.Endpoints != nil {
-			p.writeItem(s, act.Endpoints.SharedInbox)
-		}
-		if len(act.PublicKey.ID) > 0 {
-			fmt.Fprintf(s, "PublicKey: %s", act.PublicKey.PublicKeyPem)
-		}
-		return nil
+		return p.writeActorIdentifier(s, act)
 	}
 }
 func (p pagerNode) writeItemCollection(s io.Writer) func(col *pub.ItemCollection) error {
@@ -180,6 +179,18 @@ func (p pagerNode) writeNaturalLanguageValuesWithLabel(s io.Writer, l string, va
 		fmt.Fprintf(s, "%s: [ %s ]\n", l, strings.Join(vals, ", "))
 	}
 	return nil
+}
+
+func (p pagerNode) writeActorIdentifier(s io.Writer, it pub.Item) error {
+	if c, ok := it.(pub.ItemCollection); ok && len(c) == 0 {
+		return nil
+	}
+	return pub.OnActor(it, func(act *pub.Actor) error {
+		if act.ID.Equals(pub.PublicNS, true) {
+			return nil
+		}
+		return pub.OnObject(act, p.writeObject(s))
+	})
 }
 
 func (p pagerNode) writeItem(s io.Writer, it pub.Item) error {
