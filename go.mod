@@ -7,7 +7,7 @@ require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
-	github.com/go-ap/activitypub v0.0.0-20230623140027-da408bbcc578
+	github.com/go-ap/activitypub v0.0.0-20230626173101-16e4163853e3
 	github.com/go-ap/errors v0.0.0-20221205040414-01c1adfc98ea
 	github.com/go-ap/fedbox v0.0.0-20230624184347-4c9681fd53f9
 	github.com/go-ap/filters v0.0.0-20230624183827-42dc76100860
@@ -16,11 +16,11 @@ require (
 	github.com/go-ap/storage-fs v0.0.0-20230624183918-cb56561fffde
 	github.com/go-ap/storage-sqlite v0.0.0-20230624184017-62d6e28c314d
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20220923105104-048b30296311
+	github.com/mariusor/bubbles-tree v0.0.0-20230706115956-9813a3f54f62
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.14
 	github.com/muesli/reflow v0.3.0
-	github.com/muesli/termenv v0.15.1
+	github.com/muesli/termenv v0.15.2
 	github.com/sirupsen/logrus v1.9.0
 	golang.org/x/sync v0.3.0
 )
@@ -37,10 +37,10 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/go-ap/auth v0.0.0-20230623141119-f4b6096796e8 // indirect
-	github.com/go-ap/client v0.0.0-20230623140942-8775194a9f6a // indirect
+	github.com/go-ap/auth v0.0.0-20230626173211-12539b44dab6 // indirect
+	github.com/go-ap/client v0.0.0-20230626173150-f30f1cc74140 // indirect
 	github.com/go-ap/jsonld v0.0.0-20221030091449-f2a191312c73 // indirect
-	github.com/go-ap/processing v0.0.0-20230624183720-f155e5e6dd15 // indirect
+	github.com/go-ap/processing v0.0.0-20230704143302-2f703964bf38 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-chi/chi/v5 v5.0.8 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
@@ -71,16 +71,16 @@ require (
 	github.com/valyala/fastjson v1.6.4 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/net v0.11.0 // indirect
-	golang.org/x/oauth2 v0.9.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/term v0.9.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/net v0.12.0 // indirect
+	golang.org/x/oauth2 v0.10.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/term v0.10.0 // indirect
+	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/tools v0.10.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	lukechampine.com/uint128 v1.3.0 // indirect
 	modernc.org/cc/v3 v3.41.0 // indirect
 	modernc.org/ccgo/v3 v3.16.14 // indirect
