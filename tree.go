@@ -10,20 +10,9 @@ type treeModel struct {
 	list *tree.Model
 }
 
-func symbols() tree.DrawSymbols {
-	return tree.Symbols{
-		Width:            3,
-		Vertical:         "│ ",
-		VerticalAndRight: "├─",
-		UpAndRight:       "╰─",
-
-		Ellipsis: "…",
-	}
-}
-
 func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 	ls := tree.New(t)
-	ls.Symbols = symbols()
+	ls.Symbols = tree.RoundedSymbols()
 
 	return treeModel{
 		commonModel: common,
