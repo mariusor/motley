@@ -8,7 +8,10 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/go-ap/fedbox"
 	"github.com/sirupsen/logrus"
+	"io"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -23,7 +26,18 @@ var Motley struct {
 
 var l = logrus.New()
 
+func openlog(name string) io.Writer {
+	f, err := os.OpenFile(filepath.Join("/var/tmp/", name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		return io.Discard
+	}
+	return f
+}
+
 func main() {
+	l.SetOutput(openlog("motley"))
+	l.SetFormatter(&logrus.TextFormatter{DisableQuote: true, DisableTimestamp: true})
+
 	ktx := kong.Parse(
 		&Motley,
 		kong.Bind(l),
@@ -42,10 +56,12 @@ func main() {
 		ktx.Exit(1)
 	}
 
+	l.Infof("Started")
 	if err := cmd.ShowTui(conf, l, stores...); err != nil {
 		l.Errorf("%s", err)
 		ktx.Exit(1)
 	}
+	l.Infof("Exiting")
 	ktx.Exit(0)
 }
 

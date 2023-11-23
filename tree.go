@@ -21,7 +21,7 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 }
 
 func (t *treeModel) Init() tea.Cmd {
-	t.logFn("tree init")
+	t.logFn("Tree Model init")
 	return t.list.Init()
 }
 

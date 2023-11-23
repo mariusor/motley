@@ -119,14 +119,15 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 }
 
 type commonModel struct {
-	f      *fedbox
-	logFn  func(string, ...interface{})
-	width  int
-	height int
+	f     *fedbox
+	logFn func(string, ...interface{})
 }
 
 type model struct {
 	*commonModel
+
+	width  int
+	height int
 
 	currentNode         *n
 	currentNodePosition int
@@ -138,7 +139,7 @@ type model struct {
 }
 
 func (m *model) Init() tea.Cmd {
-	m.logFn("ui init")
+	m.logFn("UI init")
 	m.breadCrumbs = make([]*tree.Model, 0)
 	return tea.Batch(
 		m.tree.Init(),
@@ -154,11 +155,14 @@ func (m *model) setSize(w, h int) {
 	m.logFn("UI wxh: %dx%d", w, h)
 
 	h = h - m.status.Height() - 2 // 2 for border
-	w = w - 2 - 2                 // 2 for padding, 2 for border
+	w = w - 2 - 2                 // 1 for padding, 1 for border
 
-	tw := max(treeWidth, int(0.30*float32(w)))
-	m.tree.setSize(tw-1-1, h)    // 1 for padding, 1 for border
-	m.pager.setSize(w-tw-1-1, h) // 1 for padding, 1 for border
+	tw := max(treeWidth, int(0.4*float32(w)))
+	m.tree.setSize(tw, h)
+	m.pager.setSize(w-tw, h)
+	m.status.width = w
+
+	m.logFn("Statusbar wxh: %dx%d", m.status.width, m.status.Height())
 
 	if m.pager.viewport.PastBottom() {
 		m.logFn("Pager is past bottom")
@@ -170,13 +174,13 @@ func (m *model) setSize(w, h int) {
 	}
 }
 
-type paintMsg struct {
+type nodeUpdateMsg struct {
 	*n
 }
 
-func paintCmd(n *n) tea.Cmd {
+func nodeUpdateCmd(n *n) tea.Cmd {
 	return func() tea.Msg {
-		return paintMsg{n}
+		return nodeUpdateMsg{n}
 	}
 }
 
@@ -189,7 +193,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		m.currentNode = msg
 		ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
 		cmd := m.loadDepsForNode(ctx, m.currentNode)
-		cmds = append(cmds, paintCmd(m.currentNode), cmd)
+		cmds = append(cmds, nodeUpdateCmd(m.currentNode), cmd)
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))
 	case tea.KeyMsg:
@@ -226,7 +230,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		}
 	}
 	if m.status.state.Is(statusBusy) && !m.tree.IsSyncing() {
-		cmds = append(cmds, m.status.stoppedLoading, paintCmd(m.currentNode))
+		cmds = append(cmds, m.status.stoppedLoading, nodeUpdateCmd(m.currentNode))
 	}
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
@@ -235,7 +239,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
 	p, cmd := m.pager.Update(msg)
-	m.pager = *(p.(*pagerModel))
+	if pp, ok := p.(pagerModel); ok {
+		m.pager = pp
+	} else {
+		return errCmd(fmt.Errorf("invalid pager: %T", p))
+	}
 	return cmd
 }
 

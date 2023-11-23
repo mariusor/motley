@@ -39,6 +39,7 @@ const (
 type statusModel struct {
 	*commonModel
 
+	width int
 	logo  string
 	state statusState
 
@@ -71,7 +72,6 @@ func initializeSpinner() spinner.Model {
 func newStatusModel(common *commonModel) statusModel {
 	// Text input for search
 
-	common.logFn("initializing status bar")
 	return statusModel{
 		commonModel: common,
 		spinner:     initializeSpinner(),
@@ -79,7 +79,7 @@ func newStatusModel(common *commonModel) statusModel {
 }
 
 func (s *statusModel) Init() tea.Cmd {
-	s.logFn("status init")
+	s.logFn("Status Bar init")
 	return nil
 }
 
@@ -89,6 +89,9 @@ func (s *statusModel) showError(err error) tea.Cmd {
 }
 
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
+	if lipgloss.Height(statusMessage) > 1 {
+		statusMessage = strings.ReplaceAll(strings.ReplaceAll(statusMessage, "\r", ""), "\n", " ")
+	}
 	s.statusMessage = statusMessage
 	return s.noError
 }
@@ -163,10 +166,8 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if s.state.Is(statusBusy) {
 			cmd = s.spin(msg)
 		}
-	case paintMsg:
-		if n := msg.n; n != nil {
-			cmd = s.showStatusMessage(statusNode{n}.View())
-		}
+	case nodeUpdateMsg:
+		cmd = s.showStatusMessage(statusNode{msg.n}.View())
 	case statusState:
 		if !msg.Is(statusError) && s.state.Is(statusError) {
 			s.state ^= statusError
@@ -242,7 +243,6 @@ func (s *statusModel) statusHelpView(b *strings.Builder) {
 }
 
 func (s *statusModel) helpView() (ss string) {
-
 	// Fill up empty cells with spaces for background coloring
 	if s.width > 0 {
 		lines := strings.Split(ss, "\n")
@@ -267,7 +267,6 @@ func (s *statusModel) Height() int {
 		height += pagerHelpHeight
 	}
 
-	s.logFn("Statusbar height: %d", height)
 	return height
 }
 
