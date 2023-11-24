@@ -155,12 +155,13 @@ func (m *model) setSize(w, h int) {
 	m.logFn("UI wxh: %dx%d", w, h)
 
 	h = h - m.status.Height() - 2 // 2 for border
-	w = w - 2 - 2                 // 1 for padding, 1 for border
-
-	tw := max(treeWidth, int(0.4*float32(w)))
-	m.tree.setSize(tw, h)
-	m.pager.setSize(w-tw, h)
 	m.status.width = w
+
+	w = w - 2 - 2 // 1 for padding, 1 for border
+
+	tw := max(treeWidth, int(0.28*float32(w)))
+	m.tree.setSize(tw-1-1, h)
+	m.pager.setSize(w-tw-1-1, h)
 
 	m.logFn("Statusbar wxh: %dx%d", m.status.width, m.status.Height())
 
@@ -249,7 +250,9 @@ func (m *model) updatePager(msg tea.Msg) tea.Cmd {
 
 func (m *model) updateTree(msg tea.Msg) tea.Cmd {
 	t, cmd := m.tree.Update(msg)
-	m.tree = *(t.(*treeModel))
+	if tt, ok := t.(*treeModel); ok {
+		m.tree = *tt
+	}
 	return cmd
 }
 

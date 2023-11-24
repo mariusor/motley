@@ -20,6 +20,8 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 	}
 }
 
+var _ tea.Model = &treeModel{}
+
 func (t *treeModel) Init() tea.Cmd {
 	t.logFn("Tree Model init")
 	return t.list.Init()
@@ -54,14 +56,20 @@ func (t *treeModel) View() string {
 }
 
 func (t *treeModel) setSize(w, h int) {
+	t.logFn("Tree wxh: %dx%d", w, h)
+
 	t.list.SetWidth(w)
 	t.list.SetHeight(h)
-	t.logFn("Tree wxh: %dx%d", w, h)
+
+	t.list.Styles.Selected = t.list.Styles.Selected.Width(w).Height(1)
+	t.list.Styles.Line = t.list.Styles.Line.Width(w).Height(1)
+}
+
+func (t *treeModel) width() int {
+	return t.list.Width()
 }
 
 func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {
-	previous.SetWidth(t.list.Width())
-	previous.SetHeight(t.list.Height())
 	previous.Focus()
 	t.list = previous
 	return t, nil

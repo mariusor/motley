@@ -41,7 +41,7 @@ func (p pagerModel) Init() tea.Cmd {
 func (p *pagerModel) setSize(w, h int) {
 	p.viewport.Width = w
 	p.viewport.Height = h - 2 // padding
-	p.itemModel.SetSize(w, h-2)
+	p.itemModel.setSize(w, h-2)
 	p.logFn("Pager wxh: %dx%d", w, h)
 }
 

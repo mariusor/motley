@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 )
 
@@ -22,22 +21,16 @@ type itemModel struct {
 	item vocab.Item
 }
 
-func (i *itemModel) SetSize(h, w int) {
+func (i *itemModel) setSize(w, h int) {
 	i.viewport.Height = h
 	i.viewport.Width = w
 }
 
-var e = `
- [dev] fedbox.local  Service: self                                                                                                                                                                                  0%  | 
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-┌─────────────────┐
-╰─ [48;5;99m⊟ self[0m      
-`
-
 func (i itemModel) View() string {
 	s := strings.Builder{}
 	i.writeItem(&s, i.item)
-	return lipgloss.NewStyle().Width(i.viewport.Width - 2).Render(s.String())
+	i.viewport.SetContent(s.String())
+	return i.viewport.View()
 }
 
 func (i itemModel) writeActorItemIdentifier(s io.Writer, it vocab.Item) {
