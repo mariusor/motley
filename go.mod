@@ -16,7 +16,7 @@ require (
 	github.com/go-ap/storage-fs v0.0.0-20231114164216-ebc6b6d920df
 	github.com/go-ap/storage-sqlite v0.0.0-20231112181059-f32529430fb8
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20231123093728-2b1b35b1e21b
+	github.com/mariusor/bubbles-tree v0.0.0-20231124160746-90b92af27872
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/muesli/reflow v0.3.0

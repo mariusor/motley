@@ -2,11 +2,11 @@ package motley
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/viewport"
 	"io"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	vocab "github.com/go-ap/activitypub"
 )
