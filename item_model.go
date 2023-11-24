@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 )
 
@@ -19,6 +20,8 @@ type itemModel struct {
 	viewport viewport.Model
 
 	item vocab.Item
+
+	model tea.Model
 }
 
 func (i *itemModel) setSize(w, h int) {
@@ -27,9 +30,10 @@ func (i *itemModel) setSize(w, h int) {
 }
 
 func (i itemModel) View() string {
-	s := strings.Builder{}
-	i.writeItem(&s, i.item)
-	i.viewport.SetContent(s.String())
+	h := i.viewport.Height
+	w := i.viewport.Width
+	s := lipgloss.NewStyle().Height(h).MaxHeight(h).MaxWidth(w).Width(w)
+	i.viewport.SetContent(s.Render(i.model.View()))
 	return i.viewport.View()
 }
 
@@ -91,6 +95,7 @@ func (i itemModel) writeObject(s io.Writer) func(ob *vocab.Object) error {
 		return nil
 	}
 }
+
 func (i itemModel) writeActivity(s io.Writer) func(act *vocab.Activity) error {
 	return func(act *vocab.Activity) error {
 		if err := vocab.OnIntransitiveActivity(act, i.writeIntransitiveActivity(s)); err != nil {
@@ -100,6 +105,7 @@ func (i itemModel) writeActivity(s io.Writer) func(act *vocab.Activity) error {
 		return nil
 	}
 }
+
 func (i itemModel) writeIntransitiveActivity(s io.Writer) func(act *vocab.IntransitiveActivity) error {
 	return func(act *vocab.IntransitiveActivity) error {
 		if err := vocab.OnObject(act, i.writeObject(s)); err != nil {
@@ -113,11 +119,13 @@ func (i itemModel) writeIntransitiveActivity(s io.Writer) func(act *vocab.Intran
 		return nil
 	}
 }
+
 func (i itemModel) writeActor(s io.Writer) func(act *vocab.Actor) error {
 	return func(act *vocab.Actor) error {
 		return i.writeActorIdentifier(s, act)
 	}
 }
+
 func (i itemModel) writeItemCollection(s io.Writer) func(col *vocab.ItemCollection) error {
 	return func(col *vocab.ItemCollection) error {
 		for _, it := range col.Collection() {
@@ -128,6 +136,7 @@ func (i itemModel) writeItemCollection(s io.Writer) func(col *vocab.ItemCollecti
 		return nil
 	}
 }
+
 func (i itemModel) writeCollection(s io.Writer) func(col vocab.CollectionInterface) error {
 	return func(col vocab.CollectionInterface) error {
 		for _, it := range col.Collection() {
@@ -203,12 +212,61 @@ func (i itemModel) writeItem(s io.Writer, it vocab.Item) error {
 	return fmt.Errorf("unknown activitypub object of type %T", it)
 }
 
+func (i *itemModel) updateIntransitiveActivity(a *vocab.IntransitiveActivity) error {
+	// TODO(marius): IntransitiveActivity stuff
+	return nil
+}
+
+func (i *itemModel) updateActivity(a *vocab.Activity) error {
+	if err := vocab.OnIntransitiveActivity(a, i.updateIntransitiveActivity); err != nil {
+		return err
+	}
+	// TODO(marius): Activity stuff
+	return nil
+}
+
+func (i *itemModel) updateActor(a *vocab.Actor) error {
+	return nil
+}
+
+func (i *itemModel) updateItems(items *vocab.ItemCollection) error {
+	return nil
+}
+
+func (i *itemModel) updateModel(it vocab.Item) error {
+	if it == nil {
+		return nil
+	}
+
+	if vocab.IsItemCollection(it) {
+		return vocab.OnItemCollection(it, i.updateItems)
+	}
+	typ := it.GetType()
+	if vocab.IntransitiveActivityTypes.Contains(typ) {
+		return vocab.OnIntransitiveActivity(it, i.updateIntransitiveActivity)
+	}
+	if vocab.ActivityTypes.Contains(typ) {
+		return vocab.OnActivity(it, i.updateActivity)
+	}
+	if vocab.ActorTypes.Contains(typ) {
+		return vocab.OnActor(it, i.updateActor)
+	}
+	//if vocab.ObjectTypes.Contains(typ) || typ == "" {
+	//	return vocab.OnObject(it, i.updateObject)
+	//}
+	return fmt.Errorf("unknown activitypub object of type %T", it)
+}
+
 func newItemModel(common *commonModel) itemModel {
 	// Init viewport
 	vp := viewport.New(0, 0)
 	vp.YPosition = 0
-	//vp.HighPerformanceRendering = false
-	return itemModel{commonModel: common, viewport: vp}
+
+	return itemModel{
+		commonModel: common,
+		viewport:    vp,
+		model:       newObjectModel(),
+	}
 }
 func (i itemModel) Init() tea.Cmd {
 	i.logFn("Item View init")
@@ -220,6 +278,13 @@ func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case nodeUpdateMsg:
 		i.item = msg.Item
+		ob := newObjectModel()
+		err := vocab.OnObject(i.item, ob.updateObject)
+		if err != nil {
+			cmds = append(cmds, errCmd(err))
+		} else {
+			i.model = ob
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "home", "g":

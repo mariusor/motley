@@ -60,9 +60,6 @@ func (t *treeModel) setSize(w, h int) {
 
 	t.list.SetWidth(w)
 	t.list.SetHeight(h)
-
-	t.list.Styles.Selected = t.list.Styles.Selected.Width(w).Height(1)
-	t.list.Styles.Line = t.list.Styles.Line.Width(w).Height(1)
 }
 
 func (t *treeModel) width() int {

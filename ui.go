@@ -94,7 +94,8 @@ var (
 
 func Launch(conf config.Options, r f.FullStorage, l *logrus.Logger) error {
 	base := pub.IRI(conf.BaseURL)
-	_, err := tea.NewProgram(newModel(FedBOX(base, r, l), conf.Env, l)).Run()
+	mm := newModel(FedBOX(base, r, l), conf.Env, l)
+	_, err := tea.NewProgram(mm, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
 	return err
 }
 
@@ -112,7 +113,7 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	m.f = ff
 
 	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
-	m.pager = newPagerModel(m.commonModel)
+	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
 	m.status.logo = logoView(pubUrl(ff.getService()), env)
 	return m
@@ -134,7 +135,7 @@ type model struct {
 	breadCrumbs         []*tree.Model
 
 	tree   treeModel
-	pager  pagerModel
+	pager  itemModel
 	status statusModel
 }
 
@@ -240,7 +241,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
 	p, cmd := m.pager.Update(msg)
-	if pp, ok := p.(pagerModel); ok {
+	if pp, ok := p.(itemModel); ok {
 		m.pager = pp
 	} else {
 		return errCmd(fmt.Errorf("invalid pager: %T", p))
