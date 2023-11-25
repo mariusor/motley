@@ -47,7 +47,7 @@ func (o ObjectModel) View() string {
 		o.Content = contentModel(o.Object.Content)
 	}
 
-	typ := lipgloss.NewStyle().Bold(true).Render(string(o.GetType()))
+	typ := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).BorderBottom(true).Render(string(o.GetType()))
 	pieces = append(pieces, typ)
 	if name := o.Name.View(); len(name) > 0 {
 		pieces = append(pieces, name)
