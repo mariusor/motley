@@ -11,12 +11,9 @@ require (
 	github.com/go-ap/errors v0.0.0-20231003111023-183eef4b31b7
 	github.com/go-ap/fedbox v0.0.0-20231114165015-41259eb71b90
 	github.com/go-ap/filters v0.0.0-20231114163756-0a70c1a4a942
-	github.com/go-ap/storage-badger v0.0.0-20231114164254-83bfd520a801
-	github.com/go-ap/storage-boltdb v0.0.0-20231114164236-78b8f85c6fda
-	github.com/go-ap/storage-fs v0.0.0-20231114164216-ebc6b6d920df
 	github.com/go-ap/storage-sqlite v0.0.0-20231112181059-f32529430fb8
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20231124160746-90b92af27872
+	github.com/mariusor/bubbles-tree v0.0.0-20231125100711-470a628f4cfa
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/muesli/reflow v0.3.0
@@ -33,6 +30,7 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
+	github.com/dgraph-io/badger/v3 v3.2103.5 // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -41,11 +39,14 @@ require (
 	github.com/go-ap/client v0.0.0-20231114162455-f09cf9766e95 // indirect
 	github.com/go-ap/jsonld v0.0.0-20221030091449-f2a191312c73 // indirect
 	github.com/go-ap/processing v0.0.0-20231114164044-596105c0aac5 // indirect
+	github.com/go-ap/storage-badger v0.0.0-20231114164254-83bfd520a801 // indirect
+	github.com/go-ap/storage-boltdb v0.0.0-20231114164236-78b8f85c6fda // indirect
+	github.com/go-ap/storage-fs v0.0.0-20231114164216-ebc6b6d920df // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-chi/chi/v5 v5.0.10 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.1.2 // indirect
+	github.com/golang/glog v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -84,7 +85,7 @@ require (
 	lukechampine.com/uint128 v1.3.0 // indirect
 	modernc.org/cc/v3 v3.41.0 // indirect
 	modernc.org/ccgo/v3 v3.16.15 // indirect
-	modernc.org/libc v1.34.7 // indirect
+	modernc.org/libc v1.34.9 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/opt v0.1.3 // indirect

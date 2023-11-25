@@ -1,6 +1,9 @@
 package motley
 
 import (
+	"mime"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
@@ -33,6 +36,26 @@ func (o ObjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return o, nil
 }
 
+func mimeIsBinary(mimeType vocab.MimeType) bool {
+	var binContentMimeTypes = []string{"image", "audio", "video", "application"}
+	justType, _, _ := mime.ParseMediaType(string(mimeType))
+	if pieces := strings.Split(justType, "/"); len(pieces) >= 1 {
+		m := pieces[0]
+		for _, check := range binContentMimeTypes {
+			if strings.EqualFold(check, m) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+var binContentTypes = vocab.ActivityVocabularyTypes{
+	vocab.ImageType,
+	vocab.AudioType,
+	vocab.VideoType,
+}
+
 func (o ObjectModel) View() string {
 	pieces := make([]string, 0)
 
@@ -43,20 +66,32 @@ func (o ObjectModel) View() string {
 	if len(o.Object.Summary) > 0 {
 		o.Summary = summaryModel(o.Object.Summary)
 	}
-	if len(o.Object.Content) > 0 {
+	if ll := len(o.Object.Content); ll > 0 {
 		o.Content = contentModel(o.Object.Content)
 	}
 
-	typ := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).BorderBottom(true).Render(string(o.GetType()))
-	pieces = append(pieces, typ)
+	typ := o.GetType()
+	if typ == "" {
+		typ = "Unknown"
+	}
+
+	typeStyle := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).BorderBottom(true)
+	title := string(typ)
+	if o.MediaType != "" {
+		title = lipgloss.JoinHorizontal(lipgloss.Right, typeStyle.Render(title), typeStyle.Bold(false).Render(" ("+string(o.MediaType)+")"))
+	}
+	pieces = append(pieces, title)
 	if name := o.Name.View(); len(name) > 0 {
 		pieces = append(pieces, name)
 	}
 	if summary := o.Summary.View(); len(summary) > 0 {
 		pieces = append(pieces, summary)
 	}
-	if content := o.Content.View(); len(content) > 0 {
-		pieces = append(pieces, content)
+
+	if !binContentTypes.Contains(o.GetType()) && !mimeIsBinary(o.MediaType) {
+		if content := o.Content.View(); len(content) > 0 {
+			pieces = append(pieces, content)
+		}
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top, pieces...)
