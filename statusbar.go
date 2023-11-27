@@ -113,7 +113,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 		lipgloss.JoinHorizontal(lipgloss.Left,
 			margin.String(truncate.StringWithTail(s.statusMessage, uint(w), ellipsis), uint(w), 1),
 			scrollPercent,
-			margin.String(spinner, 3, 1),
+			margin.String(spinner, 3, 0),
 		),
 	))
 }
@@ -131,27 +131,12 @@ type statusNode struct {
 func (a statusNode) View() string {
 	s := strings.Builder{}
 	switch it := a.Item; it.(type) {
-	case pub.ItemCollection, pub.IRI:
+	case pub.IRI, *pub.IRI:
+		fmt.Fprintf(&s, "%s", it.GetID())
+	case pub.ItemCollection:
 		fmt.Fprintf(&s, "Collection %s: %d items", a.n.n, len(a.n.c))
 	case pub.Item:
-		switch typ := a.GetType(); {
-		case pub.IntransitiveActivityTypes.Contains(typ) || pub.ActivityTypes.Contains(typ):
-			pub.OnActivity(a.Item, func(act *pub.Activity) error {
-				ob := node(act.Object)
-				fmt.Fprintf(&s, "%s >> %s", typ, statusNode{ob}.View())
-				return nil
-			})
-		case pub.ActorTypes.Contains(typ) || pub.ObjectTypes.Contains(typ):
-			pub.OnObject(a.Item, func(ob *pub.Object) error {
-				fmt.Fprintf(&s, "%s: %s", typ, ob.Name.First().String())
-				return nil
-			})
-		case typ == "":
-			pub.OnObject(a.Item, func(ob *pub.Object) error {
-				fmt.Fprintf(&s, "%s", ob.Name.First().String())
-				return nil
-			})
-		}
+		fmt.Fprintf(&s, "%s: %s", it.GetType(), it.GetID())
 	}
 	return s.String()
 }
@@ -169,9 +154,9 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case nodeUpdateMsg:
 		cmd = s.showStatusMessage(statusNode{msg.n}.View())
 	case statusState:
-		if !msg.Is(statusError) && s.state.Is(statusError) {
-			s.state ^= statusError
-		}
+		//if !msg.Is(statusError) && s.state.Is(statusError) {
+		//	s.state ^= statusError
+		//}
 		s.state = msg
 		if msg.Is(statusBusy) {
 			s.logFn("starting spinner")
@@ -188,23 +173,23 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s *statusModel) noError() tea.Msg {
-	return func() tea.Msg {
-		return s.state ^ statusError
-	}
+	s.state = s.state ^ statusError
+	return nil
 }
 
 func (s *statusModel) stateError() tea.Msg {
-	return func() tea.Msg {
-		return s.state | statusError
-	}
+	s.state = s.state | statusError
+	return nil
 }
 
 func (s *statusModel) startedLoading() tea.Msg {
-	return s.state | statusBusy
+	s.state = s.state | statusBusy
+	return nil
 }
 
 func (s *statusModel) stoppedLoading() tea.Msg {
-	return s.state ^ statusBusy
+	s.state = s.state ^ statusBusy
+	return nil
 }
 
 func (s *statusModel) View() string {
