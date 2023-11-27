@@ -276,6 +276,8 @@ func (i itemModel) Init() tea.Cmd {
 func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		i.logFn("item resize: %+v", msg)
 	case nodeUpdateMsg:
 		i.item = msg.Item
 		ob := newObjectModel()
