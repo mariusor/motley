@@ -1,19 +1,21 @@
 package main
 
 import (
+	xerrors "errors"
 	"fmt"
-	"git.sr.ht/~marius/motley/internal/cmd"
-	"git.sr.ht/~marius/motley/internal/config"
-	"git.sr.ht/~marius/motley/internal/env"
-	"github.com/alecthomas/kong"
-	"github.com/go-ap/fedbox"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"git.sr.ht/~marius/motley/internal/cmd"
+	"git.sr.ht/~marius/motley/internal/config"
+	"git.sr.ht/~marius/motley/internal/env"
+	"github.com/alecthomas/kong"
+	"github.com/go-ap/fedbox"
+	"github.com/sirupsen/logrus"
 )
 
 var version = "HEAD"
@@ -53,6 +55,7 @@ func main() {
 	stores, err := loadArguments(&conf)
 	if err != nil {
 		l.Errorf("%s", err)
+		fmt.Fprintln(os.Stderr, err)
 		ktx.Exit(1)
 	}
 
@@ -86,7 +89,7 @@ func loadArguments(conf *config.Options) ([]fedbox.FullStorage, error) {
 		return nil, fmt.Errorf("invalid flags: when passing storage DSN you need an associated URL for each of them")
 	}
 
-	m := make(multiError, 0)
+	m := make([]error, 0)
 	stores := make([]fedbox.FullStorage, 0)
 	for _, dsnConfig := range Motley.Config {
 		if dsnConfig == "" {
@@ -112,6 +115,14 @@ func loadArguments(conf *config.Options) ([]fedbox.FullStorage, error) {
 			m = append(m, fmt.Errorf("unable to access storage: %s", err))
 			continue
 		}
+
+		o, err := url.ParseRequestURI(c.BaseURL)
+		if err != nil {
+			m = append(m, fmt.Errorf("invalid url passed: %s", err))
+			continue
+		}
+		conf.Host = o.Host
+
 		*conf = c
 		stores = append(stores, db)
 	}
@@ -155,7 +166,7 @@ func loadArguments(conf *config.Options) ([]fedbox.FullStorage, error) {
 		stores = append(stores, db)
 	}
 	if len(m) > 0 {
-		return nil, m
+		return nil, xerrors.Join(m...)
 	}
 	return stores, nil
 }

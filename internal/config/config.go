@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -198,11 +199,17 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 		conf.TimeOut = to
 	}
 	if conf.Host != "" {
-		conf.Secure, _ = strconv.ParseBool(loadKeyFromEnv(KeyHTTPS, "false"))
-		if conf.Secure {
-			conf.BaseURL = fmt.Sprintf("https://%s", conf.Host)
+		if u, err := url.ParseRequestURI(conf.Host); err != nil {
+			conf.Secure, _ = strconv.ParseBool(loadKeyFromEnv(KeyHTTPS, "true"))
+			proto := "http"
+			if conf.Secure {
+				proto = "https"
+			}
+			conf.BaseURL = fmt.Sprintf("%s://%s", proto, conf.Host)
 		} else {
-			conf.BaseURL = fmt.Sprintf("http://%s", conf.Host)
+			conf.Secure = u.Scheme == "https"
+			conf.Host = u.Host
+			conf.BaseURL = u.String()
 		}
 	}
 	conf.KeyPath = loadKeyFromEnv(KeyKeyPath, "")

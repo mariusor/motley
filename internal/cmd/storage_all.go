@@ -1,15 +1,16 @@
 package cmd
 
 import (
-	badger "github.com/go-ap/storage-badger"
-	boltdb "github.com/go-ap/storage-boltdb"
-	fs "github.com/go-ap/storage-fs"
-	sqlite "github.com/go-ap/storage-sqlite"
+	iofs "io/fs"
 	"path/filepath"
 
 	"git.sr.ht/~marius/motley/internal/config"
 	"github.com/go-ap/errors"
 	"github.com/go-ap/fedbox"
+	badger "github.com/go-ap/storage-badger"
+	boltdb "github.com/go-ap/storage-boltdb"
+	fs "github.com/go-ap/storage-fs"
+	sqlite "github.com/go-ap/storage-sqlite"
 	"github.com/sirupsen/logrus"
 )
 
@@ -84,7 +85,11 @@ func getFsStorageAtPath(dir, url string, l logrus.FieldLogger) (fedbox.FullStora
 func getFsStorage(c config.Options, l logrus.FieldLogger) (fedbox.FullStorage, error) {
 	path, err := c.BaseStoragePath()
 	if err != nil {
-		return nil, err
+		var pathError *iofs.PathError
+		if !errors.As(err, &pathError) {
+			return nil, err
+		}
+		path = c.StoragePath
 	}
 	l.Debugf("Initializing fs storage at %s", path)
 	db, err := getFsStorageAtPath(filepath.Dir(path), c.BaseURL, l)
