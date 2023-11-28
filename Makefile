@@ -2,37 +2,36 @@ SHELL := bash
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
 .DELETE_ON_ERROR:
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
 
 ENV ?= dev
 LDFLAGS ?= -X main.version=$(VERSION)
 BUILDFLAGS ?= -trimpath -a -ldflags '$(LDFLAGS)'
 TEST_FLAGS ?= -count=1
-MAKEFLAGS += --warn-undefined-variables
-MAKEFLAGS += --no-builtin-rules
 
 M4 = /usr/bin/m4
 M4_FLAGS =
 
-GO := go
+GO ?= go
 APPSOURCES := $(wildcard *.go internal/*/*.go cmd/*.go)
 PROJECT_NAME := $(shell basename $(PWD))
 TAGS := $(ENV)
 
 export CGO_ENABLED=0
 
-ifneq ($(ENV), dev)
-	LDFLAGS += -s -w -extldflags "-static"
+
+ifeq ($(shell git describe --always > /dev/null 2>&1 ; echo $$?), 0)
+	BRANCH=$(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
+	HASH=$(shell git rev-parse --short HEAD)
+	VERSION ?= $(shell printf "%s-%s" "$(BRANCH)" "$(HASH)")
+endif
+ifeq ($(shell git describe --tags > /dev/null 2>&1 ; echo $$?), 0)
+	VERSION ?= $(shell git describe --tags | tr '/' '-')
 endif
 
-ifeq ($(VERSION), )
-	ifeq ($(shell git describe --always > /dev/null 2>&1 ; echo $$?), 0)
-		BRANCH=$(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
-		HASH=$(shell git rev-parse --short HEAD)
-		VERSION ?= $(shell printf "%s-%s" "$(BRANCH)" "$(HASH)")
-	endif
-	ifeq ($(shell git describe --tags > /dev/null 2>&1 ; echo $$?), 0)
-		VERSION ?= $(shell git describe --tags | tr '/' '-')
-	endif
+ifneq ($(ENV), dev)
+	LDFLAGS += -s -w -extldflags "-static"
 endif
 
 BUILD := $(GO) build $(BUILDFLAGS)
