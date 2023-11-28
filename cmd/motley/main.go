@@ -151,6 +151,7 @@ func loadArguments(conf *config.Options) ([]fedbox.FullStorage, error) {
 			}
 			conf.Host = o.Host
 			conf.BaseURL = u
+			conf.StoragePath = filepath.Clean(strings.Replace(conf.StoragePath, conf.Host, "", -1))
 		}
 
 		db, err := cmd.StorageFromDirectPath(*conf, l)
