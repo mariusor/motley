@@ -29,8 +29,7 @@ const (
 )
 
 const (
-	statusError statusState = 1 << iota
-	statusHelp
+	statusHelp statusState = 1 << iota
 	statusBusy
 
 	statusNone statusState = 0
@@ -46,8 +45,10 @@ type statusModel struct {
 	spinner spinner.Model
 	percent float64
 
-	statusMessage      string
-	statusMessageTimer *time.Timer
+	error   error
+	message string
+
+	timer *time.Timer
 }
 
 var glowLogoTextColor = Color("#ECFD65")
@@ -55,16 +56,7 @@ var glowLogoTextColor = Color("#ECFD65")
 func initializeSpinner() spinner.Model {
 	sp := spinner.New()
 	sp.Style = lipgloss.NewStyle().Bold(true)
-	sp.Spinner = spinner.Line
-	//sp.Spinner.Frames = []string{"", "🞄", "•", "⚫", "•", "🞄"}
-	//sp.Spinner.Frames = []string{"⨁", "⨂"}
-	//sp.Spinner.Frames = []string{"◤", "◥", "◢", "◣"}
-	//sp.Spinner.Frames = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
-	//sp.Spinner.Frames = []string{"◒", "◐", "◓", "◑"}
-	//sp.Spinner.Frames = []string{"🭶", "🭷", "🭸", "🭹", "🭺", "🭻"}
-	//sp.Spinner.Frames = []string{"⠦", "⠖", "⠲", "⠴"},
-	//sp.Spinner.Frames = []string{"+", "×"}
-	//sp.Spinner.Frames = []string{"-", "︲"}
+	sp.Spinner = spinner.Ellipsis
 	sp.Spinner.FPS = time.Second / 4
 	return sp
 }
@@ -84,16 +76,17 @@ func (s *statusModel) Init() tea.Cmd {
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
-	s.statusMessage = err.Error()
-	return s.stateError
+	s.error = err
+	return nil
 }
 
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
 	if lipgloss.Height(statusMessage) > 1 {
 		statusMessage = strings.ReplaceAll(strings.ReplaceAll(statusMessage, "\r", ""), "\n", " ")
 	}
-	s.statusMessage = statusMessage
-	return s.noError
+	s.message = statusMessage
+	s.error = nil
+	return nil
 }
 
 func (s *statusModel) statusBarView(b *strings.Builder) {
@@ -105,13 +98,16 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(s.logo)-lipgloss.Width(scrollPercent)-1)
 
 	render := statusBarMessageStyle
-	if s.state.Is(statusError) {
+	message := truncate.StringWithTail(s.message, uint(w), ellipsis)
+	if s.error != nil {
 		render = statusBarFailStyle
+		message = s.error.Error()
 	}
+
 	b.WriteString(s.logo)
 	b.WriteString(render(
 		lipgloss.JoinHorizontal(lipgloss.Left,
-			margin.String(truncate.StringWithTail(s.statusMessage, uint(w), ellipsis), uint(w), 1),
+			margin.String(message, uint(w), 1),
 			scrollPercent,
 			margin.String(spinner, 3, 0),
 		),
@@ -157,7 +153,7 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//if !msg.Is(statusError) && s.state.Is(statusError) {
 		//	s.state ^= statusError
 		//}
-		s.state = msg
+		s.state |= msg
 		if msg.Is(statusBusy) {
 			s.logFn("starting spinner")
 			cmd = s.spinner.Tick
@@ -170,16 +166,6 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return s, cmd
-}
-
-func (s *statusModel) noError() tea.Msg {
-	s.state = s.state ^ statusError
-	return nil
-}
-
-func (s *statusModel) stateError() tea.Msg {
-	s.state = s.state | statusError
-	return nil
 }
 
 func (s *statusModel) startedLoading() tea.Msg {
