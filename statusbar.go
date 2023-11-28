@@ -134,9 +134,9 @@ func (a statusNode) View() string {
 	case pub.IRI, *pub.IRI:
 		fmt.Fprintf(&s, "%s", it.GetID())
 	case pub.ItemCollection:
-		fmt.Fprintf(&s, "Collection %s: %d items", a.n.n, len(a.n.c))
+		fmt.Fprintf(&s, "%s %s: %d items", ItemType(it), a.n.n, len(a.n.c))
 	case pub.Item:
-		fmt.Fprintf(&s, "%s: %s", it.GetType(), it.GetID())
+		fmt.Fprintf(&s, "%s: %s", ItemType(it), it.GetID())
 	}
 	return s.String()
 }

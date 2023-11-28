@@ -70,15 +70,10 @@ func (o ObjectModel) View() string {
 		o.Content = contentModel(o.Object.Content)
 	}
 
-	typ := o.GetType()
-	if typ == "" {
-		typ = "Unknown"
-	}
-
 	typeStyle := lipgloss.NewStyle().Bold(true).BorderStyle(lipgloss.NormalBorder()).BorderBottom(true)
-	title := string(typ)
+	title := typeStyle.Render(ItemType(o))
 	if o.MediaType != "" {
-		title = lipgloss.JoinHorizontal(lipgloss.Right, typeStyle.Render(title), typeStyle.Bold(false).Render(" ("+string(o.MediaType)+")"))
+		title = lipgloss.JoinHorizontal(lipgloss.Right, title, typeStyle.Bold(false).Render(" ("+string(o.MediaType)+")"))
 	}
 	pieces = append(pieces, title)
 	if name := o.Name.View(); len(name) > 0 {

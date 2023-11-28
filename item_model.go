@@ -310,3 +310,10 @@ func (i itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 type collectionModel struct{}
+
+func ItemType(o vocab.Item) string {
+	if typ := string(o.GetType()); typ != "" {
+		return typ
+	}
+	return "Unknown"
+}
