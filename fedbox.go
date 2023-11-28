@@ -248,8 +248,7 @@ func node(it pub.Item, fns ...func(*n)) *n {
 
 	if it == nil {
 		n.s = NodeError
-		n.n = "Invalid ActivityPub object"
-		n.c = n.c[:0]
+		n.n = "Invalid object"
 		return n
 	}
 
@@ -596,11 +595,11 @@ func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IR
 				return StopLoad{}
 			}
 		}
-		return accumFn(ctx, &pub.ItemCollection{col})
+		return emptyAccum(ctx, nil) //accumFn(ctx, &pub.ItemCollection{col})
 	}
 }
 
-func emptyAccum(ctx context.Context, c pub.CollectionInterface) error {
+func emptyAccum(_ context.Context, _ pub.CollectionInterface) error {
 	return nil
 }
 
