@@ -328,7 +328,7 @@ func (m *model) Advance(msg advanceMsg) tea.Cmd {
 	name := getRootNodeName(msg.n)
 	newNode := node(msg.Item, withParent(msg.n), withName(name))
 	if err := m.loadChildrenForNode(context.Background(), newNode); err != nil {
-		return errCmd(fmt.Errorf("%s", msg.n.n))
+		return errCmd(fmt.Errorf("unable to advance to %q: %w", msg.n.n, err))
 	}
 	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
 		return errCmd(fmt.Errorf("no items in collection %s", name))

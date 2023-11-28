@@ -15,6 +15,8 @@ import (
 	"github.com/muesli/reflow/margin"
 	"github.com/muesli/reflow/truncate"
 	te "github.com/muesli/termenv"
+	"golang.org/x/text/language"
+	"golang.org/x/text/cases"
 )
 
 type statusState uint8
@@ -89,6 +91,13 @@ func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
 	return nil
 }
 
+func ucfirst(s string) string {
+	pieces := strings.SplitN(s, " ", 2)
+	if len(pieces) > 0 {
+		pieces[0] = cases.Title(language.English).String(pieces[0])
+	}
+	return strings.Join(pieces, " ")
+}
 func (s *statusModel) statusBarView(b *strings.Builder) {
 	percent := clamp(int(math.Round(s.percent)), 0, 100)
 	scrollPercent := fmt.Sprintf(" %d%% ", percent)
@@ -101,7 +110,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	message := truncate.StringWithTail(s.message, uint(w), ellipsis)
 	if s.error != nil {
 		render = statusBarFailStyle
-		message = s.error.Error()
+		message = ucfirst(s.error.Error())
 	}
 
 	b.WriteString(s.logo)
