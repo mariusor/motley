@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	pub "github.com/go-ap/activitypub"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/sirupsen/logrus"
@@ -106,18 +107,22 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	m := new(model)
 	m.commonModel = new(commonModel)
 	m.commonModel.logFn = l.Infof
+	m.commonModel.env = env
 
 	m.f = ff
 
 	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
-	m.status.logo = logoView(pubUrl(ff.getRootNodes()), env)
+
 	return m
 }
 
 type commonModel struct {
-	f     *fedbox
+	f    *fedbox
+	root pub.Item
+	env  env.Type
+
 	logFn func(string, ...interface{})
 }
 
@@ -192,6 +197,12 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		m.currentNode = msg
 		ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
 		cmd := m.loadDepsForNode(ctx, m.currentNode)
+		for _, st := range m.f.stores {
+			if msg.GetLink().Contains(st.root.GetLink(), true) {
+				m.root = st.root
+				break
+			}
+		}
 		cmds = append(cmds, nodeUpdateCmd(m.currentNode), cmd)
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(msg))

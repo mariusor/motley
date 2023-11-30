@@ -15,8 +15,8 @@ import (
 	"github.com/muesli/reflow/margin"
 	"github.com/muesli/reflow/truncate"
 	te "github.com/muesli/termenv"
-	"golang.org/x/text/language"
 	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type statusState uint8
@@ -41,7 +41,6 @@ type statusModel struct {
 	*commonModel
 
 	width int
-	logo  string
 	state statusState
 
 	spinner spinner.Model
@@ -98,13 +97,16 @@ func ucfirst(s string) string {
 	}
 	return strings.Join(pieces, " ")
 }
+
 func (s *statusModel) statusBarView(b *strings.Builder) {
 	percent := clamp(int(math.Round(s.percent)), 0, 100)
 	scrollPercent := fmt.Sprintf(" %d%% ", percent)
 
 	spinner := s.spinner.View()
+	logo := logoView(name(s.root), s.env)
+
 	// Empty space
-	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(s.logo)-lipgloss.Width(scrollPercent)-1)
+	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(logo)-lipgloss.Width(scrollPercent)-1)
 
 	render := statusBarMessageStyle
 	message := truncate.StringWithTail(s.message, uint(w), ellipsis)
@@ -113,7 +115,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 		message = ucfirst(s.error.Error())
 	}
 
-	b.WriteString(s.logo)
+	b.WriteString(logo)
 	b.WriteString(render(
 		lipgloss.JoinHorizontal(lipgloss.Left,
 			margin.String(message, uint(w), 1),

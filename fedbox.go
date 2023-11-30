@@ -92,6 +92,9 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l *logrus.Logger
 
 func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {
 	for _, st := range f.stores {
+		if pub.IsNil(st.root) || !iri.Contains(st.root.GetLink(), true) {
+			continue
+		}
 		col, err := st.s.Load(iri, ff...)
 		if err == nil {
 			return col, nil
@@ -669,12 +672,33 @@ func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iris ...pub.IRI)
 	return nil
 }
 
-func pubUrl(it pub.Item) string {
-	name := ""
-	pub.OnObject(it, func(o *pub.Object) error {
-		u, _ := o.URL.GetLink().URL()
-		name = u.Hostname()
+func name(it pub.Item) string {
+	n := ""
+	pub.OnActor(it, func(a *pub.Actor) error {
+		if a.PreferredUsername != nil {
+			n = a.PreferredUsername.First().String()
+		}
 		return nil
 	})
-	return name
+	if n != "" {
+		return n
+	}
+	pub.OnObject(it, func(o *pub.Object) error {
+		if o.Name != nil {
+			n = o.Name.First().String()
+			return nil
+		}
+		if pub.IsNil(o.URL) {
+			if u, err := o.URL.GetLink().URL(); err == nil {
+				n = u.Hostname()
+				return nil
+			}
+			return nil
+		}
+		if u, err := o.ID.GetLink().URL(); err == nil {
+			n = u.Hostname()
+		}
+		return nil
+	})
+	return n
 }
