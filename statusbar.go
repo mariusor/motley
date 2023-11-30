@@ -73,12 +73,12 @@ func newStatusModel(common *commonModel) statusModel {
 
 func (s *statusModel) Init() tea.Cmd {
 	s.logFn("Status Bar init")
-	return nil
+	return noop
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
 	s.error = err
-	return nil
+	return noop
 }
 
 func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
@@ -87,7 +87,7 @@ func (s *statusModel) showStatusMessage(statusMessage string) tea.Cmd {
 	}
 	s.message = statusMessage
 	s.error = nil
-	return nil
+	return noop
 }
 
 func ucfirst(s string) string {

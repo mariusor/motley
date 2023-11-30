@@ -29,11 +29,11 @@ func newObjectModel() ObjectModel {
 }
 
 func (o ObjectModel) Init() tea.Cmd {
-	return nil
+	return noop
 }
 
 func (o ObjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return o, nil
+	return o, noop
 }
 
 func mimeIsBinary(mimeType vocab.MimeType) bool {

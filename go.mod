@@ -17,7 +17,7 @@ require (
 	github.com/go-ap/storage-fs v0.0.0-20231114164216-ebc6b6d920df
 	github.com/go-ap/storage-sqlite v0.0.0-20231112181059-f32529430fb8
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20231125100711-470a628f4cfa
+	github.com/mariusor/bubbles-tree v0.0.0-20231130175756-6f4f8acb1d0e
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/muesli/reflow v0.3.0
@@ -76,8 +76,8 @@ require (
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/oauth2 v0.14.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect

@@ -113,10 +113,14 @@ func (f *fedbox) getRootNodes() pub.ItemCollection {
 
 func initNodes(f *fedbox) tree.Nodes {
 	nodes := make(tree.Nodes, 0)
+	var state tree.NodeState
+	if len(f.getRootNodes()) == 1 {
+		state = tree.NodeLastChild
+	}
 	for _, root := range f.getRootNodes() {
 		nodes = append(nodes, node(
 			root,
-			withState(tree.NodeLastChild|tree.NodeSelected),
+			withState(state),
 		))
 	}
 	return nodes
@@ -136,8 +140,9 @@ func (n *n) Parent() tree.Node {
 	}
 	return n.p
 }
+
 func (n *n) Init() tea.Cmd {
-	return nil
+	return noop
 }
 
 func nodeIsError(n *n) bool {
@@ -211,7 +216,7 @@ func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tree.NodeState:
 		n.s = m
 	}
-	return n, nil
+	return n, noop
 }
 
 func (n *n) setChildren(c ...*n) {

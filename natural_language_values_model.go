@@ -44,11 +44,11 @@ func NewNaturalLanguageValues(label string, val vocab.NaturalLanguageValues) Nat
 }
 
 func (n NaturalLanguageValues) Init() tea.Cmd {
-	return nil
+	return noop
 }
 
 func (n NaturalLanguageValues) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return n, nil
+	return n, noop
 }
 
 func (n NaturalLanguageValues) renderLabel() string {

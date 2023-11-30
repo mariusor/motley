@@ -297,13 +297,17 @@ var (
 func (m *model) Back(msg tea.Msg) tea.Cmd {
 	if len(m.breadCrumbs) == 0 {
 		m.logFn("No previous tree to go back to.")
-		return nil
+		return noop
 	}
 	if oldTree := m.breadCrumbs[len(m.breadCrumbs)-1]; oldTree != nil {
 		m.tree.Back(oldTree)
 		m.breadCrumbs = m.breadCrumbs[:len(m.breadCrumbs)-1]
 	}
-	return nil
+	return noop
+}
+
+func noop() tea.Msg {
+	return "noop"
 }
 
 func advanceCmd(n *n) tea.Cmd {
@@ -320,10 +324,15 @@ func getRootNodeName(n *n) string {
 	return name
 }
 
+func (m *model) shouldAdvance() bool {
+	children := m.tree.list.Children()
+	return len(children) == 1 && children[0] == m.currentNode
+}
+
 func (m *model) Advance(msg advanceMsg) tea.Cmd {
-	if top := m.tree.list.Children()[0]; top == m.currentNode {
+	if !m.shouldAdvance() {
 		m.logFn("will not advance to top of the tree")
-		return nil
+		return noop
 	}
 
 	if msg.n == nil {

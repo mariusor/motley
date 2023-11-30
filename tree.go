@@ -41,7 +41,7 @@ func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return t, tea.Batch(cmd, percentageChanged(t.list.ScrollPercent()))
 	}
 
-	return t, nil
+	return t, noop
 }
 
 const treeWidth = 32
@@ -69,7 +69,7 @@ func (t *treeModel) width() int {
 func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {
 	previous.Focus()
 	t.list = previous
-	return t, nil
+	return t, noop
 }
 
 func (t *treeModel) Advance(current *n) *tree.Model {

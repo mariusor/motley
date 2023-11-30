@@ -270,7 +270,7 @@ func newItemModel(common *commonModel) itemModel {
 }
 func (i itemModel) Init() tea.Cmd {
 	i.logFn("Item View init")
-	return nil
+	return noop
 }
 
 func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
@@ -308,8 +308,6 @@ func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
 func (i itemModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return i.updateAsModel(msg)
 }
-
-type collectionModel struct{}
 
 func ItemType(o vocab.Item) string {
 	if typ := string(o.GetType()); typ != "" {
