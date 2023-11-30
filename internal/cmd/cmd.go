@@ -3,7 +3,6 @@ package cmd
 import (
 	tui "git.sr.ht/~marius/motley"
 	"git.sr.ht/~marius/motley/internal/config"
-	"github.com/go-ap/fedbox"
 	"github.com/sirupsen/logrus"
 )
 
@@ -12,19 +11,14 @@ var (
 )
 
 type Control struct {
-	Conf    config.Options
-	Storage []fedbox.FullStorage
+	Conf config.Options
 }
 
-func New(conf config.Options, db ...fedbox.FullStorage) *Control {
-	return &Control{
-		Conf:    conf,
-		Storage: db,
-	}
+func New(conf config.Options) *Control {
+	return &Control{Conf: conf}
 }
 
-func ShowTui(conf config.Options, l *logrus.Logger, stores ...fedbox.FullStorage) error {
-	ctl = *New(conf, stores...)
-
-	return tui.Launch(ctl.Conf, ctl.Storage[0], l)
+func ShowTui(conf config.Options, l *logrus.Logger, stores ...config.FullStorage) error {
+	ctl = *New(conf)
+	return tui.Launch(ctl.Conf, l)
 }

@@ -11,6 +11,7 @@ require (
 	github.com/go-ap/errors v0.0.0-20231003111023-183eef4b31b7
 	github.com/go-ap/fedbox v0.0.0-20231114165015-41259eb71b90
 	github.com/go-ap/filters v0.0.0-20231114163756-0a70c1a4a942
+	github.com/go-ap/processing v0.0.0-20231114164044-596105c0aac5
 	github.com/go-ap/storage-badger v0.0.0-20231114164254-83bfd520a801
 	github.com/go-ap/storage-boltdb v0.0.0-20231114164236-78b8f85c6fda
 	github.com/go-ap/storage-fs v0.0.0-20231114164216-ebc6b6d920df
@@ -21,8 +22,10 @@ require (
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.2
+	github.com/openshift/osin v1.0.2-0.20220317075346-0f4d38c6e53f
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sync v0.5.0
+	golang.org/x/text v0.14.0
 )
 
 require (
@@ -40,7 +43,6 @@ require (
 	github.com/go-ap/cache v0.0.0-20231114162417-36177bcbd4a9 // indirect
 	github.com/go-ap/client v0.0.0-20231114162455-f09cf9766e95 // indirect
 	github.com/go-ap/jsonld v0.0.0-20221030091449-f2a191312c73 // indirect
-	github.com/go-ap/processing v0.0.0-20231114164044-596105c0aac5 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-chi/chi/v5 v5.0.10 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
@@ -61,7 +63,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.18 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
-	github.com/openshift/osin v1.0.2-0.20220317075346-0f4d38c6e53f // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -77,7 +78,6 @@ require (
 	golang.org/x/oauth2 v0.14.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/term v0.14.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect

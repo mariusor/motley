@@ -14,7 +14,6 @@ import (
 	"git.sr.ht/~marius/motley/internal/config"
 	"git.sr.ht/~marius/motley/internal/env"
 	"github.com/alecthomas/kong"
-	"github.com/go-ap/fedbox"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,29 +67,13 @@ func main() {
 	ktx.Exit(0)
 }
 
-type multiError []error
-
-func (m multiError) Error() string {
-	s := strings.Builder{}
-	for i, e := range m {
-		s.WriteString(e.Error())
-		if i < len(m)-1 {
-			s.WriteString("\n")
-		}
-	}
-	return s.String()
-}
-
-func loadArguments(conf *config.Options) ([]fedbox.FullStorage, error) {
+func loadArguments(conf *config.Options) ([]config.FullStorage, error) {
 	if len(Motley.Config)+len(Motley.Path) == 0 {
 		return nil, fmt.Errorf("missing flags: you need to either pass a config path DSN or pairs of a storage DSN with an associated URL")
 	}
-	if len(Motley.URL)+len(Motley.Path) > 0 && len(Motley.URL) != len(Motley.Path) {
-		return nil, fmt.Errorf("invalid flags: when passing storage DSN you need an associated URL for each of them")
-	}
 
 	m := make([]error, 0)
-	stores := make([]fedbox.FullStorage, 0)
+	stores := make([]config.FullStorage, 0)
 	for _, dsnConfig := range Motley.Config {
 		if dsnConfig == "" {
 			continue
@@ -110,23 +93,20 @@ func loadArguments(conf *config.Options) ([]fedbox.FullStorage, error) {
 			m = append(m, fmt.Errorf("unable to load config file for environment %s: %s", c.Env, err))
 			continue
 		}
-		db, err := cmd.Storage(c, l)
-		if err != nil {
-			m = append(m, fmt.Errorf("unable to access storage: %s", err))
+		*conf = c
+	}
+	for _, u := range Motley.URL {
+		if u == "" {
 			continue
 		}
-
-		o, err := url.ParseRequestURI(c.BaseURL)
+		_, err := url.ParseRequestURI(u)
 		if err != nil {
 			m = append(m, fmt.Errorf("invalid url passed: %s", err))
 			continue
 		}
-		conf.Host = o.Host
-
-		*conf = c
-		stores = append(stores, db)
+		conf.URLs = append(conf.URLs, u)
 	}
-	for i, sto := range Motley.Path {
+	for _, sto := range Motley.Path {
 		if sto == "" {
 			continue
 		}
@@ -135,36 +115,15 @@ func loadArguments(conf *config.Options) ([]fedbox.FullStorage, error) {
 			m = append(m, fmt.Errorf("invalid storage value, expected DSN of type:/path/to/storage"))
 			continue
 		}
-
-		conf.Storage = config.StorageType(typ)
-		conf.StoragePath = path
-
-		if !validStorageType(conf.Storage) {
+		st := config.Storage{
+			Type: config.StorageType(typ),
+			Path: path,
+		}
+		if !validStorageType(st.Type) {
 			m = append(m, fmt.Errorf("invalid storage type value %s", conf.Storage))
 			continue
 		}
-		if u := Motley.URL[i]; u != "" {
-			o, err := url.ParseRequestURI(u)
-			if err != nil {
-				m = append(m, fmt.Errorf("invalid url passed: %s", err))
-				continue
-			}
-			conf.Host = o.Host
-			conf.BaseURL = u
-			conf.StoragePath = filepath.Clean(strings.Replace(conf.StoragePath, conf.Host, "", -1))
-		}
-
-		db, err := cmd.StorageFromDirectPath(*conf, l)
-		if err != nil {
-			m = append(m, fmt.Errorf("unable to access storage: %s", err))
-			continue
-		}
-
-		if err != nil {
-			m = append(m, fmt.Errorf("unable to initialize storage backend: %s", err))
-			continue
-		}
-		stores = append(stores, db)
+		conf.Storage = append(conf.Storage, st)
 	}
 	if len(m) > 0 {
 		return nil, xerrors.Join(m...)

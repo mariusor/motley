@@ -3,7 +3,6 @@ package motley
 import (
 	"context"
 	"fmt"
-	f "github.com/go-ap/fedbox"
 	"time"
 
 	"git.sr.ht/~marius/motley/internal/config"
@@ -11,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	pub "github.com/go-ap/activitypub"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/sirupsen/logrus"
@@ -92,9 +90,8 @@ var (
 	helpViewStyle         = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-func Launch(conf config.Options, r f.FullStorage, l *logrus.Logger) error {
-	base := pub.IRI(conf.BaseURL)
-	mm := newModel(FedBOX(base, r, l), conf.Env, l)
+func Launch(conf config.Options, l *logrus.Logger) error {
+	mm := newModel(FedBOX(conf.URLs, conf.Storage, conf.Env, l), conf.Env, l)
 	_, err := tea.NewProgram(mm, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
 	return err
 }
@@ -115,7 +112,7 @@ func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
 	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
-	m.status.logo = logoView(pubUrl(ff.getService()), env)
+	m.status.logo = logoView(pubUrl(ff.getRootNodes()), env)
 	return m
 }
 

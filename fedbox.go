@@ -7,11 +7,13 @@ import (
 	"path"
 	"path/filepath"
 
+	"git.sr.ht/~marius/motley/internal/config"
+	"git.sr.ht/~marius/motley/internal/env"
+	"git.sr.ht/~marius/motley/internal/storage"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
-	f "github.com/go-ap/fedbox"
 	"github.com/go-ap/filters"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/mariusor/qstring"
@@ -40,38 +42,72 @@ type loggerFn func(string, ...interface{})
 
 var logFn = func(string, ...interface{}) {}
 
+type store struct {
+	root pub.Item
+	s    config.FullStorage
+}
+
 type fedbox struct {
-	tree  map[pub.IRI]pub.Item
-	iri   pub.IRI
-	s     f.FullStorage
-	logFn loggerFn
+	tree   map[pub.IRI]pub.Item
+	items  pub.IRIs
+	stores []store
+	logFn  loggerFn
 }
 
-func FedBOX(base pub.IRI, r f.FullStorage, l *logrus.Logger) *fedbox {
+func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l *logrus.Logger) *fedbox {
 	logFn = l.Infof
-	return &fedbox{tree: make(map[pub.IRI]pub.Item), iri: base, s: r, logFn: l.Infof}
+	stores := make([]store, 0)
+	for _, s := range st {
+		for _, iri := range rootIRIs {
+			db, err := storage.Storage(s, e, iri, l)
+			if err != nil {
+				l.Debugf("unable to initialize storage %v: %s", s, err)
+				continue
+			}
+			col, err := db.Load(pub.IRI(iri))
+			if err != nil {
+				l.Debugf("unable to load %s from storage %v: %s", iri, s, err)
+				continue
+			}
+			pub.OnObject(col, func(o *pub.Object) error {
+				stores = append(stores, store{
+					root: o,
+					s:    db,
+				})
+				return nil
+			})
+		}
+	}
+	return &fedbox{tree: make(map[pub.IRI]pub.Item), stores: stores, logFn: l.Infof}
 }
 
-func (f *fedbox) getService() pub.Item {
-	col, err := f.s.Load(f.iri)
-	if err != nil {
-		return nil
+func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {
+	for _, st := range f.stores {
+		col, err := st.s.Load(iri, ff...)
+		if err == nil {
+			return col, nil
+		}
 	}
-	var service pub.Item
-	pub.OnActor(col, func(o *pub.Actor) error {
-		service = o
-		return nil
-	})
-	return service
+	return nil, errors.NotFoundf("unable to load %s in any storage", iri)
+}
+
+func (f *fedbox) getRootNodes() pub.ItemCollection {
+	rootNodes := make(pub.ItemCollection, len(f.stores))
+	for i, st := range f.stores {
+		rootNodes[i] = st.root
+	}
+	return rootNodes
 }
 
 func initNodes(f *fedbox) tree.Nodes {
-	n := node(
-		f.getService(),
-		withState(tree.NodeLastChild|tree.NodeSelected),
-	)
-
-	return tree.Nodes{n}
+	nodes := make(tree.Nodes, 0)
+	for _, root := range f.getRootNodes() {
+		nodes = append(nodes, node(
+			root,
+			withState(tree.NodeLastChild|tree.NodeSelected),
+		))
+	}
+	return nodes
 }
 
 type n struct {
@@ -569,7 +605,7 @@ type accumFn func(context.Context, pub.CollectionInterface) error
 
 func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IRI, accumFn accumFn) func() error {
 	return func() error {
-		col, err := f.s.Load(loadIRI)
+		col, err := f.Load(loadIRI)
 		if err != nil {
 			return errors.Annotatef(err, "failed to load search: %s", loadIRI)
 		}

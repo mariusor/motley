@@ -6,13 +6,15 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"git.sr.ht/~marius/motley/internal/env"
 	"github.com/go-ap/errors"
+	"github.com/go-ap/fedbox/storage"
+	"github.com/go-ap/processing"
 	"github.com/joho/godotenv"
+	"github.com/openshift/osin"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,31 +29,36 @@ type BackendConfig struct {
 	Name    string
 }
 
+type FullStorage interface {
+	ListClients() ([]osin.Client, error)
+	GetClient(id string) (osin.Client, error)
+	UpdateClient(c osin.Client) error
+	CreateClient(c osin.Client) error
+	RemoveClient(id string) error
+	osin.Storage
+	processing.Store
+	processing.KeyLoader
+	storage.PasswordChanger
+}
+
+type Storage struct {
+	Type StorageType
+	Path string
+}
+
 type Options struct {
-	Env         env.Type
-	LogLevel    logrus.Level
-	TimeOut     time.Duration
-	Secure      bool
-	CertPath    string
-	KeyPath     string
-	Host        string
-	Listen      string
-	BaseURL     string
-	Storage     StorageType
-	StoragePath string
+	Env      env.Type
+	LogLevel logrus.Level
+	URLs     []string
+	Storage  []Storage
 }
 
 type StorageType string
 
 const (
 	KeyENV         = "ENV"
-	KeyTimeOut     = "TIME_OUT"
 	KeyLogLevel    = "LOG_LEVEL"
 	KeyHostname    = "HOSTNAME"
-	KeyHTTPS       = "HTTPS"
-	KeyCertPath    = "CERT_PATH"
-	KeyKeyPath     = "KEY_PATH"
-	KeyListen      = "LISTEN"
 	KeyDBHost      = "DB_HOST"
 	KeyDBPort      = "DB_PORT"
 	KeyDBName      = "DB_NAME"
@@ -91,32 +98,35 @@ func FullStoragePath(dir string) (string, error) {
 	return dir, nil
 }
 
-func (o Options) BaseStoragePath() (string, error) {
-	return FullStoragePath(filepath.Join(o.StoragePath, string(o.Storage), string(o.Env), o.Host))
+func (o Storage) BaseStoragePath(e env.Type, host string) (string, error) {
+	if u, err := url.ParseRequestURI(host); err == nil {
+		host = u.Host
+	}
+	return FullStoragePath(filepath.Join(o.Path, string(o.Type), string(e), host))
 }
 
-func (o Options) BoltDB() (string, error) {
-	base, err := o.BaseStoragePath()
+func (o Storage) BoltDB(e env.Type, host string) (string, error) {
+	base, err := o.BaseStoragePath(e, host)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s/fedbox.bdb", base), nil
 }
 
-func (o Options) BoltDBOAuth2() (string, error) {
-	base, err := o.BaseStoragePath()
+func (o Storage) BoltDBOAuth2(e env.Type, host string) (string, error) {
+	base, err := o.BaseStoragePath(e, host)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s/oauth.bdb", base), nil
 }
 
-func (o Options) Badger() (string, error) {
-	return o.BaseStoragePath()
+func (o Storage) Badger(e env.Type, host string) (string, error) {
+	return o.BaseStoragePath(e, host)
 }
 
-func (o Options) BadgerOAuth2() (string, error) {
-	return fmt.Sprintf("%s/%s/%s", o.StoragePath, o.Env, "oauth"), nil
+func (o Storage) BadgerOAuth2(e env.Type, _ string) (string, error) {
+	return fmt.Sprintf("%s/%s/%s", o.Path, e, "oauth"), nil
 }
 
 func prefKey(k string) string {
@@ -191,38 +201,20 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 		e = env.Type(loadKeyFromEnv(KeyENV, "dev"))
 	}
 	conf.Env = e
-	if conf.Host == "" {
-		conf.Host = loadKeyFromEnv(KeyHostname, conf.Host)
+	if host := loadKeyFromEnv(KeyHostname, ""); host != "" {
+		conf.URLs = append(conf.URLs, fmt.Sprintf("https://%s", host))
 	}
-	conf.TimeOut = timeOut
-	if to, _ := time.ParseDuration(loadKeyFromEnv(KeyTimeOut, "")); to > 0 {
-		conf.TimeOut = to
-	}
-	if conf.Host != "" {
-		if u, err := url.ParseRequestURI(conf.Host); err != nil {
-			conf.Secure, _ = strconv.ParseBool(loadKeyFromEnv(KeyHTTPS, "true"))
-			proto := "http"
-			if conf.Secure {
-				proto = "https"
-			}
-			conf.BaseURL = fmt.Sprintf("%s://%s", proto, conf.Host)
-		} else {
-			conf.Secure = u.Scheme == "https"
-			conf.Host = u.Host
-			conf.BaseURL = u.String()
-		}
-	}
-	conf.KeyPath = loadKeyFromEnv(KeyKeyPath, "")
-	conf.CertPath = loadKeyFromEnv(KeyCertPath, "")
 
-	conf.Listen = loadKeyFromEnv(KeyListen, "")
 	envStorage := loadKeyFromEnv(KeyStorage, string(StorageFS))
-	conf.Storage = StorageType(strings.ToLower(envStorage))
-	conf.StoragePath = loadKeyFromEnv(KeyStoragePath, "")
-	if conf.StoragePath == "" {
-		conf.StoragePath = base
+	st := Storage{
+		Type: StorageType(strings.ToLower(envStorage)),
+		Path: loadKeyFromEnv(KeyStoragePath, ""),
 	}
-	conf.StoragePath = filepath.Clean(conf.StoragePath)
+	if st.Path == "" {
+		st.Path = base
+	}
+	st.Path = filepath.Clean(st.Path)
+	conf.Storage = append(conf.Storage, st)
 
 	return conf, nil
 }
