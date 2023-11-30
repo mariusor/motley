@@ -57,6 +57,12 @@ type fedbox struct {
 func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l *logrus.Logger) *fedbox {
 	logFn = l.Infof
 	stores := make([]store, 0)
+	var appendStore = func(stores *[]store, db config.FullStorage, it pub.Item) {
+		if pub.IsNil(it) {
+			return
+		}
+		*stores = append(*stores, store{root: it, s: db})
+	}
 	for _, s := range st {
 		for _, iri := range rootIRIs {
 			db, err := storage.Storage(s, e, iri, l)
@@ -64,18 +70,21 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l *logrus.Logger
 				l.Debugf("unable to initialize storage %v: %s", s, err)
 				continue
 			}
-			col, err := db.Load(pub.IRI(iri))
+			it, err := db.Load(pub.IRI(iri))
 			if err != nil {
 				l.Debugf("unable to load %s from storage %v: %s", iri, s, err)
 				continue
 			}
-			pub.OnObject(col, func(o *pub.Object) error {
-				stores = append(stores, store{
-					root: o,
-					s:    db,
+			if it.IsCollection() {
+				pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
+					for _, it := range col.Collection() {
+						appendStore(&stores, db, it)
+					}
+					return nil
 				})
-				return nil
-			})
+			} else {
+				appendStore(&stores, db, it)
+			}
 		}
 	}
 	return &fedbox{tree: make(map[pub.IRI]pub.Item), stores: stores, logFn: l.Infof}
