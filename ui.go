@@ -306,9 +306,7 @@ func (m *model) Back(msg tea.Msg) tea.Cmd {
 	return noop
 }
 
-func noop() tea.Msg {
-	return "noop"
-}
+var noop tea.Cmd = nil
 
 func advanceCmd(n *n) tea.Cmd {
 	return func() tea.Msg {
