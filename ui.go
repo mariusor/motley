@@ -191,24 +191,27 @@ func nodeUpdateCmd(n *n) tea.Cmd {
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
-	switch msg := msg.(type) {
+	switch mm := msg.(type) {
 	case *n:
-		m.currentNodePosition = m.tree.list.Cursor()
-		m.currentNode = msg
-		ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*300)
-		cmd := m.loadDepsForNode(ctx, m.currentNode)
-		for _, st := range m.f.stores {
-			if msg.GetLink().Contains(st.root.GetLink(), true) {
-				m.root = st.root
-				break
+		if mm != nil {
+			m.currentNodePosition = m.tree.list.Cursor()
+			m.currentNode = mm
+			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*300)
+			defer cancel()
+			cmd := m.loadDepsForNode(ctx, m.currentNode)
+			for _, st := range m.f.stores {
+				if mm.GetLink().Contains(st.root.GetLink(), true) {
+					m.root = st.root
+					break
+				}
 			}
+			cmds = append(cmds, nodeUpdateCmd(m.currentNode), cmd)
 		}
-		cmds = append(cmds, nodeUpdateCmd(m.currentNode), cmd)
 	case advanceMsg:
-		cmds = append(cmds, m.Advance(msg))
+		cmds = append(cmds, m.Advance(mm))
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, movePane):
+		case key.Matches(mm, movePane):
 			if m.tree.list.Focused() {
 				m.tree.list.Blur()
 			} else {
@@ -216,18 +219,18 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 				// the model.Tree sets cursor to -1 when bluring, so we need to add an extra +1
 				cmds = append(cmds, m.tree.list.SetCursor(m.currentNodePosition))
 			}
-		case key.Matches(msg, quitKey):
+		case key.Matches(mm, quitKey):
 			return quitCmd
-		case key.Matches(msg, helpKey):
+		case key.Matches(mm, helpKey):
 			return tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
-		case key.Matches(msg, advanceKey):
+		case key.Matches(mm, advanceKey):
 			return advanceCmd(m.currentNode)
-		case key.Matches(msg, backKey):
-			return m.Back(msg)
+		case key.Matches(mm, backKey):
+			return m.Back(mm)
 		}
 
 	case tea.WindowSizeMsg:
-		m.setSize(msg.Width, msg.Height)
+		m.setSize(mm.Width, mm.Height)
 		return m.tree.list.SetCursor(m.currentNodePosition)
 	case quitMsg:
 		return tea.Quit
@@ -239,8 +242,8 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			cmds = append(cmds, m.status.startedLoading)
 		}
 	}
-	if m.status.state.Is(statusBusy) && !m.tree.IsSyncing() {
-		cmds = append(cmds, m.status.stoppedLoading, nodeUpdateCmd(m.currentNode))
+	if !m.tree.IsSyncing() {
+		cmds = append(cmds, nodeUpdateCmd(m.currentNode))
 	}
 	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))

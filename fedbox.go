@@ -333,7 +333,7 @@ func getObjectElements(ob pub.Object, parent *n) []*n {
 
 func getActorElements(act pub.Actor, parent *n) []*n {
 	result := make([]*n, 0)
-	pub.OnObject(&act, func(o *pub.Object) error {
+	_ = pub.OnObject(&act, func(o *pub.Object) error {
 		result = append(result, getObjectElements(*o, parent)...)
 		return nil
 	})
@@ -363,7 +363,7 @@ func getItemElements(parent *n) []*n {
 	it := parent.Item
 
 	if pub.IsItemCollection(it) {
-		pub.OnItemCollection(it, func(c *pub.ItemCollection) error {
+		_ = pub.OnItemCollection(it, func(c *pub.ItemCollection) error {
 			for _, ob := range c.Collection() {
 				result = append(result, node(ob, withParent(parent)))
 			}
@@ -371,13 +371,13 @@ func getItemElements(parent *n) []*n {
 		})
 	}
 	if pub.ActorTypes.Contains(it.GetType()) {
-		pub.OnActor(it, func(act *pub.Actor) error {
+		_ = pub.OnActor(it, func(act *pub.Actor) error {
 			result = append(result, getActorElements(*act, parent)...)
 			return nil
 		})
 	}
 	if pub.ActivityTypes.Contains(it.GetType()) || pub.ObjectTypes.Contains(it.GetType()) {
-		pub.OnObject(it, func(act *pub.Object) error {
+		_ = pub.OnObject(it, func(act *pub.Object) error {
 			result = append(result, getObjectElements(*act, parent)...)
 			return nil
 		})
@@ -408,10 +408,10 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 		return nil
 	})
 	go func() {
-		g.Wait()
+		_ = g.Wait()
 		node.s ^= NodeSyncing
 	}()
-	return m.status.spinner.Tick
+	return m.status.startedLoading
 }
 
 func (m *model) loadChildrenForNode(ctx context.Context, nn *n) error {
@@ -440,7 +440,7 @@ func dereferenceIRIs(ctx context.Context, f *fedbox, iris pub.ItemCollection) pu
 	items := make(pub.ItemCollection, 0, len(iris))
 	for _, it := range iris {
 		if deref := dereferenceIRI(ctx, f, it); pub.IsItemCollection(deref) {
-			pub.OnItemCollection(deref, func(col *pub.ItemCollection) error {
+			_ = pub.OnItemCollection(deref, func(col *pub.ItemCollection) error {
 				items = append(items, pub.ItemCollectionDeduplication(col)...)
 				return nil
 			})
@@ -657,9 +657,9 @@ func emptyAccum(_ context.Context, _ pub.CollectionInterface) error {
 }
 
 func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iris ...pub.IRI) error {
-	var cancelFn func()
+	var cancel func()
 
-	ctx, cancelFn = context.WithCancel(ctx)
+	ctx, cancel = context.WithCancel(ctx)
 	g, gtx := errgroup.WithContext(ctx)
 
 	for _, iri := range iris {
@@ -668,7 +668,7 @@ func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iris ...pub.IRI)
 	if err := g.Wait(); err != nil {
 		if errors.Is(err, StopLoad{}) {
 			f.logFn("stopped loading search")
-			cancelFn()
+			cancel()
 		} else {
 			f.logFn("%s", err)
 			return err

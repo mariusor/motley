@@ -275,20 +275,22 @@ func (i itemModel) Init() tea.Cmd {
 
 func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
-	switch msg := msg.(type) {
+	switch mm := msg.(type) {
 	case tea.WindowSizeMsg:
 		i.logFn("item resize: %+v", msg)
 	case nodeUpdateMsg:
-		i.item = msg.Item
-		ob := newObjectModel()
-		err := vocab.OnObject(i.item, ob.updateObject)
-		if err != nil {
-			cmds = append(cmds, errCmd(err))
-		} else {
-			i.model = ob
+		if mm.n != nil {
+			i.item = mm.n.Item
+			ob := newObjectModel()
+			err := vocab.OnObject(i.item, ob.updateObject)
+			if err != nil {
+				cmds = append(cmds, errCmd(err))
+			} else {
+				i.model = ob
+			}
 		}
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch mm.String() {
 		case "home", "g":
 			i.viewport.GotoTop()
 			if i.viewport.HighPerformanceRendering {

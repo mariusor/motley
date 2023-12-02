@@ -52,8 +52,6 @@ type statusModel struct {
 	timer *time.Timer
 }
 
-var glowLogoTextColor = Color("#ECFD65")
-
 func initializeSpinner() spinner.Model {
 	sp := spinner.New()
 	sp.Style = lipgloss.NewStyle().Bold(true)
@@ -63,8 +61,6 @@ func initializeSpinner() spinner.Model {
 }
 
 func newStatusModel(common *commonModel) statusModel {
-	// Text input for search
-
 	return statusModel{
 		commonModel: common,
 		spinner:     initializeSpinner(),
@@ -151,42 +147,39 @@ func (a statusNode) View() string {
 func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
+	switch mm := msg.(type) {
 	case error:
-		cmd = s.showError(msg)
+		cmd = s.showError(mm)
 	case spinner.TickMsg:
 		if s.state.Is(statusBusy) {
 			cmd = s.spin(msg)
 		}
 	case nodeUpdateMsg:
-		cmd = s.showStatusMessage(statusNode{msg.n}.View())
+		if mm.n != nil {
+			cmd = s.showStatusMessage(statusNode{mm.n}.View())
+		}
 	case statusState:
 		//if !msg.Is(statusError) && s.state.Is(statusError) {
 		//	s.state ^= statusError
 		//}
-		s.state |= msg
-		if msg.Is(statusBusy) {
-			s.logFn("starting spinner")
-			cmd = s.spinner.Tick
-		} else {
+		s.state |= mm
+		if !s.state.Is(statusBusy) {
 			s.logFn("stopping spinner")
-			initializeSpinner()
+			s.spinner = initializeSpinner()
 		}
 	case percentageMsg:
-		s.percent = float64(msg) * 100.0
+		s.percent = float64(mm) * 100.0
 	}
 
 	return s, cmd
 }
 
 func (s *statusModel) startedLoading() tea.Msg {
-	s.state = s.state | statusBusy
-	return nil
+	return s.state | statusBusy
 }
 
 func (s *statusModel) stoppedLoading() tea.Msg {
-	s.state = s.state ^ statusBusy
-	return nil
+	return s.state ^ statusBusy
 }
 
 func (s *statusModel) View() string {
