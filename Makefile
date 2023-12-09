@@ -14,7 +14,7 @@ M4 = /usr/bin/m4
 M4_FLAGS =
 
 GO ?= go
-APPSOURCES := $(wildcard *.go internal/*/*.go cmd/*.go)
+APPSOURCES := $(wildcard *.go internal/*/*.go cmd/*/*.go)
 PROJECT_NAME := $(shell basename $(PWD))
 TAGS := $(ENV)
 
