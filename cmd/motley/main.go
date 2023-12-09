@@ -4,6 +4,8 @@ import (
 	xerrors "errors"
 	"fmt"
 	"io"
+	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -49,6 +51,10 @@ func main() {
 			"types": strings.Join([]string{string(config.StorageBoltDB), string(config.StorageBadger), string(config.StorageFS)}, ", "),
 		},
 	)
+	// Server for pprof
+	go func() {
+		fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	conf := config.Options{}
 	stores, err := loadArguments(&conf)
