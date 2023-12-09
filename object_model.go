@@ -57,6 +57,9 @@ var binContentTypes = vocab.ActivityVocabularyTypes{
 }
 
 func (o ObjectModel) View() string {
+	if o.ID == "" {
+		return ""
+	}
 	pieces := make([]string, 0)
 
 	// TODO(marius): move this to initialization, and move the setting of the nat values into the Update()

@@ -281,11 +281,11 @@ func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
 	case nodeUpdateMsg:
 		if mm.n != nil {
 			i.item = mm.n.Item
-			ob := newObjectModel()
-			err := vocab.OnObject(i.item, ob.updateObject)
-			if err != nil {
-				cmds = append(cmds, errCmd(err))
-			} else {
+			if !(vocab.IsIRI(i.item) || vocab.IsItemCollection(i.item)) {
+				ob := newObjectModel()
+				if err := vocab.OnObject(i.item, ob.updateObject); err != nil {
+					cmds = append(cmds, errCmd(err))
+				}
 				i.model = ob
 			}
 		}
