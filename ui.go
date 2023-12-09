@@ -10,9 +10,9 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/common-nighthawk/go-figure"
 	pub "github.com/go-ap/activitypub"
 	tree "github.com/mariusor/bubbles-tree"
-	"github.com/muesli/reflow/wordwrap"
 	"github.com/sirupsen/logrus"
 )
 
@@ -421,11 +421,6 @@ func NewColorPair(dark, light string) lipgloss.AdaptiveColor {
 	return lipgloss.AdaptiveColor{Dark: dark, Light: light}
 }
 
-// Wrap wraps lines at a predefined width via package muesli/reflow.
-func Wrap(s string) string {
-	return wordwrap.String(s, wrapAt)
-}
-
 // Returns a termenv style with foreground and background options.
 func newStyle(fg, bg ColorPair, bold bool) func(...string) string {
 	s := lipgloss.Style{}.Foreground(fg).Background(bg)
@@ -455,3 +450,21 @@ func max(a, b int) int {
 func clamp(v, low, high int) int {
 	return min(high, max(low, v))
 }
+
+type motelyPager struct {
+	Title string
+}
+
+func (m motelyPager) Init() tea.Cmd {
+	return nil
+}
+func (m motelyPager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m, nil
+}
+
+func (m motelyPager) View() string {
+	tit := figure.NewFigure(m.Title, "", true)
+	return tit.String()
+}
+
+var M = motelyPager{Title: "Motely"}

@@ -279,6 +279,7 @@ func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		i.logFn("item resize: %+v", msg)
 	case nodeUpdateMsg:
+		var content tea.Model = M
 		if mm.n != nil {
 			i.item = mm.n.Item
 			if !(vocab.IsIRI(i.item) || vocab.IsItemCollection(i.item)) {
@@ -286,9 +287,10 @@ func (i itemModel) updateAsModel(msg tea.Msg) (itemModel, tea.Cmd) {
 				if err := vocab.OnObject(i.item, ob.updateObject); err != nil {
 					cmds = append(cmds, errCmd(err))
 				}
-				i.model = ob
+				content = ob
 			}
 		}
+		i.model = content
 	case tea.KeyMsg:
 		switch mm.String() {
 		case "home", "g":
