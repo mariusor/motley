@@ -386,31 +386,18 @@ func getItemElements(parent *n) []*n {
 }
 
 func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
-	g, gtx := errgroup.WithContext(ctx)
 	node.s |= NodeSyncing
-	g.Go(func() error {
-		if err := dereferenceItemProperties(gtx, m.f, node.Item); err != nil {
-			m.logFn("error while loading attributes %s", err)
-			node.s |= NodeError
-			return err
-		}
-		return nil
-	})
+	if err := dereferenceItemProperties(ctx, m.f, node.Item); err != nil {
+		m.logFn("error while loading attributes %s", err)
+		node.s |= NodeError
+	}
 
-	g.Go(func() error {
-		if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
-			if err := m.loadChildrenForNode(ctx, node); err != nil {
-				node.s |= NodeError
-				m.logFn("error while loading children %s", err)
-				return err
-			}
+	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
+		if err := m.loadChildrenForNode(ctx, node); err != nil {
+			node.s |= NodeError
+			m.logFn("error while loading children %s", err)
 		}
-		return nil
-	})
-	go func() {
-		_ = g.Wait()
-		node.s ^= NodeSyncing
-	}()
+	}
 	return m.status.startedLoading
 }
 
