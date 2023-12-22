@@ -552,7 +552,7 @@ func dereferenceItemProperties(ctx context.Context, f *fedbox, it pub.Item) erro
 	return nil
 }
 
-func getCollectionPrevNext(col pub.Item) (prev, next string) {
+func getCollectionPrevNext(col pub.Item) (prev, next pub.IRI) {
 	qFn := func(i pub.Item) url.Values {
 		if i == nil {
 			return url.Values{}
@@ -562,16 +562,16 @@ func getCollectionPrevNext(col pub.Item) (prev, next string) {
 		}
 		return url.Values{}
 	}
-	beforeFn := func(i pub.Item) string {
-		return qFn(i).Get("before")
+	beforeFn := func(i pub.Item) pub.IRI {
+		return pub.IRI(qFn(i).Get("before"))
 	}
-	afterFn := func(i pub.Item) string {
-		return qFn(i).Get("after")
+	afterFn := func(i pub.Item) pub.IRI {
+		return pub.IRI(qFn(i).Get("after"))
 	}
-	nextFromLastFn := func(i pub.Item) string {
+	nextFromLastFn := func(i pub.Item) pub.IRI {
 		if u, err := i.GetLink().URL(); err == nil {
-			_, next = path.Split(u.Path)
-			return next
+			_, next := path.Split(u.Path)
+			return pub.IRI(next)
 		}
 		return ""
 	}
@@ -607,9 +607,9 @@ func getCollectionPrevNext(col pub.Item) (prev, next string) {
 	//   we don't take it into consideration.
 	if next != "" {
 		f := struct {
-			Next string `qstring:"after"`
+			Next pub.IRI `qstring:"after"`
 		}{}
-		if err := qstring.Unmarshal(qFn(col.GetLink()), &f); err == nil && next == f.Next {
+		if err := qstring.Unmarshal(qFn(col.GetLink()), &f); err == nil && next.Equals(f.Next, false) {
 			next = ""
 		}
 	}
@@ -620,9 +620,9 @@ const MaxItems = 100
 
 type accumFn func(context.Context, pub.CollectionInterface) error
 
-func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IRI, accumFn accumFn) func() error {
+func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IRI, accumFn accumFn, ff ...filters.Check) func() error {
 	return func() error {
-		col, err := f.Load(loadIRI)
+		col, err := f.Load(loadIRI, ff...)
 		if err != nil {
 			return errors.Annotatef(err, "failed to load search: %s", loadIRI)
 		}
@@ -637,11 +637,16 @@ func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IR
 				return err
 			}
 
-			var next string
-
 			if maxItems-MaxItems < 5 {
-				if _, next = getCollectionPrevNext(col); len(next) > 0 {
-					g.Go(f.searchFn(ctx, g, loadIRI, accumFn))
+				before, next := getCollectionPrevNext(col)
+				if len(next) > 0 {
+					ff = append(ff, filters.After(filters.ID(next)))
+				}
+				if len(before) > 0 {
+					ff = append(ff, filters.Before(filters.ID(before)))
+				}
+				if len(next)+len(before) > 0 {
+					g.Go(f.searchFn(ctx, g, loadIRI, accumFn, ff...))
 				}
 				return nil
 			} else {
