@@ -398,7 +398,7 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 			m.logFn("error while loading children %s", err)
 		}
 	}
-	return m.status.startedLoading
+	return m.tree.stoppedLoading
 }
 
 func (m *model) loadChildrenForNode(ctx context.Context, nn *n) error {

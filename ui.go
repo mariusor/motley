@@ -137,7 +137,7 @@ type model struct {
 	breadCrumbs         []*tree.Model
 
 	tree   treeModel
-	pager  itemModel
+	pager  pagerModel
 	status statusModel
 }
 
@@ -162,7 +162,7 @@ func (m *model) setSize(w, h int) {
 
 	w = w - 2 - 2 // 1 for padding, 1 for border
 
-	tw := max(treeWidth, int(0.28*float32(w)))
+	tw := max(minTreeWidth, int(0.28*float32(w)))
 	m.tree.setSize(tw-1-1, h)
 	m.pager.setSize(w-tw-1-1, h)
 
@@ -178,24 +178,24 @@ func (m *model) setSize(w, h int) {
 	}
 }
 
-type nodeUpdateMsg struct {
-	*n
-}
+type nodeUpdateMsg n
 
-func nodeUpdateCmd(n *n) tea.Cmd {
+func nodeUpdateCmd(n n) tea.Cmd {
 	return func() tea.Msg {
-		return nodeUpdateMsg{n}
+		return nodeUpdateMsg(n)
 	}
 }
 
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
+	m.logFn("update: %T: %v", msg, msg)
 	switch mm := msg.(type) {
 	case *n:
 		if mm != nil {
 			m.currentNodePosition = m.tree.list.Cursor()
 			m.currentNode = mm
+			m.tree.state |= stateBusy
 			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*300)
 			defer cancel()
 			cmd := m.loadDepsForNode(ctx, m.currentNode)
@@ -205,7 +205,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 					break
 				}
 			}
-			cmds = append(cmds, nodeUpdateCmd(m.currentNode), cmd)
+			cmds = append(cmds, nodeUpdateCmd(*m.currentNode), cmd)
 		}
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(mm))
@@ -224,7 +224,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		case key.Matches(mm, helpKey):
 			return tea.Batch(showHelpCmd(), resizeCmd(m.width, m.height))
 		case key.Matches(mm, advanceKey):
-			return advanceCmd(m.currentNode)
+			return advanceCmd(*m.currentNode)
 		case key.Matches(mm, backKey):
 			return m.Back(mm)
 		}
@@ -236,23 +236,17 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		return tea.Quit
 	}
 
-	if cmd := m.updateTree(msg); cmd != nil {
-		cmds = append(cmds, cmd)
-		if m.tree.IsSyncing() {
-			cmds = append(cmds, m.status.startedLoading)
-		}
-	}
+	cmds = append(cmds, m.updateTree(msg))
 	if !m.tree.IsSyncing() {
-		cmds = append(cmds, nodeUpdateCmd(m.currentNode))
+		cmds = append(cmds, m.updatePager(msg))
 	}
-	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
 	return tea.Batch(cmds...)
 }
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
 	p, cmd := m.pager.Update(msg)
-	if pp, ok := p.(itemModel); ok {
+	if pp, ok := p.(pagerModel); ok {
 		m.pager = pp
 	} else {
 		return errCmd(fmt.Errorf("invalid pager: %T", p))
@@ -311,9 +305,9 @@ func (m *model) Back(msg tea.Msg) tea.Cmd {
 
 var noop tea.Cmd = nil
 
-func advanceCmd(n *n) tea.Cmd {
+func advanceCmd(n n) tea.Cmd {
 	return func() tea.Msg {
-		return advanceMsg{n}
+		return advanceMsg(n)
 	}
 }
 
@@ -336,17 +330,15 @@ func (m *model) Advance(msg advanceMsg) tea.Cmd {
 		return noop
 	}
 
-	if msg.n == nil {
-		m.logFn("invalid node to advance to")
-		return errCmd(fmt.Errorf("trying to advance to an invalid node"))
+	nn := n(msg)
+	if msg.s.Is(NodeError) {
+		return errCmd(fmt.Errorf("error: %s", nn.n))
 	}
-	if msg.n.s.Is(NodeError) {
-		return errCmd(fmt.Errorf("error: %s", msg.n.n))
-	}
-	name := getRootNodeName(msg.n)
-	newNode := node(msg.Item, withParent(msg.n), withName(name))
+
+	name := getRootNodeName(&nn)
+	newNode := node(msg.Item, withParent(&nn), withName(name))
 	if err := m.loadChildrenForNode(context.Background(), newNode); err != nil {
-		return errCmd(fmt.Errorf("unable to advance to %q: %w", msg.n.n, err))
+		return errCmd(fmt.Errorf("unable to advance to %q: %w", nn.n, err))
 	}
 	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
 		return errCmd(fmt.Errorf("no items in collection %s", name))
@@ -363,6 +355,9 @@ func errCmd(err error) tea.Cmd {
 }
 
 func nodeCmd(node *n) tea.Cmd {
+	if node == nil {
+		return noop
+	}
 	return func() tea.Msg {
 		return node
 	}
@@ -384,9 +379,7 @@ func quitCmd() tea.Msg {
 	return quitMsg{}
 }
 
-type advanceMsg struct {
-	*n
-}
+type advanceMsg n
 
 func renderWithBorder(s string, focused bool) string {
 	borderColour := hintColor
@@ -409,6 +402,10 @@ func (m *model) View() string {
 		),
 		lipgloss.NewStyle().Render(m.status.View()),
 	)
+}
+
+func (m *model) IsBusy() bool {
+	return m.status.state.Is(statusBusy)
 }
 
 // ColorPair is a pair of colors, one intended for a dark background and the
@@ -467,4 +464,4 @@ func (m motelyPager) View() string {
 	return tit.String()
 }
 
-var M = motelyPager{Title: "Motely"}
+var M = motelyPager{Title: "Motley"}

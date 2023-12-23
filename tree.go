@@ -7,7 +7,9 @@ import (
 
 type treeModel struct {
 	*commonModel
-	list *tree.Model
+
+	state state
+	list  *tree.Model
 }
 
 func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
@@ -36,6 +38,11 @@ func percentageChanged(f float64) func() tea.Msg {
 }
 
 func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch mm := msg.(type) {
+	case state:
+		t.state = mm
+	}
+
 	if m, cmd := t.list.Update(msg); cmd != nil {
 		t.list = m.(*tree.Model)
 		return t, tea.Batch(cmd, percentageChanged(t.list.ScrollPercent()))
@@ -44,7 +51,7 @@ func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return t, noop
 }
 
-const treeWidth = 32
+const minTreeWidth = 32
 
 func (t *treeModel) View() string {
 	if t.list.Focused() {
@@ -89,10 +96,25 @@ func (t *treeModel) Advance(current *n) *tree.Model {
 }
 
 func (t *treeModel) IsSyncing() bool {
-	for _, n := range t.list.Children() {
-		if n.State().Is(NodeSyncing) {
-			return true
-		}
+	return t.state.Is(stateBusy)
+}
+
+type state uint8
+
+func (s state) Is(st state) bool {
+	return s&st == st
+}
+
+const stateBusy state = 1 << iota
+
+func (t *treeModel) startedLoading() tea.Msg {
+	t.state |= stateBusy
+	return t.state
+}
+
+func (t *treeModel) stoppedLoading() tea.Msg {
+	if t.state.Is(stateBusy) {
+		t.state ^= stateBusy
 	}
-	return false
+	return t.state
 }

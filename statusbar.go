@@ -127,9 +127,7 @@ func (s *statusModel) spin(msg tea.Msg) tea.Cmd {
 	return tick
 }
 
-type statusNode struct {
-	*n
-}
+type statusNode n
 
 func (a statusNode) View() string {
 	s := strings.Builder{}
@@ -137,7 +135,7 @@ func (a statusNode) View() string {
 	case pub.IRI, *pub.IRI:
 		fmt.Fprintf(&s, "%s", it.GetID())
 	case pub.ItemCollection:
-		fmt.Fprintf(&s, "%s %s: %d items", ItemType(it), a.n.n, len(a.n.c))
+		fmt.Fprintf(&s, "%s %s: %d items", ItemType(it), a.n, len(a.c))
 	case pub.Item:
 		fmt.Fprintf(&s, "%s: %s", ItemType(it), it.GetID())
 	}
@@ -155,16 +153,11 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = s.spin(msg)
 		}
 	case nodeUpdateMsg:
-		if mm.n != nil {
-			cmd = s.showStatusMessage(statusNode{mm.n}.View())
-		}
+		cmd = s.showStatusMessage(statusNode(mm).View())
 	case statusState:
-		//if !msg.Is(statusError) && s.state.Is(statusError) {
-		//	s.state ^= statusError
-		//}
 		s.state |= mm
 		if !s.state.Is(statusBusy) {
-			s.logFn("stopping spinner")
+			s.logFn("resetting spinner")
 			s.spinner = initializeSpinner()
 		}
 	case percentageMsg:
@@ -172,14 +165,6 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return s, cmd
-}
-
-func (s *statusModel) startedLoading() tea.Msg {
-	return s.state | statusBusy
-}
-
-func (s *statusModel) stoppedLoading() tea.Msg {
-	return s.state ^ statusBusy
 }
 
 func (s *statusModel) View() string {
