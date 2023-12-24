@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/bubbles v0.17.1
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.9.1
+	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/go-ap/activitypub v0.0.0-20231114162308-e219254dc5c9
 	github.com/go-ap/errors v0.0.0-20231003111023-183eef4b31b7
 	github.com/go-ap/fedbox v0.0.0-20231114165015-41259eb71b90
@@ -32,10 +33,8 @@ require (
 	git.sr.ht/~mariusor/go-xsd-duration v0.0.0-20220703122237-02e73435a078 // indirect
 	git.sr.ht/~mariusor/lw v0.0.0-20230317075520-07e173563bf8 // indirect
 	git.sr.ht/~mariusor/wrapper v0.0.0-20230710102058-fc38877da4fe // indirect
-	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect

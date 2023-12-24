@@ -96,9 +96,11 @@ func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {
 			continue
 		}
 		col, err := st.s.Load(iri, ff...)
-		if err == nil {
-			return col, nil
+		if err != nil {
+			f.logFn("Unable to load (%s)%s: %s", st.root.GetLink(), iri, err)
+			continue
 		}
+		return col, nil
 	}
 	return nil, errors.NotFoundf("unable to load %s in any storage", iri)
 }
@@ -648,19 +650,19 @@ func emptyAccum(_ context.Context, _ pub.CollectionInterface) error {
 	return nil
 }
 
-func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iris ...pub.IRI) error {
+func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iri pub.IRI, ff ...filters.Check) error {
 	var cancel func()
+	var g *errgroup.Group
 
+	g, ctx = errgroup.WithContext(ctx)
 	ctx, cancel = context.WithCancel(ctx)
-	g, gtx := errgroup.WithContext(ctx)
+	defer cancel()
 
-	for _, iri := range iris {
-		g.Go(f.searchFn(gtx, g, iri, a))
-	}
+	g.Go(f.searchFn(ctx, g, iri, a, ff...))
+
 	if err := g.Wait(); err != nil {
 		if errors.Is(err, StopLoad{}) {
 			f.logFn("stopped loading search")
-			cancel()
 		} else {
 			f.logFn("%s", err)
 			return err
