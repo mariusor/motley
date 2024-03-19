@@ -74,12 +74,35 @@ const (
 
 const defaultPerm = os.ModeDir | os.ModePerm | 0700
 
-func FullStoragePath(dir string) (string, error) {
-	if strings.Contains(dir, "~") {
+func normalizeStoragePath(o Storage, e env.Type, host string) string {
+	p := o.Path
+	if len(p) == 0 {
+		return p
+	}
+	if strings.Contains(p, "~") {
 		if u, err := user.Current(); err == nil {
-			dir = strings.Replace(dir, "~", u.HomeDir, 1)
+			p = strings.Replace(p, "~", u.HomeDir, 1)
 		}
 	}
+	if !filepath.IsAbs(p) {
+		p, _ = filepath.Abs(p)
+	}
+	p = strings.ReplaceAll(p, "%env%", string(e))
+
+	tp := strings.ReplaceAll(p, "%storage%", string(o.Type))
+	if _, err := os.Stat(tp); err == nil {
+		p = tp
+	}
+
+	hp := strings.ReplaceAll(p, "%host%", url.PathEscape(host))
+	if _, err := os.Stat(hp); err == nil {
+		p = hp
+	}
+	return filepath.Clean(p)
+}
+
+func FullStoragePath(o Storage, e env.Type, host string) (string, error) {
+	dir := normalizeStoragePath(o, e, host)
 	if !filepath.IsAbs(dir) {
 		d, err := filepath.Abs(dir)
 		if err != nil {
@@ -102,7 +125,7 @@ func (o Storage) BaseStoragePath(e env.Type, host string) (string, error) {
 	if u, err := url.ParseRequestURI(host); err == nil {
 		host = u.Host
 	}
-	return FullStoragePath(filepath.Join(o.Path, string(o.Type), string(e), host))
+	return FullStoragePath(o, e, host)
 }
 
 func (o Storage) BoltDB(e env.Type, host string) (string, error) {
