@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"git.sr.ht/~marius/motley/internal/env"
+	"git.sr.ht/~mariusor/motley/internal/env"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

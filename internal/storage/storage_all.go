@@ -5,27 +5,26 @@ import (
 	"net/url"
 	"strings"
 
-	"git.sr.ht/~marius/motley/internal/config"
-	"git.sr.ht/~marius/motley/internal/env"
+	"git.sr.ht/~mariusor/lw"
+	"git.sr.ht/~mariusor/motley/internal/config"
+	"git.sr.ht/~mariusor/motley/internal/env"
 	"github.com/go-ap/errors"
-	"github.com/go-ap/fedbox"
 	badger "github.com/go-ap/storage-badger"
 	boltdb "github.com/go-ap/storage-boltdb"
 	fs "github.com/go-ap/storage-fs"
 	sqlite "github.com/go-ap/storage-sqlite"
-	"github.com/sirupsen/logrus"
 )
 
 var (
 	emptyFieldsLogFn = func(string, ...interface{}) {}
 	emptyLogFn       = func(string, ...interface{}) {}
-	InfoLogFn        = func(l logrus.FieldLogger) func(string, ...interface{}) {
+	InfoLogFn        = func(l lw.Logger) func(string, ...interface{}) {
 		if l == nil {
 			return emptyFieldsLogFn
 		}
 		return func(s string, p ...interface{}) { l.Infof(s, p...) }
 	}
-	ErrLogFn = func(l logrus.FieldLogger) func(string, ...interface{}) {
+	ErrLogFn = func(l lw.Logger) func(string, ...interface{}) {
 		if l == nil {
 			return emptyFieldsLogFn
 		}
@@ -33,7 +32,7 @@ var (
 	}
 )
 
-func getBadgerStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func getBadgerStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
 	path, err := c.Badger(e, u)
 	if err != nil {
 		return nil, err
@@ -50,7 +49,7 @@ func getBadgerStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogg
 	return db, nil
 }
 
-func getBoltStorageAtPath(dir, _ string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func getBoltStorageAtPath(dir, _ string, l lw.Logger) (config.FullStorage, error) {
 	return boltdb.New(boltdb.Config{
 		Path:  dir,
 		LogFn: InfoLogFn(l),
@@ -58,7 +57,7 @@ func getBoltStorageAtPath(dir, _ string, l logrus.FieldLogger) (fedbox.FullStora
 	})
 }
 
-func getBoltStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func getBoltStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
 	path, err := c.BoltDB(e, u)
 	if err != nil {
 		return nil, err
@@ -72,7 +71,7 @@ func getBoltStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogger
 	return db, nil
 }
 
-func getFsStorageAtPath(dir string, e env.Type, rawURL string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func getFsStorageAtPath(dir string, e env.Type, rawURL string, l lw.Logger) (config.FullStorage, error) {
 	if u, err := url.ParseRequestURI(rawURL); err == nil {
 		rawURL = u.Host
 	}
@@ -80,13 +79,12 @@ func getFsStorageAtPath(dir string, e env.Type, rawURL string, l logrus.FieldLog
 		dir = strings.Replace(dir, rawURL, "", 1)
 	}
 	return fs.New(fs.Config{
-		Path:  dir,
-		LogFn: InfoLogFn(l),
-		ErrFn: ErrLogFn(l),
+		Path:   dir,
+		Logger: l,
 	})
 }
 
-func getFsStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func getFsStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
 	path, err := c.BaseStoragePath(e, u)
 	if err != nil {
 		var pathError *iofs.PathError
@@ -103,7 +101,7 @@ func getFsStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogger) 
 	return db, nil
 }
 
-func getSqliteStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func getSqliteStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
 	l.Debugf("Initializing sqlite storage at %s", c.Path)
 	db, err := sqlite.New(sqlite.Config{})
 	if err != nil {
@@ -113,7 +111,7 @@ func getSqliteStorage(c config.Storage, e env.Type, u string, l logrus.FieldLogg
 
 }
 
-func Storage(c config.Storage, e env.Type, u string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func Storage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
 	switch c.Type {
 	case config.StorageBoltDB:
 		return getBoltStorage(c, e, u, l)
@@ -127,7 +125,7 @@ func Storage(c config.Storage, e env.Type, u string, l logrus.FieldLogger) (fedb
 	return nil, errors.NotImplementedf("Invalid storage type %s", c.Type)
 }
 
-func StorageFromDirectPath(c config.Storage, e env.Type, u string, l logrus.FieldLogger) (fedbox.FullStorage, error) {
+func StorageFromDirectPath(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
 	switch c.Type {
 	case config.StorageFS:
 		db, err := getFsStorageAtPath(c.Path, e, u, l)

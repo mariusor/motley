@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"git.sr.ht/~marius/motley/internal/config"
-	"git.sr.ht/~marius/motley/internal/env"
+	"git.sr.ht/~mariusor/lw"
+	"git.sr.ht/~mariusor/motley/internal/config"
+	"git.sr.ht/~mariusor/motley/internal/env"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/common-nighthawk/go-figure"
 	pub "github.com/go-ap/activitypub"
 	tree "github.com/mariusor/bubbles-tree"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -91,13 +91,13 @@ var (
 	helpViewStyle         = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-func Launch(conf config.Options, l *logrus.Logger) error {
+func Launch(conf config.Options, l lw.Logger) error {
 	mm := newModel(FedBOX(conf.URLs, conf.Storage, conf.Env, l), conf.Env, l)
 	_, err := tea.NewProgram(mm, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
 	return err
 }
 
-func newModel(ff *fedbox, env env.Type, l *logrus.Logger) *model {
+func newModel(ff *fedbox, env env.Type, l lw.Logger) *model {
 	if lipgloss.HasDarkBackground() {
 		GlamourStyle = "dark"
 	} else {

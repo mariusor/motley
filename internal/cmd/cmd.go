@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	tui "git.sr.ht/~marius/motley"
-	"git.sr.ht/~marius/motley/internal/config"
-	"github.com/sirupsen/logrus"
+	"git.sr.ht/~mariusor/lw"
+	tui "git.sr.ht/~mariusor/motley"
+	"git.sr.ht/~mariusor/motley/internal/config"
 )
 
 var (
@@ -18,7 +18,7 @@ func New(conf config.Options) *Control {
 	return &Control{Conf: conf}
 }
 
-func ShowTui(conf config.Options, l *logrus.Logger, stores ...config.FullStorage) error {
+func ShowTui(conf config.Options, l lw.Logger, stores ...config.FullStorage) error {
 	ctl = *New(conf)
 	return tui.Launch(ctl.Conf, l)
 }

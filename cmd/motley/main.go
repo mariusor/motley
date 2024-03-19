@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"git.sr.ht/~marius/motley/internal/cmd"
-	"git.sr.ht/~marius/motley/internal/config"
-	"git.sr.ht/~marius/motley/internal/env"
+	"git.sr.ht/~mariusor/lw"
+	"git.sr.ht/~mariusor/motley/internal/cmd"
+	"git.sr.ht/~mariusor/motley/internal/config"
+	"git.sr.ht/~mariusor/motley/internal/env"
 	"github.com/alecthomas/kong"
-	"github.com/sirupsen/logrus"
 )
 
 var version = "HEAD"
@@ -27,7 +27,7 @@ var Motley struct {
 	Config []string `flag:"" name:"config" help:"DSN for the folder(s) containing .env config files of form: env:/path/to/config. Possible types: ${envs}"`
 }
 
-var l = logrus.New()
+var l = lw.Dev(lw.SetOutput(openlog("motley")))
 
 func openlog(name string) io.Writer {
 	f, err := os.OpenFile(filepath.Join("/var/tmp/", name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
@@ -38,9 +38,6 @@ func openlog(name string) io.Writer {
 }
 
 func main() {
-	l.SetOutput(openlog("motley"))
-	l.SetFormatter(&logrus.TextFormatter{DisableQuote: true, DisableTimestamp: true})
-
 	ktx := kong.Parse(
 		&Motley,
 		kong.Bind(l),

@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"git.sr.ht/~marius/motley/internal/env"
+	"git.sr.ht/~mariusor/lw"
+	"git.sr.ht/~mariusor/motley/internal/env"
 	"github.com/go-ap/errors"
 	"github.com/go-ap/fedbox/storage"
 	"github.com/go-ap/processing"
 	"github.com/joho/godotenv"
 	"github.com/openshift/osin"
-	"github.com/sirupsen/logrus"
 )
 
 var Prefix = "fedbox"
@@ -48,7 +48,7 @@ type Storage struct {
 
 type Options struct {
 	Env      env.Type
-	LogLevel logrus.Level
+	LogLevel lw.Level
 	URLs     []string
 	Storage  []Storage
 }
@@ -154,17 +154,17 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	lvl := loadKeyFromEnv(KeyLogLevel, "")
 	switch strings.ToLower(lvl) {
 	case "trace":
-		conf.LogLevel = logrus.TraceLevel
+		conf.LogLevel = lw.TraceLevel
 	case "debug":
-		conf.LogLevel = logrus.DebugLevel
+		conf.LogLevel = lw.DebugLevel
 	case "warn":
-		conf.LogLevel = logrus.WarnLevel
+		conf.LogLevel = lw.WarnLevel
 	case "error":
-		conf.LogLevel = logrus.ErrorLevel
+		conf.LogLevel = lw.ErrorLevel
 	case "info":
 		fallthrough
 	default:
-		conf.LogLevel = logrus.InfoLevel
+		conf.LogLevel = lw.InfoLevel
 	}
 
 	if strings.Contains(base, "~") {

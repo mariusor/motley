@@ -7,9 +7,10 @@ import (
 	"path"
 	"path/filepath"
 
-	"git.sr.ht/~marius/motley/internal/config"
-	"git.sr.ht/~marius/motley/internal/env"
-	"git.sr.ht/~marius/motley/internal/storage"
+	"git.sr.ht/~mariusor/lw"
+	"git.sr.ht/~mariusor/motley/internal/config"
+	"git.sr.ht/~mariusor/motley/internal/env"
+	"git.sr.ht/~mariusor/motley/internal/storage"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
@@ -17,7 +18,6 @@ import (
 	"github.com/go-ap/filters"
 	tree "github.com/mariusor/bubbles-tree"
 	"github.com/mariusor/qstring"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -54,7 +54,7 @@ type fedbox struct {
 	logFn  loggerFn
 }
 
-func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l *logrus.Logger) *fedbox {
+func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) *fedbox {
 	logFn = l.Infof
 	stores := make([]store, 0)
 	var appendStore = func(stores *[]store, db config.FullStorage, it pub.Item) {

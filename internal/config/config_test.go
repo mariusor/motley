@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~marius/motley/internal/env"
+	"git.sr.ht/~mariusor/motley/internal/env"
 )
 
 const (
