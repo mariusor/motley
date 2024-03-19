@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	git.sr.ht/~mariusor/lw v0.0.0-20240313142800-531789c76b6d
-	github.com/alecthomas/kong v0.8.0
+	github.com/alecthomas/kong v0.9.0
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.10.0
@@ -25,26 +25,21 @@ require (
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.15.2
 	github.com/openshift/osin v1.0.2-0.20220317075346-0f4d38c6e53f
-	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sync v0.6.0
 	golang.org/x/text v0.14.0
 )
 
 require (
 	git.sr.ht/~mariusor/go-xsd-duration v0.0.0-20220703122237-02e73435a078 // indirect
-	git.sr.ht/~mariusor/wrapper v0.0.0-20240210113306-c862d947a747 // indirect
-	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/go-ap/auth v0.0.0-20240316125637-8a6b6a4d02b3 // indirect
 	github.com/go-ap/cache v0.0.0-20240316125445-3a1ff1ae4942 // indirect
 	github.com/go-ap/client v0.0.0-20240316125535-27e8db2c2547 // indirect
 	github.com/go-ap/jsonld v0.0.0-20221030091449-f2a191312c73 // indirect
-	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-chi/chi/v5 v5.0.12 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
