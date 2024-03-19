@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -22,12 +23,11 @@ import (
 var version = "HEAD"
 
 var Motley struct {
-	Path   []string `flag:"" name:"path" help:"Storage DSN strings of form type:/path/to/storage. Possible types: ${types}"`
-	URL    []string `flag:"" name:"url" help:"The url used by the application."`
-	Config []string `flag:"" name:"config" help:"DSN for the folder(s) containing .env config files of form: env:/path/to/config. Possible types: ${envs}"`
+	Version kong.VersionFlag
+	Path    []string `flag:"" name:"path" help:"Storage DSN strings of form type:/path/to/storage. Possible types: ${types}"`
+	URL     []string `flag:"" name:"url" help:"The url used by the application."`
+	Config  []string `flag:"" name:"config" help:"DSN for the folder(s) containing .env config files of form: env:/path/to/config. Possible types: ${envs}"`
 }
-
-var l = lw.Dev(lw.SetOutput(openlog("motley")))
 
 func openlog(name string) io.Writer {
 	f, err := os.OpenFile(filepath.Join("/var/tmp/", name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
@@ -38,14 +38,21 @@ func openlog(name string) io.Writer {
 }
 
 func main() {
+	if build, ok := debug.ReadBuildInfo(); ok && version == "HEAD" && build.Main.Version != "(devel)" {
+		version = build.Main.Version
+	}
+
+	l := lw.Dev(lw.SetOutput(openlog("motley")), lw.SetLevel(lw.TraceLevel))
+
 	ktx := kong.Parse(
 		&Motley,
 		kong.Bind(l),
 		kong.Name("motley"),
 		kong.Description("Helper utility to manage a FedBOX instance"),
 		kong.Vars{
-			"envs":  strings.Join([]string{string(env.DEV), string(env.PROD)}, ", "),
-			"types": strings.Join([]string{string(config.StorageBoltDB), string(config.StorageBadger), string(config.StorageFS)}, ", "),
+			"envs":    strings.Join([]string{string(env.DEV), string(env.PROD)}, ", "),
+			"types":   strings.Join([]string{string(config.StorageBoltDB), string(config.StorageBadger), string(config.StorageFS)}, ", "),
+			"version": version,
 		},
 	)
 	// Server for pprof
