@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +38,14 @@ func openlog(name string) io.Writer {
 	return f
 }
 
+func perfEnabled() bool {
+	val, err := strconv.ParseBool(os.Getenv("MOTLEY_ENABLE_PERF"))
+	if err != nil {
+		return false
+	}
+	return val
+}
+
 func main() {
 	if build, ok := debug.ReadBuildInfo(); ok && version == "HEAD" && build.Main.Version != "(devel)" {
 		version = build.Main.Version
@@ -55,10 +64,13 @@ func main() {
 			"version": version,
 		},
 	)
-	// Server for pprof
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+
+	if perfEnabled() {
+		// Server for pprof
+		go func() {
+			fmt.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	conf := config.Options{}
 	stores, err := loadArguments(&conf)
