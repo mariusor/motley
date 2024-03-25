@@ -3,23 +3,23 @@ module git.sr.ht/~mariusor/motley
 go 1.21
 
 require (
-	git.sr.ht/~mariusor/lw v0.0.0-20240313142800-531789c76b6d
+	git.sr.ht/~mariusor/lw v0.0.0-20240323171419-d538df4af052
 	github.com/alecthomas/kong v0.9.0
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
-	github.com/go-ap/activitypub v0.0.0-20240316125321-b61fd6a83225
+	github.com/go-ap/activitypub v0.0.0-20240324143732-70ec96f244e6
 	github.com/go-ap/errors v0.0.0-20240304112515-6077fa9c17b0
 	github.com/go-ap/fedbox v0.0.0-20240318092959-36af89809347
-	github.com/go-ap/filters v0.0.0-20240316125508-d5134f486493
-	github.com/go-ap/processing v0.0.0-20240316125704-2730f8d595ea
+	github.com/go-ap/filters v0.0.0-20240325123954-6b5f402749f3
+	github.com/go-ap/processing v0.0.0-20240325125404-cc52c350c92e
 	github.com/go-ap/storage-badger v0.0.0-20240316130601-470289cac4bc
 	github.com/go-ap/storage-boltdb v0.0.0-20240316130336-f657d3096597
 	github.com/go-ap/storage-fs v0.0.0-20240316163513-0dd8e7374f20
 	github.com/go-ap/storage-sqlite v0.0.0-20240316130302-47ee8ae6eb94
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20240104113351-670d6efa0200
+	github.com/mariusor/bubbles-tree v0.0.0-20240319103002-28de6e2c462b
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/muesli/reflow v0.3.0
@@ -38,7 +38,7 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ap/cache v0.0.0-20240316125445-3a1ff1ae4942 // indirect
-	github.com/go-ap/client v0.0.0-20240316125535-27e8db2c2547 // indirect
+	github.com/go-ap/client v0.0.0-20240324144035-f314cf467c26 // indirect
 	github.com/go-ap/jsonld v0.0.0-20221030091449-f2a191312c73 // indirect
 	github.com/go-chi/chi/v5 v5.0.12 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
