@@ -629,10 +629,10 @@ func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IR
 			if maxItems-MaxItems < 5 {
 				before, next := getCollectionPrevNext(col)
 				if len(next) > 0 {
-					ff = append(ff, filters.After(filters.ID(next)))
+					ff = append(ff, filters.After(filters.SameID(next)))
 				}
 				if len(before) > 0 {
-					ff = append(ff, filters.Before(filters.ID(before)))
+					ff = append(ff, filters.Before(filters.SameID(before)))
 				}
 				if len(next)+len(before) > 0 {
 					g.Go(f.searchFn(ctx, g, loadIRI, accumFn, ff...))
