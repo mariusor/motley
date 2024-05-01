@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -76,13 +75,12 @@ func TestLoadFromEnv(t *testing.T) {
 			t.Errorf("Error loading env: %s", err)
 		}
 		var tmp = strings.TrimRight(os.TempDir(), "/")
-		for i, st := range c.Storage {
+		for _, st := range c.Storage {
 			if strings.TrimRight(st.Path, "/") != tmp {
 				t.Errorf("Invalid loaded boltdb dir value: %s, expected %s", st.Path, tmp)
 			}
 			var expected = fmt.Sprintf("%s/%s-%s.bdb", tmp, strings.Replace(hostname, ".", "-", 1), env.TEST)
-			u, _ := url.ParseRequestURI(c.URLs[i])
-			p, err := st.BoltDB(c.Env, u.Host)
+			p, err := st.BoltDB(c.Env)
 			if err != nil {
 				t.Errorf("BoltDB() errored: %s", err)
 			}

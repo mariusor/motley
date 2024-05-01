@@ -20,6 +20,6 @@ tasks:
       set -a +x
       ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
-      cd fedbox
+      cd motley
       git remote add hub git@github.com:mariusor/motley
       git push hub --force --all
