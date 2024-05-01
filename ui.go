@@ -112,13 +112,15 @@ func newModel(conf config.Options, env env.Type, l lw.Logger) *model {
 	m.status = newStatusModel(m.commonModel)
 
 	var err error
+	var nodes tree.Nodes
 
 	m.f, err = FedBOX(conf.URLs, conf.Storage, conf.Env, l)
 	if err != nil {
 		m.status.showError(err)
-		return m
+	} else {
+		nodes = initNodes(m.f)
 	}
-	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
+	m.tree = newTreeModel(m.commonModel, nodes)
 	return m
 }
 
