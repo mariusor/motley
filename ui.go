@@ -192,10 +192,30 @@ func nodeUpdateCmd(n n) tea.Cmd {
 	}
 }
 
+func skipMessageFromLogs(msg tea.Msg) bool {
+	if _, ok := msg.(*n); ok {
+		return true
+	}
+	if _, ok := msg.(n); ok {
+		return true
+	}
+	if _, ok := msg.(advanceMsg); ok {
+		return true
+	}
+	if _, ok := msg.(nodeUpdateMsg); ok {
+		return true
+	}
+	return false
+}
+func (m *model) logMessage(msg tea.Msg) {
+	if !skipMessageFromLogs(msg) {
+		m.logFn("update: %T: %s", msg, msg)
+	}
+}
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
-	m.logFn("update: %T: %v", msg, msg)
+	m.logMessage(msg)
 	switch mm := msg.(type) {
 	case *n:
 		if mm != nil {
