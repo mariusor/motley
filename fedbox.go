@@ -73,21 +73,19 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) (*f
 				errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))
 				continue
 			}
-			it, err := db.Load(pub.IRI(iri))
-			if err != nil {
-				l.Debugf("unable to load %s from %s storage %s: %+v", s.Type, s.Path, iri, err)
-				errs = append(errs, errors.Annotatef(err, "Unable to load from %s storage %s", s.Type, s.Path))
-				continue
-			}
-			if it.IsCollection() {
-				pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
-					for _, it := range col.Collection() {
-						appendStore(&stores, db, it)
-					}
-					return nil
-				})
+			if it, err := db.Load(pub.IRI(iri)); err == nil {
+				if it.IsCollection() {
+					_ = pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
+						for _, it := range col.Collection() {
+							appendStore(&stores, db, it)
+						}
+						return nil
+					})
+				} else {
+					appendStore(&stores, db, it)
+				}
 			} else {
-				appendStore(&stores, db, it)
+				l.Debugf("unable to load %s from %s storage %s: %+v", iri, s.Type, s.Path, err)
 			}
 		}
 	}
