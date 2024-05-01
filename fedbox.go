@@ -66,7 +66,8 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) (*f
 	errs := make([]error, 0)
 	for _, s := range st {
 		for _, iri := range rootIRIs {
-			db, err := storage.Storage(s, e, iri, l)
+			s.Host = iri
+			db, err := storage.Storage(s, e, l)
 			if err != nil {
 				l.Debugf("unable to initialize %s storage %s: %+v", s.Type, s.Path, err)
 				errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))

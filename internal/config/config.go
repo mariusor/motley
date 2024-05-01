@@ -44,6 +44,7 @@ type FullStorage interface {
 type Storage struct {
 	Type StorageType
 	Path string
+	Host string
 }
 
 type Options struct {
@@ -74,35 +75,38 @@ const (
 
 const defaultPerm = os.ModeDir | os.ModePerm | 0700
 
-func normalizeStoragePath(o Storage, e env.Type, host string) string {
-	p := o.Path
-	if len(p) == 0 {
-		return p
+const (
+	varEnv     = "%env%"
+	varStorage = "%storage%"
+	varHost    = "%host%"
+)
+
+func normalizeConfigPath(c *Storage, e env.Type) string {
+	if len(c.Path) == 0 {
+		return c.Path
 	}
-	if strings.Contains(p, "~") {
+	p := c.Path
+	if p[0] == '~' {
 		if u, err := user.Current(); err == nil {
 			p = strings.Replace(p, "~", u.HomeDir, 1)
+		} else {
+			p = os.Getenv("HOME") + p[1:]
 		}
 	}
 	if !filepath.IsAbs(p) {
 		p, _ = filepath.Abs(p)
 	}
-	p = strings.ReplaceAll(p, "%env%", string(e))
-
-	tp := strings.ReplaceAll(p, "%storage%", string(o.Type))
-	if _, err := os.Stat(tp); err == nil {
-		p = tp
+	p = strings.ReplaceAll(p, varEnv, string(e))
+	p = strings.ReplaceAll(p, varStorage, string(c.Type))
+	if u, err := url.ParseRequestURI(c.Host); err == nil {
+		p = strings.ReplaceAll(p, varHost, url.PathEscape(u.Host))
 	}
-
-	hp := strings.ReplaceAll(p, "%host%", url.PathEscape(host))
-	if _, err := os.Stat(hp); err == nil {
-		p = hp
-	}
+	c.Path = p
 	return filepath.Clean(p)
 }
 
-func FullStoragePath(o Storage, e env.Type, host string) (string, error) {
-	dir := normalizeStoragePath(o, e, host)
+func fullStoragePath(o Storage, e env.Type) (string, error) {
+	dir := normalizeConfigPath(&o, e)
 	if !filepath.IsAbs(dir) {
 		d, err := filepath.Abs(dir)
 		if err != nil {
@@ -121,34 +125,31 @@ func FullStoragePath(o Storage, e env.Type, host string) (string, error) {
 	return dir, nil
 }
 
-func (o Storage) BaseStoragePath(e env.Type, host string) (string, error) {
-	if u, err := url.ParseRequestURI(host); err == nil {
-		host = u.Host
-	}
-	return FullStoragePath(o, e, host)
+func (o Storage) BaseStoragePath(e env.Type) (string, error) {
+	return fullStoragePath(o, e)
 }
 
-func (o Storage) BoltDB(e env.Type, host string) (string, error) {
-	base, err := o.BaseStoragePath(e, host)
+func (o Storage) BoltDB(e env.Type) (string, error) {
+	base, err := o.BaseStoragePath(e)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s/fedbox.bdb", base), nil
 }
 
-func (o Storage) BoltDBOAuth2(e env.Type, host string) (string, error) {
-	base, err := o.BaseStoragePath(e, host)
+func (o Storage) BoltDBOAuth2(e env.Type) (string, error) {
+	base, err := o.BaseStoragePath(e)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s/oauth.bdb", base), nil
 }
 
-func (o Storage) Badger(e env.Type, host string) (string, error) {
-	return o.BaseStoragePath(e, host)
+func (o Storage) Badger(e env.Type) (string, error) {
+	return o.BaseStoragePath(e)
 }
 
-func (o Storage) BadgerOAuth2(e env.Type, _ string) (string, error) {
+func (o Storage) BadgerOAuth2(e env.Type) (string, error) {
 	return fmt.Sprintf("%s/%s/%s", o.Path, e, "oauth"), nil
 }
 

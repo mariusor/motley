@@ -32,8 +32,8 @@ var (
 	}
 )
 
-func getBadgerStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
-	path, err := c.Badger(e, u)
+func getBadgerStorage(c config.Storage, e env.Type, l lw.Logger) (config.FullStorage, error) {
+	path, err := c.Badger(e)
 	if err != nil {
 		return nil, err
 	}
@@ -57,13 +57,13 @@ func getBoltStorageAtPath(dir, _ string, l lw.Logger) (config.FullStorage, error
 	})
 }
 
-func getBoltStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
-	path, err := c.BoltDB(e, u)
+func getBoltStorage(c config.Storage, e env.Type, l lw.Logger) (config.FullStorage, error) {
+	path, err := c.BoltDB(e)
 	if err != nil {
 		return nil, err
 	}
 	l.Debugf("Initializing boltdb storage at %s", path)
-	db, err := getBoltStorageAtPath(path, u, l)
+	db, err := getBoltStorageAtPath(path, c.Host, l)
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +75,9 @@ func getFsStorageAtPath(dir string, e env.Type, rawURL string, l lw.Logger) (con
 	if u, err := url.ParseRequestURI(rawURL); err == nil {
 		rawURL = u.Host
 	}
-	if strings.Contains(dir, rawURL) {
-		dir = strings.Replace(dir, rawURL, "", 1)
+	dir = strings.TrimSuffix(dir, "/")
+	if strings.LastIndex(dir, rawURL) == len(dir)-len(rawURL) {
+		dir = strings.TrimSuffix(dir, rawURL)
 	}
 	return fs.New(fs.Config{
 		Path:   dir,
@@ -84,8 +85,8 @@ func getFsStorageAtPath(dir string, e env.Type, rawURL string, l lw.Logger) (con
 	})
 }
 
-func getFsStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
-	path, err := c.BaseStoragePath(e, u)
+func getFsStorage(c config.Storage, e env.Type, l lw.Logger) (config.FullStorage, error) {
+	path, err := c.BaseStoragePath(e)
 	if err != nil {
 		var pathError *iofs.PathError
 		if !errors.As(err, &pathError) {
@@ -94,14 +95,14 @@ func getFsStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.F
 		path = c.Path
 	}
 	l.Debugf("Initializing fs storage at %s", path)
-	db, err := getFsStorageAtPath(path, e, u, l)
+	db, err := getFsStorageAtPath(path, e, c.Host, l)
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
 
-func getSqliteStorage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
+func getSqliteStorage(c config.Storage, e env.Type, l lw.Logger) (config.FullStorage, error) {
 	l.Debugf("Initializing sqlite storage at %s", c.Path)
 	db, err := sqlite.New(sqlite.Config{})
 	if err != nil {
@@ -111,16 +112,16 @@ func getSqliteStorage(c config.Storage, e env.Type, u string, l lw.Logger) (conf
 
 }
 
-func Storage(c config.Storage, e env.Type, u string, l lw.Logger) (config.FullStorage, error) {
+func Storage(c config.Storage, e env.Type, l lw.Logger) (config.FullStorage, error) {
 	switch c.Type {
 	case config.StorageBoltDB:
-		return getBoltStorage(c, e, u, l)
+		return getBoltStorage(c, e, l)
 	case config.StorageBadger:
-		return getBadgerStorage(c, e, u, l)
+		return getBadgerStorage(c, e, l)
 	case config.StorageSqlite:
-		return getSqliteStorage(c, e, u, l)
+		return getSqliteStorage(c, e, l)
 	case config.StorageFS:
-		return getFsStorage(c, e, u, l)
+		return getFsStorage(c, e, l)
 	}
 	return nil, errors.NotImplementedf("Invalid storage type %s", c.Type)
 }
