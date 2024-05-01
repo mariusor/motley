@@ -59,7 +59,7 @@ func main() {
 		kong.Name("motley"),
 		kong.Description("Helper utility to manage a FedBOX instance"),
 		kong.Vars{
-			"envs":    strings.Join([]string{string(env.DEV), string(env.PROD)}, ", "),
+			"envs":    strings.Join([]string{string(env.DEV), string(env.QA), string(env.PROD)}, ", "),
 			"types":   strings.Join([]string{string(config.StorageBoltDB), string(config.StorageBadger), string(config.StorageFS)}, ", "),
 			"version": version,
 		},

@@ -11,11 +11,15 @@ const DEV Type = "dev"
 // PROD environment
 const PROD Type = "prod"
 
+// QA environment
+const QA Type = "qa"
+
 // TEST environment
 const TEST Type = "test"
 
 var Types = []Type{
 	PROD,
+	QA,
 	DEV,
 	TEST,
 }
