@@ -37,7 +37,7 @@ endif
 BUILD := $(GO) build $(BUILDFLAGS)
 TEST := $(GO) test $(BUILDFLAGS)
 
-.PHONY: all run clean test coverage install
+.PHONY: all run clean test coverage install download
 
 all: motley
 
@@ -58,6 +58,11 @@ test:
 coverage: TEST_TARGET := .
 coverage: TEST_FLAGS += -covermode=count -coverprofile $(PROJECT_NAME).coverprofile
 coverage: test
+
+download:
+	$(GO) mod download all
+	$(GO) mod tidy
+
 
 install: bin/motley
 	install bin/motley $(DESTDIR)$(INSTALL_PREFIX)/bin
