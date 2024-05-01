@@ -73,7 +73,7 @@ func main() {
 	}
 
 	conf := config.Options{}
-	stores, err := loadArguments(&conf)
+	_, err := loadArguments(&conf)
 	if err != nil {
 		l.Errorf("%s", err)
 		fmt.Fprintln(os.Stderr, err)
@@ -81,7 +81,7 @@ func main() {
 	}
 
 	l.Infof("Started")
-	if err := cmd.ShowTui(conf, l, stores...); err != nil {
+	if err := cmd.ShowTui(conf, l); err != nil {
 		l.Errorf("%s", err)
 		ktx.Exit(1)
 	}

@@ -18,7 +18,7 @@ func New(conf config.Options) *Control {
 	return &Control{Conf: conf}
 }
 
-func ShowTui(conf config.Options, l lw.Logger, stores ...config.FullStorage) error {
+func ShowTui(conf config.Options, l lw.Logger) error {
 	ctl = *New(conf)
 	return tui.Launch(ctl.Conf, l)
 }

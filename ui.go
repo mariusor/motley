@@ -92,12 +92,11 @@ var (
 )
 
 func Launch(conf config.Options, l lw.Logger) error {
-	mm := newModel(FedBOX(conf.URLs, conf.Storage, conf.Env, l), conf.Env, l)
-	_, err := tea.NewProgram(mm, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
+	_, err := tea.NewProgram(newModel(conf, conf.Env, l), tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
 	return err
 }
 
-func newModel(ff *fedbox, env env.Type, l lw.Logger) *model {
+func newModel(conf config.Options, env env.Type, l lw.Logger) *model {
 	if lipgloss.HasDarkBackground() {
 		GlamourStyle = "dark"
 	} else {
@@ -109,12 +108,17 @@ func newModel(ff *fedbox, env env.Type, l lw.Logger) *model {
 	m.commonModel.logFn = l.Infof
 	m.commonModel.env = env
 
-	m.f = ff
-
-	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
 
+	var err error
+
+	m.f, err = FedBOX(conf.URLs, conf.Storage, conf.Env, l)
+	if err != nil {
+		m.status.showError(err)
+		return m
+	}
+	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	return m
 }
 

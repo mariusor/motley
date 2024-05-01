@@ -54,7 +54,7 @@ type fedbox struct {
 	logFn  loggerFn
 }
 
-func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) *fedbox {
+func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) (*fedbox, error) {
 	logFn = l.Infof
 	stores := make([]store, 0)
 	var appendStore = func(stores *[]store, db config.FullStorage, it pub.Item) {
@@ -63,16 +63,19 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) *fe
 		}
 		*stores = append(*stores, store{root: it, s: db})
 	}
+	errs := make([]error, 0)
 	for _, s := range st {
 		for _, iri := range rootIRIs {
 			db, err := storage.Storage(s, e, iri, l)
 			if err != nil {
-				l.Debugf("unable to initialize storage %v: %s", s, err)
+				l.Debugf("unable to initialize %s storage %s: %+v", s.Type, s.Path, err)
+				errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))
 				continue
 			}
 			it, err := db.Load(pub.IRI(iri))
 			if err != nil {
-				l.Debugf("unable to load %s from storage %v: %s", iri, s, err)
+				l.Debugf("unable to load %s from %s storage %s: %+v", s.Type, s.Path, iri, err)
+				errs = append(errs, errors.Annotatef(err, "Unable to load from %s storage %s", s.Type, s.Path))
 				continue
 			}
 			if it.IsCollection() {
@@ -87,7 +90,10 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) *fe
 			}
 		}
 	}
-	return &fedbox{tree: make(map[pub.IRI]pub.Item), stores: stores, logFn: l.Infof}
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
+	return &fedbox{tree: make(map[pub.IRI]pub.Item), stores: stores, logFn: l.Infof}, nil
 }
 
 func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {
