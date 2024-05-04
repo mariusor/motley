@@ -65,6 +65,7 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) (*f
 	}
 	errs := make([]error, 0)
 	for _, s := range st {
+		found := false
 		for _, iri := range rootIRIs {
 			s.Host = iri
 			db, err := storage.Storage(s, e, l)
@@ -84,9 +85,11 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) (*f
 				} else {
 					appendStore(&stores, db, it)
 				}
-			} else {
-				l.Debugf("unable to load %s from %s storage %s: %+v", iri, s.Type, s.Path, err)
+				found = true
 			}
+		}
+		if !found {
+			l.Debugf("unable to load main Actor for storage[%s] %s", s.Type, s.Path)
 		}
 	}
 	if len(errs) > 0 {
