@@ -6,7 +6,7 @@ require (
 	git.sr.ht/~mariusor/lw v0.0.0-20240323171419-d538df4af052
 	github.com/alecthomas/kong v0.9.0
 	github.com/charmbracelet/bubbles v0.18.0
-	github.com/charmbracelet/bubbletea v0.25.0
+	github.com/charmbracelet/bubbletea v0.26.1
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/go-ap/activitypub v0.0.0-20240408091739-ba76b44c2594
@@ -26,7 +26,7 @@ require (
 	github.com/muesli/termenv v0.15.2
 	github.com/openshift/osin v1.0.2-0.20220317075346-0f4d38c6e53f
 	golang.org/x/sync v0.7.0
-	golang.org/x/text v0.14.0
+	golang.org/x/text v0.15.0
 )
 
 require (
@@ -39,6 +39,7 @@ require (
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/go-ap/auth v0.0.0-20240408093715-7b70def65ccb // indirect
 	github.com/go-ap/cache v0.0.0-20240408093337-846e6272444d // indirect
 	github.com/go-ap/client v0.0.0-20240408093509-f0721baa55c2 // indirect
@@ -73,12 +74,12 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/oauth2 v0.19.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/oauth2 v0.20.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	google.golang.org/protobuf v1.34.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20240304020402-f0dba7c97c2b // indirect
-	modernc.org/libc v1.50.4 // indirect
+	modernc.org/libc v1.50.5 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
 	modernc.org/sqlite v1.29.8 // indirect
