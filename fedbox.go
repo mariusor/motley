@@ -404,7 +404,8 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 	}
 
 	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
-		if err := m.loadChildrenForNode(ctx, node); err != nil {
+		count := filters.WithMaxCount(m.height)
+		if err := m.loadChildrenForNode(ctx, node, count); err != nil {
 			node.s |= NodeError
 			m.logFn("error while loading children %s", err)
 		}
@@ -412,7 +413,7 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 	return m.tree.stoppedLoading
 }
 
-func (m *model) loadChildrenForNode(ctx context.Context, nn *n) error {
+func (m *model) loadChildrenForNode(ctx context.Context, nn *n, ff ...filters.Check) error {
 	iri := nn.Item.GetLink()
 	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
 		return func(ctx context.Context, col pub.CollectionInterface) error {
@@ -424,7 +425,7 @@ func (m *model) loadChildrenForNode(ctx context.Context, nn *n) error {
 	}
 
 	children := make([]*n, 0)
-	if err := accumFn(accum(&children)).LoadFromSearch(ctx, m.f, iri); err != nil {
+	if err := accumFn(accum(&children)).LoadFromSearch(ctx, m.f, iri, ff...); err != nil {
 		return err
 	}
 	nn.setChildren(children...)
@@ -614,8 +615,6 @@ func getCollectionPrevNext(col pub.Item) (prev, next pub.IRI) {
 	return prev, next
 }
 
-const MaxItems = 100
-
 type accumFn func(context.Context, pub.CollectionInterface) error
 
 func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IRI, accumFn accumFn, ff ...filters.Check) func() error {
@@ -635,21 +634,24 @@ func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IR
 				return err
 			}
 
-			if maxItems-MaxItems < 5 {
-				before, next := getCollectionPrevNext(col)
-				if len(next) > 0 {
-					ff = append(ff, filters.After(filters.SameID(next)))
-				}
-				if len(before) > 0 {
-					ff = append(ff, filters.Before(filters.SameID(before)))
-				}
-				if len(next)+len(before) > 0 {
-					g.Go(f.searchFn(ctx, g, loadIRI, accumFn, ff...))
-				}
-				return nil
-			} else {
+			count := filters.MaxCount(ff...)
+			if count < 0 {
+				count = 0
+			}
+			if maxItems <= count {
 				return StopLoad{}
 			}
+			before, next := getCollectionPrevNext(col)
+			if len(next) > 0 {
+				ff = append(ff, filters.After(filters.SameID(next)))
+			}
+			if len(before) > 0 {
+				ff = append(ff, filters.Before(filters.SameID(before)))
+			}
+			if len(next)+len(before) > 0 {
+				g.Go(f.searchFn(ctx, g, loadIRI, accumFn, ff...))
+			}
+			return nil
 		}
 		return emptyAccum(ctx, nil) //accumFn(ctx, &pub.ItemCollection{col})
 	}

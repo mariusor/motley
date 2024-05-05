@@ -215,6 +215,9 @@ func (m *model) logMessage(msg tea.Msg) {
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*300)
+	defer cancel()
+
 	m.logMessage(msg)
 	switch mm := msg.(type) {
 	case *n:
@@ -222,12 +225,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			m.currentNodePosition = m.tree.list.Cursor()
 			m.currentNode = mm
 			m.tree.state |= stateBusy
-			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*300)
-			defer cancel()
 			cmd := m.loadDepsForNode(ctx, m.currentNode)
 			for _, st := range m.f.stores {
 				if mm.GetLink().Contains(st.root.GetLink(), true) {
 					m.root = st.root
+					m.status.env = st.env
 					break
 				}
 			}
@@ -255,6 +257,14 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			return m.Back(mm)
 		}
 
+		if m.currentNodePosition < m.height-3 {
+			parent := m.currentNode.p
+			if parent != nil && parent.IsCollection() {
+				count := filters.WithMaxCount(m.height)
+				after := filters.After(filters.SameID(m.currentNode.GetLink()))
+				m.loadChildrenForNode(ctx, parent, after, count)
+			}
+		}
 	case tea.WindowSizeMsg:
 		m.setSize(mm.Width, mm.Height)
 		return m.tree.list.SetCursor(m.currentNodePosition)
@@ -363,7 +373,9 @@ func (m *model) Advance(msg advanceMsg) tea.Cmd {
 
 	name := getRootNodeName(&nn)
 	newNode := node(msg.Item, withParent(&nn), withName(name))
-	if err := m.loadChildrenForNode(context.Background(), newNode); err != nil {
+
+	count := filters.WithMaxCount(m.height)
+	if err := m.loadChildrenForNode(context.Background(), newNode, count); err != nil {
 		return errCmd(fmt.Errorf("unable to advance to %q: %w", nn.n, err))
 	}
 	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
