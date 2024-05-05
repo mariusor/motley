@@ -112,7 +112,7 @@ func loadArguments(conf *config.Options) ([]config.FullStorage, error) {
 		}
 		c, err := config.LoadFromEnv(envFile, envTyp, time.Second)
 		if err != nil {
-			m = append(m, fmt.Errorf("unable to load config file for environment %s: %s", c.Env, err))
+			m = append(m, fmt.Errorf("unable to load config file for environment %s: %s", envTyp, err))
 			continue
 		}
 		*conf = c

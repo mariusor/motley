@@ -42,6 +42,7 @@ type statusModel struct {
 
 	width int
 	state statusState
+	env   env.Type
 
 	spinner spinner.Model
 	percent float64

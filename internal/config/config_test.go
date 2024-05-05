@@ -80,7 +80,7 @@ func TestLoadFromEnv(t *testing.T) {
 				t.Errorf("Invalid loaded boltdb dir value: %s, expected %s", st.Path, tmp)
 			}
 			var expected = fmt.Sprintf("%s/%s-%s.bdb", tmp, strings.Replace(hostname, ".", "-", 1), env.TEST)
-			p, err := st.BoltDB(c.Env)
+			p, err := st.BoltDB(st.Env)
 			if err != nil {
 				t.Errorf("BoltDB() errored: %s", err)
 			}

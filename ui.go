@@ -7,12 +7,12 @@ import (
 
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
-	"git.sr.ht/~mariusor/motley/internal/env"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/common-nighthawk/go-figure"
 	pub "github.com/go-ap/activitypub"
+	"github.com/go-ap/filters"
 	tree "github.com/mariusor/bubbles-tree"
 )
 
@@ -92,11 +92,11 @@ var (
 )
 
 func Launch(conf config.Options, l lw.Logger) error {
-	_, err := tea.NewProgram(newModel(conf, conf.Env, l), tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
+	_, err := tea.NewProgram(newModel(conf, l), tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
 	return err
 }
 
-func newModel(conf config.Options, env env.Type, l lw.Logger) *model {
+func newModel(conf config.Options, l lw.Logger) *model {
 	if lipgloss.HasDarkBackground() {
 		GlamourStyle = "dark"
 	} else {
@@ -106,7 +106,6 @@ func newModel(conf config.Options, env env.Type, l lw.Logger) *model {
 	m := new(model)
 	m.commonModel = new(commonModel)
 	m.commonModel.logFn = l.Infof
-	m.commonModel.env = env
 
 	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
@@ -114,7 +113,7 @@ func newModel(conf config.Options, env env.Type, l lw.Logger) *model {
 	var err error
 	var nodes tree.Nodes
 
-	m.f, err = FedBOX(conf.URLs, conf.Storage, conf.Env, l)
+	m.f, err = FedBOX(conf.URLs, conf.Storage, l)
 	if err != nil {
 		m.status.showError(err)
 	} else {
@@ -127,7 +126,6 @@ func newModel(conf config.Options, env env.Type, l lw.Logger) *model {
 type commonModel struct {
 	f    *fedbox
 	root pub.Item
-	env  env.Type
 
 	logFn func(string, ...interface{})
 }
@@ -207,11 +205,13 @@ func skipMessageFromLogs(msg tea.Msg) bool {
 	}
 	return false
 }
+
 func (m *model) logMessage(msg tea.Msg) {
 	if !skipMessageFromLogs(msg) {
 		m.logFn("update: %T: %s", msg, msg)
 	}
 }
+
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 

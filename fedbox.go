@@ -44,6 +44,7 @@ var logFn = func(string, ...interface{}) {}
 
 type store struct {
 	root pub.Item
+	env  env.Type
 	s    config.FullStorage
 }
 
@@ -54,21 +55,21 @@ type fedbox struct {
 	logFn  loggerFn
 }
 
-func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) (*fedbox, error) {
+func FedBOX(rootIRIs []string, st []config.Storage, l lw.Logger) (*fedbox, error) {
 	logFn = l.Infof
 	stores := make([]store, 0)
-	var appendStore = func(stores *[]store, db config.FullStorage, it pub.Item) {
+	var appendStore = func(stores *[]store, db config.FullStorage, e env.Type, it pub.Item) {
 		if pub.IsNil(it) {
 			return
 		}
-		*stores = append(*stores, store{root: it, s: db})
+		*stores = append(*stores, store{root: it, s: db, env: e})
 	}
 	errs := make([]error, 0)
 	for _, s := range st {
 		found := false
 		for _, iri := range rootIRIs {
 			s.Host = iri
-			db, err := storage.Storage(s, e, l)
+			db, err := storage.Storage(s, s.Env, l)
 			if err != nil {
 				l.Debugf("unable to initialize %s storage %s: %+v", s.Type, s.Path, err)
 				errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))
@@ -78,12 +79,12 @@ func FedBOX(rootIRIs []string, st []config.Storage, e env.Type, l lw.Logger) (*f
 				if it.IsCollection() {
 					_ = pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
 						for _, it := range col.Collection() {
-							appendStore(&stores, db, it)
+							appendStore(&stores, db, s.Env, it)
 						}
 						return nil
 					})
 				} else {
-					appendStore(&stores, db, it)
+					appendStore(&stores, db, s.Env, it)
 				}
 				found = true
 			}

@@ -42,13 +42,13 @@ type FullStorage interface {
 }
 
 type Storage struct {
+	Env  env.Type
 	Type StorageType
 	Path string
 	Host string
 }
 
 type Options struct {
-	Env      env.Type
 	LogLevel lw.Level
 	URLs     []string
 	Storage  []Storage
@@ -224,13 +224,13 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	if !env.ValidType(e) {
 		e = env.Type(loadKeyFromEnv(KeyENV, "dev"))
 	}
-	conf.Env = e
 	if host := loadKeyFromEnv(KeyHostname, ""); host != "" {
 		conf.URLs = append(conf.URLs, fmt.Sprintf("https://%s", host))
 	}
 
 	envStorage := loadKeyFromEnv(KeyStorage, string(StorageFS))
 	st := Storage{
+		Env:  e,
 		Type: StorageType(strings.ToLower(envStorage)),
 		Path: loadKeyFromEnv(KeyStoragePath, ""),
 	}
