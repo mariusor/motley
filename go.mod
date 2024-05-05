@@ -12,7 +12,7 @@ require (
 	github.com/go-ap/activitypub v0.0.0-20240408091739-ba76b44c2594
 	github.com/go-ap/errors v0.0.0-20240304112515-6077fa9c17b0
 	github.com/go-ap/fedbox v0.0.0-20240408155254-ca5cfa8f68aa
-	github.com/go-ap/filters v0.0.0-20240408093433-6a48bb3dd711
+	github.com/go-ap/filters v0.0.0-20240504174315-e65fd9aa38c4
 	github.com/go-ap/processing v0.0.0-20240408154734-b62555dbaf98
 	github.com/go-ap/storage-badger v0.0.0-20240408155053-4b98c0bd6b3d
 	github.com/go-ap/storage-boltdb v0.0.0-20240408155023-44d05a4f8f55
@@ -76,7 +76,7 @@ require (
 	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/term v0.19.0 // indirect
+	golang.org/x/term v0.20.0 // indirect
 	google.golang.org/protobuf v1.34.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20240304020402-f0dba7c97c2b // indirect
 	modernc.org/libc v1.50.5 // indirect
