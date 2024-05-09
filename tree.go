@@ -109,6 +109,7 @@ const stateBusy state = 1 << iota
 
 func (t *treeModel) startedLoading() tea.Msg {
 	t.state |= stateBusy
+	t.logFn("started loading node %s")
 	return t.state
 }
 
@@ -116,5 +117,6 @@ func (t *treeModel) stoppedLoading() tea.Msg {
 	if t.state.Is(stateBusy) {
 		t.state ^= stateBusy
 	}
+	t.logFn("stopped loading")
 	return t.state
 }

@@ -233,6 +233,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 					break
 				}
 			}
+			m.logFn("Moved to node[%d]: %s:%s, is collection: %t", m.currentNodePosition, mm.n, mm.s, mm.IsCollection())
 			cmds = append(cmds, nodeUpdateCmd(*m.currentNode), cmd)
 		}
 	case advanceMsg:

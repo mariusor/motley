@@ -33,7 +33,7 @@ const (
 )
 
 const (
-	NodeSyncing = tree.NodeLastChild << (iota + 1)
+	NodeSyncing = tree.NodeMaxState << (iota + 1)
 	NodeSynced
 	NodeError
 )
@@ -137,12 +137,22 @@ func initNodes(f *fedbox) tree.Nodes {
 	return nodes
 }
 
+// n is the basic treeModel node
 type n struct {
 	pub.Item
 	n string
 	p *n
 	c []*n
 	s tree.NodeState
+}
+
+func (n *n) startedSyncing() {
+	n.s |= NodeSyncing
+
+}
+
+func (n *n) stoppedSyncing() {
+	n.s ^= NodeSyncing
 }
 
 func (n *n) Parent() tree.Node {
@@ -158,6 +168,10 @@ func (n *n) Init() tea.Cmd {
 
 func nodeIsError(n *n) bool {
 	return n.s.Is(NodeError)
+}
+
+func nodeIsSynced(n *n) bool {
+	return n.s.Is(NodeSynced)
 }
 
 func iriIsCollection(iri pub.IRI) bool {
@@ -397,8 +411,18 @@ func getItemElements(parent *n) []*n {
 }
 
 func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
-	node.s |= NodeSyncing
-	if err := dereferenceItemProperties(ctx, m.f, node.Item); err != nil {
+	if nodeIsSynced(node) {
+		m.logFn("Node already loaded: %s", node.n)
+		return nil
+	}
+	node.startedSyncing()
+	defer func() {
+		node.s |= NodeSynced
+		node.stoppedSyncing()
+		m.logFn("Node loaded: %s", node.n)
+	}()
+
+	if err := dereferenceItemProperties(ctx, m.f, &node.Item); err != nil {
 		m.logFn("error while loading attributes %s", err)
 		node.s |= NodeError
 	}
@@ -406,15 +430,15 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
 		count := filters.WithMaxCount(m.height)
 		if err := m.loadChildrenForNode(ctx, node, count); err != nil {
-			node.s |= NodeError
 			m.logFn("error while loading children %s", err)
+			node.s |= NodeError
 		}
 	}
+
 	return m.tree.stoppedLoading
 }
 
 func (m *model) loadChildrenForNode(ctx context.Context, nn *n, ff ...filters.Check) error {
-	iri := nn.Item.GetLink()
 	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
 		return func(ctx context.Context, col pub.CollectionInterface) error {
 			for _, it := range col.Collection() {
@@ -424,11 +448,19 @@ func (m *model) loadChildrenForNode(ctx context.Context, nn *n, ff ...filters.Ch
 		}
 	}
 
-	children := make([]*n, 0)
-	if err := accumFn(accum(&children)).LoadFromSearch(ctx, m.f, iri, ff...); err != nil {
-		return err
+	if len(nn.c) == 0 {
+		children := make([]*n, 0)
+		pub.OnCollectionIntf(nn.Item, func(col pub.CollectionInterface) error {
+			return accum(&children)(ctx, col)
+		})
+		if len(children) == 0 {
+			iri := nn.Item.GetLink()
+			if err := accumFn(accum(&children)).LoadFromSearch(ctx, m.f, iri, ff...); err != nil {
+				return err
+			}
+		}
+		nn.setChildren(children...)
 	}
-	nn.setChildren(children...)
 	return nil
 }
 
@@ -529,22 +561,26 @@ func (s StopLoad) Error() string {
 	return "stop load"
 }
 
-func dereferenceItemProperties(ctx context.Context, f *fedbox, it pub.Item) error {
-	if pub.IsObject(it) {
-		typ := it.GetType()
+func dereferenceItemProperties(ctx context.Context, f *fedbox, it *pub.Item) error {
+	ob := *it
+	if pub.IsIRI(ob) {
+		*it = dereferenceIRI(ctx, f, ob.GetLink())
+	}
+	if pub.IsObject(ob) {
+		typ := ob.GetType()
 		switch {
 		case pub.ObjectTypes.Contains(typ), pub.ActorTypes.Contains(typ), typ == "":
-			return pub.OnObject(it, dereferenceObjectProperties(ctx, f))
+			return pub.OnObject(*it, dereferenceObjectProperties(ctx, f))
 		case pub.IntransitiveActivityTypes.Contains(typ):
-			return pub.OnIntransitiveActivity(it, dereferenceIntransitiveActivityProperties(ctx, f))
+			return pub.OnIntransitiveActivity(*it, dereferenceIntransitiveActivityProperties(ctx, f))
 		case pub.ActivityTypes.Contains(typ):
-			return pub.OnActivity(it, dereferenceActivityProperties(ctx, f))
+			return pub.OnActivity(*it, dereferenceActivityProperties(ctx, f))
 		}
 	}
 
-	if pub.IsItemCollection(it) {
-		return pub.OnItemCollection(it, func(col *pub.ItemCollection) error {
-			it = dereferenceIRIs(ctx, f, *col)
+	if pub.IsItemCollection(ob) {
+		return pub.OnItemCollection(*it, func(col *pub.ItemCollection) error {
+			*it = dereferenceIRIs(ctx, f, *col)
 			return nil
 		})
 	}
@@ -675,7 +711,7 @@ func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iri pub.IRI, ff 
 		if errors.Is(err, StopLoad{}) {
 			f.logFn("stopped loading search")
 		} else {
-			f.logFn("%s", err)
+			f.logFn("failed to load search %+s", err)
 			return err
 		}
 	}
