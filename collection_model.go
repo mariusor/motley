@@ -31,7 +31,7 @@ func (c CollectionModel) View() string {
 	obView := c.ObjectModel.View()
 
 	totalView := fmt.Sprintf("Total: %d", c.Total)
-	return lipgloss.JoinVertical(lipgloss.Top, obView, totalView)
+	return lipgloss.JoinVertical(lipgloss.Bottom, obView, totalView)
 }
 
 func (c *CollectionModel) updateCollection(col vocab.CollectionInterface) error {

@@ -280,45 +280,58 @@ func withChildren(c ...*n) func(*n) {
 }
 
 func getNameFromItem(it pub.Item) string {
-	name := filepath.Base(it.GetLink().String())
+	n := filepath.Base(it.GetLink().String())
 	var err error
 	typ := it.GetType()
 	switch {
+	case pub.LinkTypes.Contains(typ):
+		err = pub.OnLink(it, func(l *pub.Link) error {
+			if nm := name(l); len(nm) > 0 {
+				n = fmt.Sprintf("%s[%s]", nm, typ)
+			}
+			return nil
+		})
 	case pub.ActorTypes.Contains(typ):
 		err = pub.OnActor(it, func(act *pub.Actor) error {
-			if len(act.PreferredUsername) > 0 {
-				name = fmt.Sprintf("%s", act.PreferredUsername.First())
-			} else if len(act.Name) > 0 {
-				name = fmt.Sprintf("%s", act.Name.First())
+			if nm := name(act); len(nm) > 0 {
+				n = fmt.Sprintf("%s[%s]", nm, typ)
 			}
 			return nil
 		})
 	case pub.ActivityTypes.Contains(typ), pub.IntransitiveActivityTypes.Contains(typ):
-		err = pub.OnIntransitiveActivity(it, func(act *pub.IntransitiveActivity) error {
-			name = fmt.Sprintf("%s", typ)
+		n = string(typ)
+		err = pub.OnActivity(it, func(act *pub.Activity) error {
+			obType := ""
+			pub.OnObject(act.Object, func(ob *pub.Object) error {
+				obType = string(ob.GetType())
+				return nil
+			})
+			if len(obType) > 0 {
+				n = fmt.Sprintf("%s » %s", typ, obType)
+			}
 			return nil
 		})
 	case pub.ObjectTypes.Contains(typ):
 		err = pub.OnObject(it, func(ob *pub.Object) error {
-			if len(ob.Name) > 0 {
-				name = fmt.Sprintf("[%s]%s", typ, ob.Name.First())
+			if nm := name(ob); len(nm) > 0 {
+				n = fmt.Sprintf("%s[%s]", nm, typ)
 			} else {
-				name = fmt.Sprintf("%s", typ)
+				n = string(typ)
 			}
 			return nil
 		})
 	case typ == "":
 		err = pub.OnObject(it, func(ob *pub.Object) error {
-			if len(ob.Name) > 0 {
-				name = fmt.Sprintf("%s", ob.Name.First())
+			if nm := name(ob); len(nm) > 0 {
+				n = nm
 			}
 			return nil
 		})
 	}
-	if err != nil && len(name) == 0 {
+	if err != nil && len(n) == 0 {
 		return err.Error()
 	}
-	return name
+	return n
 }
 
 func node(it pub.Item, fns ...func(*n)) *n {
@@ -734,7 +747,7 @@ func name(it pub.Item) string {
 			n = o.Name.First().String()
 			return nil
 		}
-		if pub.IsNil(o.URL) {
+		if !pub.IsNil(o.URL) {
 			if u, err := o.URL.GetLink().URL(); err == nil {
 				n = u.Hostname()
 				return nil
@@ -743,6 +756,15 @@ func name(it pub.Item) string {
 		}
 		if u, err := o.ID.GetLink().URL(); err == nil {
 			n = u.Hostname()
+		}
+		return nil
+	})
+	if n != "" {
+		return n
+	}
+	pub.OnLink(it, func(l *pub.Link) error {
+		if l.Name != nil {
+			n = l.Name.First().String()
 		}
 		return nil
 	})
