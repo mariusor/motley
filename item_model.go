@@ -111,11 +111,21 @@ func (p pagerModel) updateAsModel(msg tea.Msg) (pagerModel, tea.Cmd) {
 		//if vocab.IsItemCollection(p.item) {
 		//}
 		if vocab.IsObject(p.item) {
-			ob := newObjectModel()
-			if err := vocab.OnObject(p.item, ob.updateObject); err != nil {
-				cmds = append(cmds, errCmd(err))
+			t := p.item.GetType()
+			switch t {
+			case vocab.OrderedCollectionPageType, vocab.CollectionPageType, vocab.OrderedCollectionType, vocab.CollectionType:
+				ob := newCollectionModel()
+				if err := vocab.OnCollectionIntf(p.item, ob.updateCollection); err != nil {
+					cmds = append(cmds, errCmd(err))
+				}
+				content = ob
+			default:
+				ob := newObjectModel()
+				if err := vocab.OnObject(p.item, ob.updateObject); err != nil {
+					cmds = append(cmds, errCmd(err))
+				}
+				content = ob
 			}
-			content = ob
 		}
 		if vocab.IsLink(p.item) {
 			ob := newLinkModel()
