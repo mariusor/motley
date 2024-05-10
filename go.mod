@@ -31,16 +31,12 @@ require (
 
 require (
 	git.sr.ht/~mariusor/go-xsd-duration v0.0.0-20220703122237-02e73435a078 // indirect
-	git.sr.ht/~mariusor/mask v0.0.0-20240327084502-ef2a9438457e // indirect
-	git.sr.ht/~mariusor/wrapper v0.0.0-20240210113306-c862d947a747 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/containerd/console v1.0.4 // indirect
 	github.com/dgraph-io/badger/v4 v4.2.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/go-ap/auth v0.0.0-20240408093715-7b70def65ccb // indirect
 	github.com/go-ap/cache v0.0.0-20240408093337-846e6272444d // indirect
 	github.com/go-ap/client v0.0.0-20240408093509-f0721baa55c2 // indirect
 	github.com/go-ap/jsonld v0.0.0-20221030091449-f2a191312c73 // indirect

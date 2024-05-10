@@ -92,6 +92,7 @@ func newItemModel(common *commonModel) pagerModel {
 		model:       M,
 	}
 }
+
 func (p pagerModel) Init() tea.Cmd {
 	p.logFn("Item View init")
 	return noop
@@ -105,9 +106,20 @@ func (p pagerModel) updateAsModel(msg tea.Msg) (pagerModel, tea.Cmd) {
 	case nodeUpdateMsg:
 		var content tea.Model = M
 		p.item = mm.Item
-		if !(vocab.IsIRI(p.item) || vocab.IsItemCollection(p.item)) {
+		//if vocab.IsIRI(p.item) {
+		//}
+		//if vocab.IsItemCollection(p.item) {
+		//}
+		if vocab.IsObject(p.item) {
 			ob := newObjectModel()
 			if err := vocab.OnObject(p.item, ob.updateObject); err != nil {
+				cmds = append(cmds, errCmd(err))
+			}
+			content = ob
+		}
+		if vocab.IsLink(p.item) {
+			ob := newLinkModel()
+			if err := vocab.OnLink(p.item, ob.updateLink); err != nil {
 				cmds = append(cmds, errCmd(err))
 			}
 			content = ob
