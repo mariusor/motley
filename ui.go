@@ -358,7 +358,7 @@ func getRootNodeName(n *n) string {
 
 func (m *model) shouldAdvance() bool {
 	children := m.tree.list.Children()
-	return len(children) == 1 && children[0] == m.currentNode
+	return len(children) >= 1 && children[0] != m.currentNode
 }
 
 func (m *model) Advance(msg advanceMsg) tea.Cmd {
