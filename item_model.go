@@ -113,6 +113,16 @@ func (p pagerModel) updateAsModel(msg tea.Msg) (pagerModel, tea.Cmd) {
 		if vocab.IsObject(p.item) {
 			t := p.item.GetType()
 			switch t {
+			case vocab.AcceptType, vocab.AddType, vocab.AnnounceType, vocab.BlockType, vocab.CreateType,
+				vocab.DeleteType, vocab.DislikeType, vocab.FlagType, vocab.FollowType, vocab.IgnoreType,
+				vocab.InviteType, vocab.JoinType, vocab.LeaveType, vocab.LikeType, vocab.ListenType,
+				vocab.MoveType, vocab.OfferType, vocab.RejectType, vocab.ReadType, vocab.RemoveType,
+				vocab.TentativeRejectType, vocab.TentativeAcceptType, vocab.UndoType, vocab.UpdateType, vocab.ViewType:
+				ob := newActivityModel()
+				if err := vocab.OnActivity(p.item, ob.updateActivity); err != nil {
+					cmds = append(cmds, errCmd(err))
+				}
+				content = ob
 			case vocab.OrderedCollectionPageType, vocab.CollectionPageType, vocab.OrderedCollectionType, vocab.CollectionType:
 				ob := newCollectionModel()
 				if err := vocab.OnCollectionIntf(p.item, ob.updateCollection); err != nil {
