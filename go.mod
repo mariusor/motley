@@ -11,15 +11,15 @@ require (
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/go-ap/activitypub v0.0.0-20240408091739-ba76b44c2594
 	github.com/go-ap/errors v0.0.0-20240304112515-6077fa9c17b0
-	github.com/go-ap/fedbox v0.0.0-20240803124137-b8ede01c9711
+	github.com/go-ap/fedbox v0.0.0-20240805153645-3f6b77a57a0c
 	github.com/go-ap/filters v0.0.0-20240801112128-c16e26a892c4
-	github.com/go-ap/processing v0.0.0-20240803123347-9d6c8c8868f2
-	github.com/go-ap/storage-badger v0.0.0-20240801114622-4d730a7aea87
-	github.com/go-ap/storage-boltdb v0.0.0-20240803123915-a133721967e9
-	github.com/go-ap/storage-fs v0.0.0-20240803123436-43fd4521ee5a
-	github.com/go-ap/storage-sqlite v0.0.0-20240803123516-e64a31bf814d
+	github.com/go-ap/processing v0.0.0-20240805145957-a3a7e26f5144
+	github.com/go-ap/storage-badger v0.0.0-20240805150957-51cb2199fe02
+	github.com/go-ap/storage-boltdb v0.0.0-20240805150714-730dffff1baa
+	github.com/go-ap/storage-fs v0.0.0-20240805150206-7b1a404ec0ae
+	github.com/go-ap/storage-sqlite v0.0.0-20240805150522-c6ffacb83245
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20240509151045-df883bde2cbf
+	github.com/mariusor/bubbles-tree v0.0.0-20240804164840-b0aaa013ef3a
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/reflow v0.3.0
@@ -32,6 +32,7 @@ require (
 require (
 	git.sr.ht/~mariusor/cache v0.0.0-20240803161421-766939937a58 // indirect
 	git.sr.ht/~mariusor/go-xsd-duration v0.0.0-20220703122237-02e73435a078 // indirect
+	git.sr.ht/~mariusor/ssm v0.0.0-20240805114004-29e33df2bf80 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
