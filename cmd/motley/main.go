@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -38,25 +37,24 @@ func openlog(name string) io.Writer {
 	return f
 }
 
-func perfEnabled() bool {
-	val, err := strconv.ParseBool(os.Getenv("MOTLEY_ENABLE_PERF"))
-	if err != nil {
-		return false
-	}
-	return val
+func perfEnabled() (string, bool) {
+	l := os.Getenv("MOTLEY_PERF_LISTEN")
+	return l, len(l) > 0
 }
+
+var AppName = "motley"
 
 func main() {
 	if build, ok := debug.ReadBuildInfo(); ok && version == "HEAD" && build.Main.Version != "(devel)" {
 		version = build.Main.Version
 	}
 
-	l := lw.Dev(lw.SetOutput(openlog("motley")), lw.SetLevel(lw.TraceLevel))
+	l := lw.Dev(lw.SetOutput(openlog(AppName)), lw.SetLevel(lw.TraceLevel))
 
 	ktx := kong.Parse(
 		&Motley,
 		kong.Bind(l),
-		kong.Name("motley"),
+		kong.Name(AppName),
 		kong.Description("Helper utility to manage a FedBOX instance"),
 		kong.Vars{
 			"envs":    strings.Join([]string{string(env.DEV), string(env.QA), string(env.PROD)}, ", "),
@@ -65,10 +63,10 @@ func main() {
 		},
 	)
 
-	if perfEnabled() {
+	if listenOn, enabled := perfEnabled(); enabled {
 		// Server for pprof
 		go func() {
-			fmt.Println(http.ListenAndServe("localhost:6060", nil))
+			fmt.Println(http.ListenAndServe(listenOn, nil))
 		}()
 	}
 
