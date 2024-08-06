@@ -263,7 +263,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			if parent != nil && parent.IsCollection() {
 				count := filters.WithMaxCount(m.height)
 				after := filters.After(filters.SameID(m.currentNode.GetLink()))
-				m.loadChildrenForNode(ctx, parent, after, count)
+				m.loadNode(ctx, parent, after, count)
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -376,7 +376,7 @@ func (m *model) Advance(msg advanceMsg) tea.Cmd {
 	newNode := node(msg.Item, withParent(&nn), withName(name))
 
 	count := filters.WithMaxCount(m.height)
-	if err := m.loadChildrenForNode(context.Background(), newNode, count); err != nil {
+	if err := m.loadNode(context.Background(), newNode, count); err != nil {
 		return errCmd(fmt.Errorf("unable to advance to %q: %w", nn.n, err))
 	}
 	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {

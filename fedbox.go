@@ -442,7 +442,7 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 
 	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
 		count := filters.WithMaxCount(m.height)
-		if err := m.loadChildrenForNode(ctx, node, count); err != nil {
+		if err := m.loadNode(ctx, node, count); err != nil {
 			m.logFn("error while loading children %s", err)
 			node.s |= NodeError
 		}
@@ -451,7 +451,7 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 	return m.tree.stoppedLoading
 }
 
-func (m *model) loadChildrenForNode(ctx context.Context, nn *n, ff ...filters.Check) error {
+func (m *model) loadNode(ctx context.Context, nn *n, ff ...filters.Check) error {
 	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
 		return func(ctx context.Context, col pub.CollectionInterface) error {
 			for _, it := range col.Collection() {
