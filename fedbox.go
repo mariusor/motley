@@ -11,7 +11,7 @@ import (
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"git.sr.ht/~mariusor/motley/internal/env"
 	"git.sr.ht/~mariusor/motley/internal/storage"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
@@ -162,8 +162,8 @@ func (n *n) Parent() tree.Node {
 	return n.p
 }
 
-func (n *n) Init() tea.Cmd {
-	return noop
+func (n *n) Init() (tea.Model, tea.Cmd) {
+	return n, noop
 }
 
 func nodeIsError(n *n) bool {

@@ -3,7 +3,7 @@ package motley
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 )
@@ -19,8 +19,8 @@ func newCollectionModel() CollectionModel {
 	return CollectionModel{}
 }
 
-func (c CollectionModel) Init() tea.Cmd {
-	return noop
+func (c CollectionModel) Init() (tea.Model, tea.Cmd) {
+	return c, noop
 }
 
 func (c CollectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

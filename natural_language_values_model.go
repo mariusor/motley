@@ -1,8 +1,8 @@
 package motley
 
 import (
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/viewport"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 	"github.com/muesli/reflow/wordwrap"
@@ -43,8 +43,8 @@ func NewNaturalLanguageValues(label string, val vocab.NaturalLanguageValues) Nat
 	}
 }
 
-func (n NaturalLanguageValues) Init() tea.Cmd {
-	return noop
+func (n NaturalLanguageValues) Init() (tea.Model, tea.Cmd) {
+	return n, noop
 }
 
 func (n NaturalLanguageValues) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

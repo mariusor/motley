@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"git.sr.ht/~mariusor/motley/internal/env"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/spinner"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	rw "github.com/mattn/go-runewidth"
@@ -68,9 +68,9 @@ func newStatusModel(common *commonModel) statusModel {
 	}
 }
 
-func (s *statusModel) Init() tea.Cmd {
+func (s *statusModel) Init() (tea.Model, tea.Cmd) {
 	s.logFn("Status Bar init")
-	return noop
+	return s, noop
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {

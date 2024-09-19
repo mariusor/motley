@@ -1,7 +1,7 @@
 package motley
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	tree "github.com/mariusor/bubbles-tree"
 )
 
@@ -24,9 +24,13 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 
 var _ tea.Model = &treeModel{}
 
-func (t *treeModel) Init() tea.Cmd {
+func (t *treeModel) Init() (tea.Model, tea.Cmd) {
 	t.logFn("Tree Model init")
-	return t.list.Init()
+	tm, cmd := t.list.Init()
+	if m, ok := tm.(*tree.Model); ok {
+		t.list = m
+	}
+	return t, cmd
 }
 
 type percentageMsg float64

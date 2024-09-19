@@ -3,8 +3,8 @@ package motley
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/viewport"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 )
@@ -93,9 +93,9 @@ func newItemModel(common *commonModel) pagerModel {
 	}
 }
 
-func (p pagerModel) Init() tea.Cmd {
+func (p pagerModel) Init() (tea.Model, tea.Cmd) {
 	p.logFn("Item View init")
-	return noop
+	return p, noop
 }
 
 func (p pagerModel) updateAsModel(msg tea.Msg) (pagerModel, tea.Cmd) {

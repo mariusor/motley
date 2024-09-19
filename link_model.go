@@ -1,7 +1,7 @@
 package motley
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 )
@@ -15,8 +15,9 @@ type LinkModel struct {
 func newLinkModel() LinkModel {
 	return LinkModel{}
 }
-func (l LinkModel) Init() tea.Cmd {
-	return noop
+
+func (l LinkModel) Init() (tea.Model, tea.Cmd) {
+	return l, noop
 }
 
 func (l LinkModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

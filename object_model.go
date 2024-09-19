@@ -4,7 +4,7 @@ import (
 	"mime"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 )
@@ -28,8 +28,8 @@ func newObjectModel() ObjectModel {
 	return ObjectModel{}
 }
 
-func (o ObjectModel) Init() tea.Cmd {
-	return noop
+func (o ObjectModel) Init() (tea.Model, tea.Cmd) {
+	return o, noop
 }
 
 func (o ObjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

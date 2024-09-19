@@ -1,7 +1,7 @@
 package motley
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	vocab "github.com/go-ap/activitypub"
 )
@@ -16,8 +16,9 @@ type ActivityModel struct {
 func newActivityModel() ActivityModel {
 	return ActivityModel{}
 }
-func (l ActivityModel) Init() tea.Cmd {
-	return noop
+
+func (l ActivityModel) Init() (tea.Model, tea.Cmd) {
+	return l, noop
 }
 
 func (l ActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

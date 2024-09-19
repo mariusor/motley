@@ -7,8 +7,8 @@ import (
 
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/v2/key"
+	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/common-nighthawk/go-figure"
 	pub "github.com/go-ap/activitypub"
@@ -145,14 +145,23 @@ type model struct {
 	status statusModel
 }
 
-func (m *model) Init() tea.Cmd {
+func (m *model) Init() (tea.Model, tea.Cmd) {
 	m.logFn("UI init")
 	m.breadCrumbs = make([]*tree.Model, 0)
-	return tea.Batch(
-		m.tree.Init(),
-		m.pager.Init(),
-		m.status.Init(),
-	)
+
+	tm, cmdt := m.tree.Init()
+	if mm, ok := tm.(*treeModel); ok {
+		m.tree = *mm
+	}
+	pm, cmdp := m.pager.Init()
+	if mm, ok := pm.(pagerModel); ok {
+		m.pager = mm
+	}
+	sm, cmds := m.status.Init()
+	if mm, ok := sm.(*statusModel); ok {
+		m.status = *mm
+	}
+	return m, tea.Batch(cmdt, cmdp, cmds)
 }
 
 func (m *model) setSize(w, h int) {
@@ -491,9 +500,10 @@ type motelyPager struct {
 	Title string
 }
 
-func (m motelyPager) Init() tea.Cmd {
-	return nil
+func (m motelyPager) Init() (tea.Model, tea.Cmd) {
+	return m, nil
 }
+
 func (m motelyPager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
