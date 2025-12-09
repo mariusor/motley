@@ -3,13 +3,19 @@ package motley
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/v2/viewport"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	vocab "github.com/go-ap/activitypub"
 )
 
-var _ tea.Model = pagerModel{}
+type viewModel interface {
+	Init() tea.Cmd
+	Update(tea.Msg) tea.Cmd
+	View() string
+}
+
+var _ viewModel = pagerModel{}
 
 type pagerModel struct {
 	*commonModel
@@ -17,17 +23,17 @@ type pagerModel struct {
 	item vocab.Item
 
 	viewport viewport.Model
-	model    tea.Model
+	model    viewModel
 }
 
 func (p *pagerModel) setSize(w, h int) {
-	p.viewport.Height = h
-	p.viewport.Width = w
+	p.viewport.SetHeight(h)
+	p.viewport.SetWidth(w)
 }
 
 func (p pagerModel) View() string {
-	h := p.viewport.Height
-	w := p.viewport.Width
+	h := p.viewport.Height()
+	w := p.viewport.Width()
 	s := lipgloss.NewStyle().Height(h).MaxHeight(h).MaxWidth(w).Width(w)
 	p.viewport.SetContent(s.Render(p.model.View()))
 	return p.viewport.View()
@@ -83,7 +89,7 @@ func (p *pagerModel) updateModel(it vocab.Item) error {
 
 func newItemModel(common *commonModel) pagerModel {
 	// Init viewport
-	vp := viewport.New(0, 0)
+	vp := viewport.New()
 	vp.YPosition = 0
 
 	return pagerModel{
@@ -93,18 +99,18 @@ func newItemModel(common *commonModel) pagerModel {
 	}
 }
 
-func (p pagerModel) Init() (tea.Model, tea.Cmd) {
+func (p pagerModel) Init() tea.Cmd {
 	p.logFn("Item View init")
-	return p, noop
+	return noop
 }
 
-func (p pagerModel) updateAsModel(msg tea.Msg) (pagerModel, tea.Cmd) {
+func (p pagerModel) updateAsModel(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	switch mm := msg.(type) {
 	case tea.WindowSizeMsg:
 		p.logFn("item resize: %+v", msg)
 	case nodeUpdateMsg:
-		var content tea.Model = M
+		var content viewModel = M
 		p.item = mm.Item
 		//if vocab.IsIRI(p.item) {
 		//}
@@ -149,21 +155,15 @@ func (p pagerModel) updateAsModel(msg tea.Msg) (pagerModel, tea.Cmd) {
 		switch mm.String() {
 		case "home", "g":
 			p.viewport.GotoTop()
-			if p.viewport.HighPerformanceRendering {
-				cmds = append(cmds, viewport.Sync(p.viewport))
-			}
 		case "end", "G":
 			p.viewport.GotoBottom()
-			if p.viewport.HighPerformanceRendering {
-				cmds = append(cmds, viewport.Sync(p.viewport))
-			}
 		}
 	}
 
-	return p, tea.Batch(cmds...)
+	return tea.Batch(cmds...)
 }
 
-func (p pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (p pagerModel) Update(msg tea.Msg) tea.Cmd {
 	return p.updateAsModel(msg)
 }
 

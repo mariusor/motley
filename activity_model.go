@@ -1,8 +1,8 @@
 package motley
 
 import (
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	vocab "github.com/go-ap/activitypub"
 )
 
@@ -17,12 +17,12 @@ func newActivityModel() ActivityModel {
 	return ActivityModel{}
 }
 
-func (l ActivityModel) Init() (tea.Model, tea.Cmd) {
-	return l, noop
+func (l ActivityModel) Init() tea.Cmd {
+	return noop
 }
 
-func (l ActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return l, noop
+func (l ActivityModel) Update(msg tea.Msg) tea.Cmd {
+	return noop
 }
 
 func (l ActivityModel) View() string {

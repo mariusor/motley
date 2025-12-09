@@ -3,13 +3,15 @@ package motley
 import (
 	"context"
 	"fmt"
+	"image/color"
+	"os"
 	"time"
 
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
-	"github.com/charmbracelet/bubbles/v2/key"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/common-nighthawk/go-figure"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/filters"
@@ -33,10 +35,10 @@ var (
 
 var (
 	// Color wraps lipgloss.ColorProfile.Color, which produces a color for use in termenv styling.
-	Color = lipgloss.ColorProfile().Color
+	Color = lipgloss.Color
 
 	// HasDarkBackground stores whether the terminal has a dark background.
-	HasDarkBackground = lipgloss.HasDarkBackground()
+	HasDarkBackground = lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
 )
 
 // Colors for dark and light backgrounds.
@@ -92,12 +94,14 @@ var (
 )
 
 func Launch(conf config.Options, l lw.Logger) error {
-	_, err := tea.NewProgram(newModel(conf, l), tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
+	_, err := tea.NewProgram(newModel(conf, l)).Run()
 	return err
 }
 
+var _ tea.Model = new(model)
+
 func newModel(conf config.Options, l lw.Logger) *model {
-	if lipgloss.HasDarkBackground() {
+	if HasDarkBackground {
 		GlamourStyle = "dark"
 	} else {
 		GlamourStyle = "light"
@@ -145,23 +149,11 @@ type model struct {
 	status statusModel
 }
 
-func (m *model) Init() (tea.Model, tea.Cmd) {
+func (m *model) Init() tea.Cmd {
 	m.logFn("UI init")
 	m.breadCrumbs = make([]*tree.Model, 0)
 
-	tm, cmdt := m.tree.Init()
-	if mm, ok := tm.(*treeModel); ok {
-		m.tree = *mm
-	}
-	pm, cmdp := m.pager.Init()
-	if mm, ok := pm.(pagerModel); ok {
-		m.pager = mm
-	}
-	sm, cmds := m.status.Init()
-	if mm, ok := sm.(*statusModel); ok {
-		m.status = *mm
-	}
-	return m, tea.Batch(cmdt, cmdp, cmds)
+	return tea.Batch(m.tree.Init(), m.pager.Init(), m.status.Init())
 }
 
 func (m *model) setSize(w, h int) {
@@ -267,7 +259,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			return m.Back(mm)
 		}
 
-		if m.currentNodePosition < m.height-3 {
+		if m.currentNodePosition < m.height-3 && m.currentNode != nil {
 			parent := m.currentNode.p
 			if parent != nil && parent.IsCollection() {
 				count := filters.WithMaxCount(m.height)
@@ -291,13 +283,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
-	p, cmd := m.pager.Update(msg)
-	if pp, ok := p.(pagerModel); ok {
-		m.pager = pp
-	} else {
-		return errCmd(fmt.Errorf("invalid pager: %T", p))
-	}
-	return cmd
+	return m.pager.Update(msg)
 }
 
 func (m *model) updateTree(msg tea.Msg) tea.Cmd {
@@ -309,9 +295,7 @@ func (m *model) updateTree(msg tea.Msg) tea.Cmd {
 }
 
 func (m *model) updateStatusBar(msg tea.Msg) tea.Cmd {
-	s, cmd := m.status.Update(msg)
-	m.status = *(s.(*statusModel))
-	return cmd
+	return m.status.Update(msg)
 }
 
 var (
@@ -418,7 +402,8 @@ func resizeCmd(w, h int) tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return m, m.update(msg)
+	cmd := m.update(msg)
+	return m, cmd
 }
 
 type quitMsg struct{}
@@ -440,16 +425,26 @@ func renderWithBorder(s string, focused bool) string {
 		Padding(0, 1, 0, 1).Render(s)
 }
 
-func (m *model) View() string {
-	return lipgloss.JoinVertical(
+func renderTree(t treeModel) string {
+	if t.width() <= 0 || t.height() <= 0 {
+		return ""
+	}
+	scr := newRenderer(t.width(), t.height())
+	t.View().Content.Draw(scr, scr.Bounds())
+	return scr.String()
+}
+
+func (m *model) View() tea.View {
+	renderedTree := renderWithBorder(renderTree(m.tree), m.tree.list.Focused())
+	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			renderWithBorder(m.tree.View(), m.tree.list.Focused()),
+			renderedTree,
 			renderWithBorder(m.pager.View(), !m.tree.list.Focused()),
 		),
 		lipgloss.NewStyle().Render(m.status.View()),
-	)
+	))
 }
 
 func (m *model) IsBusy() bool {
@@ -459,11 +454,12 @@ func (m *model) IsBusy() bool {
 // ColorPair is a pair of colors, one intended for a dark background and the
 // other intended for a light background. We'll automatically determine which
 // of these colors to use.
-type ColorPair = lipgloss.AdaptiveColor
+type ColorPair = color.Color
 
 // NewColorPair is a helper function for creating a ColorPair.
-func NewColorPair(dark, light string) lipgloss.AdaptiveColor {
-	return lipgloss.AdaptiveColor{Dark: dark, Light: light}
+func NewColorPair(dark, light string) color.Color {
+	lightDark := lipgloss.LightDark(HasDarkBackground)
+	return lightDark(Color(dark), Color(light))
 }
 
 // Returns a termenv style with foreground and background options.
@@ -500,12 +496,12 @@ type motelyPager struct {
 	Title string
 }
 
-func (m motelyPager) Init() (tea.Model, tea.Cmd) {
-	return m, nil
+func (m motelyPager) Init() tea.Cmd {
+	return noop
 }
 
-func (m motelyPager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return m, nil
+func (m motelyPager) Update(msg tea.Msg) tea.Cmd {
+	return noop
 }
 
 func (m motelyPager) View() string {

@@ -1,14 +1,14 @@
 package motley
 
 import (
-	"github.com/charmbracelet/bubbles/v2/viewport"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	vocab "github.com/go-ap/activitypub"
 	"github.com/muesli/reflow/wordwrap"
 )
 
-var _ tea.Model = NaturalLanguageValues{}
+var _ viewModel = NaturalLanguageValues{}
 
 type NaturalLanguageValues struct {
 	vocab.NaturalLanguageValues
@@ -21,7 +21,7 @@ type NaturalLanguageValues struct {
 
 func nameModel(val vocab.NaturalLanguageValues) NaturalLanguageValues {
 	m := NewNaturalLanguageValues("Name", val)
-	m.view.Height = 1
+	m.view.SetHeight(1)
 	return m
 }
 
@@ -39,16 +39,16 @@ func NewNaturalLanguageValues(label string, val vocab.NaturalLanguageValues) Nat
 		NaturalLanguageValues: val,
 
 		selectedRef: vocab.NilLangRef,
-		view:        viewport.New(0, 0),
+		view:        viewport.New(),
 	}
 }
 
-func (n NaturalLanguageValues) Init() (tea.Model, tea.Cmd) {
-	return n, noop
+func (n NaturalLanguageValues) Init() tea.Cmd {
+	return noop
 }
 
-func (n NaturalLanguageValues) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return n, noop
+func (n NaturalLanguageValues) Update(msg tea.Msg) tea.Cmd {
+	return noop
 }
 
 func (n NaturalLanguageValues) renderLabel() string {
@@ -57,16 +57,16 @@ func (n NaturalLanguageValues) renderLabel() string {
 }
 
 func (n NaturalLanguageValues) renderContent() string {
-	contentStyle := lipgloss.NewStyle().MaxHeight(n.view.Height).MaxWidth(n.view.Width)
+	contentStyle := lipgloss.NewStyle().MaxHeight(n.view.Height()).MaxWidth(n.view.Width())
 
 	if n.selectedRef == vocab.NilLangRef {
-		n.selectedRef = n.NaturalLanguageValues.First().Ref
+		n.selectedRef = vocab.Und
 	}
-	for _, nlv := range n.NaturalLanguageValues {
-		if nlv.Ref != n.selectedRef {
+	for k, nlv := range n.NaturalLanguageValues {
+		if k != n.selectedRef {
 			continue
 		}
-		wrapped := wordwrap.String(nlv.Value.String(), n.view.Width-2)
+		wrapped := wordwrap.String(nlv.String(), n.view.Width()-2)
 		return contentStyle.Render(wrapped)
 	}
 	return ""

@@ -11,8 +11,8 @@ import (
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"git.sr.ht/~mariusor/motley/internal/env"
 	"git.sr.ht/~mariusor/motley/internal/storage"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
 	"github.com/go-ap/filters"
@@ -162,8 +162,8 @@ func (n *n) Parent() tree.Node {
 	return n.p
 }
 
-func (n *n) Init() (tea.Model, tea.Cmd) {
-	return n, noop
+func (n *n) Init() tea.Cmd {
+	return noop
 }
 
 func nodeIsError(n *n) bool {
@@ -236,12 +236,8 @@ func (n *n) State() tree.NodeState {
 	return n.s
 }
 
-func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch m := msg.(type) {
-	case tree.NodeState:
-		n.s = m
-	}
-	return n, noop
+func (n *n) Update(msg tea.Msg) tea.Cmd {
+	return noop
 }
 
 func (n *n) setChildren(c ...*n) {

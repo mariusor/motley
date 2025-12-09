@@ -11,8 +11,8 @@ import (
 
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/env"
+	vocab "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
-	"github.com/go-ap/fedbox/storage"
 	"github.com/go-ap/processing"
 	"github.com/joho/godotenv"
 	"github.com/openshift/osin"
@@ -29,6 +29,11 @@ type BackendConfig struct {
 	Name    string
 }
 
+type PasswordChanger interface {
+	PasswordSet(vocab.IRI, []byte) error
+	PasswordCheck(vocab.IRI, []byte) error
+}
+
 type FullStorage interface {
 	ListClients() ([]osin.Client, error)
 	GetClient(id string) (osin.Client, error)
@@ -38,7 +43,7 @@ type FullStorage interface {
 	osin.Storage
 	processing.Store
 	processing.KeyLoader
-	storage.PasswordChanger
+	PasswordChanger
 }
 
 type Storage struct {

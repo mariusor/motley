@@ -3,8 +3,8 @@ package motley
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	vocab "github.com/go-ap/activitypub"
 )
 
@@ -19,12 +19,12 @@ func newCollectionModel() CollectionModel {
 	return CollectionModel{}
 }
 
-func (c CollectionModel) Init() (tea.Model, tea.Cmd) {
-	return c, noop
+func (c CollectionModel) Init() tea.Cmd {
+	return noop
 }
 
-func (c CollectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return c, noop
+func (c CollectionModel) Update(msg tea.Msg) tea.Cmd {
+	return noop
 }
 
 func (c CollectionModel) View() string {
@@ -35,7 +35,7 @@ func (c CollectionModel) View() string {
 }
 
 func (c *CollectionModel) updateCollection(col vocab.CollectionInterface) error {
-	vocab.OnObject(col, func(object *vocab.Object) error {
+	_ = vocab.OnObject(col, func(object *vocab.Object) error {
 		c.Object = *object
 		return nil
 	})

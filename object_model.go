@@ -4,12 +4,12 @@ import (
 	"mime"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	vocab "github.com/go-ap/activitypub"
 )
 
-var _ tea.Model = ObjectModel{}
+var _ viewModel = ObjectModel{}
 
 // ObjectModel
 // We need to group different properties which serve similar purposes into the same controls
@@ -28,12 +28,12 @@ func newObjectModel() ObjectModel {
 	return ObjectModel{}
 }
 
-func (o ObjectModel) Init() (tea.Model, tea.Cmd) {
-	return o, noop
+func (o ObjectModel) Init() tea.Cmd {
+	return noop
 }
 
-func (o ObjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return o, noop
+func (o ObjectModel) Update(msg tea.Msg) tea.Cmd {
+	return noop
 }
 
 func mimeIsBinary(mimeType vocab.MimeType) bool {

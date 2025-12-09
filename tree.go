@@ -1,7 +1,7 @@
 package motley
 
 import (
-	tea "github.com/charmbracelet/bubbletea/v2"
+	tea "charm.land/bubbletea/v2"
 	tree "github.com/mariusor/bubbles-tree"
 )
 
@@ -24,13 +24,9 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 
 var _ tea.Model = &treeModel{}
 
-func (t *treeModel) Init() (tea.Model, tea.Cmd) {
+func (t *treeModel) Init() tea.Cmd {
 	t.logFn("Tree Model init")
-	tm, cmd := t.list.Init()
-	if m, ok := tm.(*tree.Model); ok {
-		t.list = m
-	}
-	return t, cmd
+	return t.list.Init()
 }
 
 type percentageMsg float64
@@ -57,7 +53,7 @@ func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 const minTreeWidth = 32
 
-func (t *treeModel) View() string {
+func (t *treeModel) View() tea.View {
 	if t.list.Focused() {
 		t.list.Styles.Selected = hintFg
 	} else {
@@ -75,6 +71,10 @@ func (t *treeModel) setSize(w, h int) {
 
 func (t *treeModel) width() int {
 	return t.list.Width()
+}
+
+func (t *treeModel) height() int {
+	return t.list.Height()
 }
 
 func (t *treeModel) Back(previous *tree.Model) (tea.Model, tea.Cmd) {

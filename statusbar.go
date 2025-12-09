@@ -2,14 +2,15 @@ package motley
 
 import (
 	"fmt"
+	"image/color"
 	"math"
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"git.sr.ht/~mariusor/motley/internal/env"
-	"github.com/charmbracelet/bubbles/v2/spinner"
-	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/charmbracelet/lipgloss"
 	pub "github.com/go-ap/activitypub"
 	rw "github.com/mattn/go-runewidth"
 	"github.com/muesli/reflow/margin"
@@ -68,9 +69,9 @@ func newStatusModel(common *commonModel) statusModel {
 	}
 }
 
-func (s *statusModel) Init() (tea.Model, tea.Cmd) {
+func (s *statusModel) Init() tea.Cmd {
 	s.logFn("Status Bar init")
-	return s, noop
+	return noop
 }
 
 func (s *statusModel) showError(err error) tea.Cmd {
@@ -143,7 +144,7 @@ func (a statusNode) View() string {
 	return s.String()
 }
 
-func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s *statusModel) Update(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 
 	switch mm := msg.(type) {
@@ -165,7 +166,7 @@ func (s *statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.percent = float64(mm) * 100.0
 	}
 
-	return s, cmd
+	return cmd
 }
 
 func (s *statusModel) View() string {
@@ -236,18 +237,18 @@ func withPadding(s string, w int) string {
 }
 
 func logoView(text string, e env.Type) string {
-	var bg te.Color
+	var bg color.Color
 	fg := Color(te.ANSIBrightWhite.String())
-	bg = Color(Red.Dark)
+	bg = Red
 	if e != "" {
 		if !e.IsProd() {
-			bg = Color(Green.Dark)
+			bg = Green
 		}
 		text = fmt.Sprintf("[%s] %s", e, text)
 	} else {
 		text = fmt.Sprintf("%s", text)
 	}
-	return te.String(withPadding(text, len(text))).Bold().Foreground(fg).Background(bg).String()
+	return lipgloss.NewStyle().Bold(true).Foreground(fg).Background(bg).Render(withPadding(text, len(text)))
 }
 
 // Lightweight version of reflow's indent function.
