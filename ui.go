@@ -264,7 +264,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			if parent != nil && parent.IsCollection() {
 				count := filters.WithMaxCount(m.height)
 				after := filters.After(filters.SameID(m.currentNode.GetLink()))
-				m.loadNode(ctx, parent, after, count)
+				_ = m.loadNode(ctx, parent, after, count)
 			}
 		}
 	case tea.WindowSizeMsg:

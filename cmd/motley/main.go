@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
-	"time"
 
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/cmd"
@@ -26,7 +25,6 @@ var Motley struct {
 	Version kong.VersionFlag
 	Path    []string `flag:"" name:"path" help:"Storage DSN strings of form type:/path/to/storage. Possible types: ${types}"`
 	URL     []string `flag:"" name:"url" help:"The url used by the application."`
-	Config  []string `flag:"" name:"config" help:"DSN for the folder(s) containing .env config files of form: env:/path/to/config. Possible types: ${envs}"`
 }
 
 func openlog(name string) io.Writer {
@@ -74,7 +72,7 @@ func main() {
 	_, err := loadArguments(&conf)
 	if err != nil {
 		l.Errorf("%s", err)
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		ktx.Exit(1)
 	}
 
@@ -88,40 +86,19 @@ func main() {
 }
 
 func loadArguments(conf *config.Options) ([]config.FullStorage, error) {
-	if len(Motley.Config)+len(Motley.Path) == 0 {
+	if len(Motley.Path) == 0 {
 		return nil, fmt.Errorf("missing flags: you need to either pass a config path DSN or pairs of a storage DSN with an associated URL")
 	}
 
-	m := make([]error, 0)
+	errs := make([]error, 0)
 	stores := make([]config.FullStorage, 0)
-	for _, dsnConfig := range Motley.Config {
-		if dsnConfig == "" {
-			continue
-		}
-		typ, envFile, found := strings.Cut(dsnConfig, ":")
-		if !found {
-			m = append(m, fmt.Errorf("invalid config DSN value, expected env:/path/to/config"))
-			continue
-		}
-		envTyp := env.Type(typ)
-		if !env.ValidType(envTyp) {
-			m = append(m, fmt.Errorf("invalid env in the DSN value %q", envTyp))
-			continue
-		}
-		c, err := config.LoadFromEnv(envFile, envTyp, time.Second)
-		if err != nil {
-			m = append(m, fmt.Errorf("unable to load config file for environment %s: %s", envTyp, err))
-			continue
-		}
-		*conf = c
-	}
 	for _, u := range Motley.URL {
 		if u == "" {
 			continue
 		}
 		_, err := url.ParseRequestURI(u)
 		if err != nil {
-			m = append(m, fmt.Errorf("invalid url passed: %s", err))
+			errs = append(errs, fmt.Errorf("invalid url passed: %s", err))
 			continue
 		}
 		conf.URLs = append(conf.URLs, u)
@@ -130,24 +107,21 @@ func loadArguments(conf *config.Options) ([]config.FullStorage, error) {
 		if sto == "" {
 			continue
 		}
-		typ, path, found := strings.Cut(sto, ":")
-		if !found {
-			m = append(m, fmt.Errorf("invalid storage value, expected DSN of type:/path/to/storage"))
-			continue
-		}
+		typ, path := config.ParseStorageDSN(sto)
 		st := config.Storage{
-			Type: config.StorageType(typ),
-			Path: path,
+			Type: typ,
+			Path: filepath.Clean(path),
 		}
 		if !validStorageType(st.Type) {
-			m = append(m, fmt.Errorf("invalid storage type value %s", conf.Storage))
+			errs = append(errs, fmt.Errorf("invalid storage type value %s", conf.Storage))
 			continue
 		}
 		conf.Storage = append(conf.Storage, st)
 	}
-	if len(m) > 0 {
-		return nil, xerrors.Join(m...)
+	if len(errs) > 0 {
+		return nil, xerrors.Join(errs...)
 	}
+
 	return stores, nil
 }
 

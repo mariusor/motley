@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -78,7 +79,10 @@ const (
 	StorageBadger  = StorageType("badger")
 )
 
-const defaultPerm = os.ModeDir | os.ModePerm | 0700
+var allStorageTypes = []string{
+	string(StorageFS), string(StorageBoltDB),
+	string(StorageBadger), string(StorageSqlite),
+}
 
 const (
 	varEnv     = "%env%"
@@ -246,4 +250,17 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 	conf.Storage = append(conf.Storage, st)
 
 	return conf, nil
+}
+
+func ParseStorageDSN(s string) (StorageType, string) {
+	r := regexp.MustCompile(fmt.Sprintf(`(%s):\/(.+)`, strings.Join(allStorageTypes, "|")))
+	found := r.FindAllSubmatch([]byte(s), -1)
+	if len(found) == 0 {
+		return DefaultStorage, s
+	}
+	sto := found[0]
+	if len(sto) == 1 {
+		return DefaultStorage, string(sto[1])
+	}
+	return StorageType(sto[1]), string(sto[2])
 }

@@ -7,6 +7,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.0-rc.2
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251106192539-4b304240aab7
 	git.sr.ht/~mariusor/lw v0.0.0-20250325163623-1639f3fb0e0d
+	git.sr.ht/~mariusor/storage-all v0.0.0-20251206143125-f0d54042bca3
 	github.com/alecthomas/kong v0.9.0
 	github.com/charmbracelet/ultraviolet v0.0.0-20251208150253-2e071fef09ba
 	github.com/charmbracelet/x/ansi v0.11.2

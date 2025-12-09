@@ -7,12 +7,11 @@ import (
 	"path"
 	"path/filepath"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"git.sr.ht/~mariusor/motley/internal/env"
-	"git.sr.ht/~mariusor/motley/internal/storage"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
 	"github.com/go-ap/filters"
@@ -69,25 +68,31 @@ func FedBOX(rootIRIs []string, st []config.Storage, l lw.Logger) (*fedbox, error
 		found := false
 		for _, iri := range rootIRIs {
 			s.Host = iri
-			db, err := storage.Storage(s, s.Env, l)
+			db, err := config.Open(s, s.Env, l)
 			if err != nil {
 				l.Debugf("unable to initialize %s storage %s: %+v", s.Type, s.Path, err)
 				errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))
 				continue
 			}
-			if it, err := db.Load(pub.IRI(iri)); err == nil {
-				if it.IsCollection() {
-					_ = pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
-						for _, it := range col.Collection() {
-							appendStore(&stores, db, s.Env, it)
-						}
-						return nil
-					})
-				} else {
-					appendStore(&stores, db, s.Env, it)
-				}
-				found = true
+			if opener, ok := db.(interface{ Open() error }); ok {
+				opener.Open()
 			}
+			it, err := db.Load(pub.IRI(iri))
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			if it.IsCollection() {
+				_ = pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
+					for _, it := range col.Collection() {
+						appendStore(&stores, db, s.Env, it)
+					}
+					return nil
+				})
+			} else {
+				appendStore(&stores, db, s.Env, it)
+			}
+			found = true
 		}
 		if !found {
 			l.Debugf("unable to load main Actor for storage[%s] %s", s.Type, s.Path)
@@ -459,7 +464,7 @@ func (m *model) loadNode(ctx context.Context, nn *n, ff ...filters.Check) error 
 
 	if len(nn.c) == 0 {
 		children := make([]*n, 0)
-		pub.OnCollectionIntf(nn.Item, func(col pub.CollectionInterface) error {
+		_ = pub.OnCollectionIntf(nn.Item, func(col pub.CollectionInterface) error {
 			return accum(&children)(ctx, col)
 		})
 		if len(children) == 0 {
