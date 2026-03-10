@@ -8,7 +8,7 @@ import (
 
 const DefaultStorage = StorageFS
 
-func Open(c Storage, env env.Type, l lw.Logger) (FullStorage, error) {
+func Open(c Storage, env env.Type, l lw.Logger) (storage.FullStorage, error) {
 	return storage.New(
 		storage.WithPath(c.Path),
 		storage.WithType(storage.Type(c.Type)),

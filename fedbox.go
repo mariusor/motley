@@ -12,6 +12,7 @@ import (
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"git.sr.ht/~mariusor/motley/internal/env"
+	"git.sr.ht/~mariusor/storage-all"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
 	"github.com/go-ap/filters"
@@ -41,27 +42,35 @@ type loggerFn func(string, ...interface{})
 
 var logFn = func(string, ...interface{}) {}
 
-type store struct {
+type Store struct {
 	root pub.Item
 	env  env.Type
-	s    config.FullStorage
+	s    storage.FullStorage
 }
 
 type fedbox struct {
 	tree   map[pub.IRI]pub.Item
 	items  pub.IRIs
-	stores []store
+	stores []Store
 	logFn  loggerFn
 }
 
-func FedBOX(rootIRIs []string, st []config.Storage, l lw.Logger) (*fedbox, error) {
+func WithStore(st storage.FullStorage, root pub.Item, environment string) Store {
+	return Store{
+		root: root,
+		env:  env.Type(environment),
+		s:    st,
+	}
+}
+
+func fedBOX(rootIRIs []string, st []config.Storage, l lw.Logger) (*fedbox, error) {
 	logFn = l.Infof
-	stores := make([]store, 0)
-	var appendStore = func(stores *[]store, db config.FullStorage, e env.Type, it pub.Item) {
+	stores := make([]Store, 0)
+	var appendStore = func(stores *[]Store, db storage.FullStorage, e env.Type, it pub.Item) {
 		if pub.IsNil(it) {
 			return
 		}
-		*stores = append(*stores, store{root: it, s: db, env: e})
+		*stores = append(*stores, Store{root: it, s: db, env: e})
 	}
 	errs := make([]error, 0)
 	for _, s := range st {
@@ -75,7 +84,7 @@ func FedBOX(rootIRIs []string, st []config.Storage, l lw.Logger) (*fedbox, error
 				continue
 			}
 			if opener, ok := db.(interface{ Open() error }); ok {
-				opener.Open()
+				_ = opener.Open()
 			}
 			it, err := db.Load(pub.IRI(iri))
 			if err != nil {

@@ -13,7 +13,7 @@ import (
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"github.com/common-nighthawk/go-figure"
-	pub "github.com/go-ap/activitypub"
+	vocab "github.com/go-ap/activitypub"
 	"github.com/go-ap/filters"
 	tree "github.com/mariusor/bubbles-tree"
 )
@@ -100,6 +100,21 @@ func Launch(conf config.Options, l lw.Logger) error {
 
 var _ tea.Model = new(model)
 
+func Model(l lw.Logger, st ...Store) *model {
+	m := new(model)
+	m.commonModel = new(commonModel)
+	m.commonModel.logFn = l.Infof
+
+	m.pager = newItemModel(m.commonModel)
+	m.status = newStatusModel(m.commonModel)
+
+	m.f = new(fedbox)
+	m.f.stores = st
+	nodes := initNodes(m.f)
+	m.tree = newTreeModel(m.commonModel, nodes)
+	return m
+}
+
 func newModel(conf config.Options, l lw.Logger) *model {
 	if HasDarkBackground {
 		GlamourStyle = "dark"
@@ -117,7 +132,7 @@ func newModel(conf config.Options, l lw.Logger) *model {
 	var err error
 	var nodes tree.Nodes
 
-	m.f, err = FedBOX(conf.URLs, conf.Storage, l)
+	m.f, err = fedBOX(conf.URLs, conf.Storage, l)
 	if err != nil {
 		m.status.showError(err)
 	} else {
@@ -129,7 +144,7 @@ func newModel(conf config.Options, l lw.Logger) *model {
 
 type commonModel struct {
 	f    *fedbox
-	root pub.Item
+	root vocab.Item
 
 	logFn func(string, ...interface{})
 }

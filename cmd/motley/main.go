@@ -16,6 +16,7 @@ import (
 	"git.sr.ht/~mariusor/motley/internal/cmd"
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"git.sr.ht/~mariusor/motley/internal/env"
+	"git.sr.ht/~mariusor/storage-all"
 	"github.com/alecthomas/kong"
 )
 
@@ -85,13 +86,13 @@ func main() {
 	ktx.Exit(0)
 }
 
-func loadArguments(conf *config.Options) ([]config.FullStorage, error) {
+func loadArguments(conf *config.Options) ([]storage.FullStorage, error) {
 	if len(Motley.Path) == 0 {
 		return nil, fmt.Errorf("missing flags: you need to either pass a config path DSN or pairs of a storage DSN with an associated URL")
 	}
 
 	errs := make([]error, 0)
-	stores := make([]config.FullStorage, 0)
+	stores := make([]storage.FullStorage, 0)
 	for _, u := range Motley.URL {
 		if u == "" {
 			continue

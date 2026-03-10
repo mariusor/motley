@@ -12,11 +12,8 @@ import (
 
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/env"
-	vocab "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
-	"github.com/go-ap/processing"
 	"github.com/joho/godotenv"
-	"github.com/openshift/osin"
 )
 
 var Prefix = "fedbox"
@@ -28,23 +25,6 @@ type BackendConfig struct {
 	User    string
 	Pw      string
 	Name    string
-}
-
-type PasswordChanger interface {
-	PasswordSet(vocab.IRI, []byte) error
-	PasswordCheck(vocab.IRI, []byte) error
-}
-
-type FullStorage interface {
-	ListClients() ([]osin.Client, error)
-	GetClient(id string) (osin.Client, error)
-	UpdateClient(c osin.Client) error
-	CreateClient(c osin.Client) error
-	RemoveClient(id string) error
-	osin.Storage
-	processing.Store
-	processing.KeyLoader
-	PasswordChanger
 }
 
 type Storage struct {
