@@ -103,15 +103,15 @@ var _ tea.Model = new(model)
 func Model(l lw.Logger, st ...Store) *model {
 	m := new(model)
 	m.commonModel = new(commonModel)
-	m.commonModel.logFn = l.Infof
+	m.commonModel.logFn = l.Debugf
 
 	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
 
 	m.f = new(fedbox)
 	m.f.stores = st
-	nodes := initNodes(m.f)
-	m.tree = newTreeModel(m.commonModel, nodes)
+	m.f.logFn = l.Debugf
+	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	return m
 }
 
