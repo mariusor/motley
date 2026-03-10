@@ -300,11 +300,15 @@ func getNameFromItem(it pub.Item) string {
 			return nil
 		})
 	case pub.ActivityTypes.Match(typ), pub.IntransitiveActivityTypes.Match(typ):
-		n = typ.AsTypes().String()
+		if tt := typ.AsTypes(); len(tt) > 0 {
+			n = tt.String()
+		}
 		err = pub.OnActivity(it, func(act *pub.Activity) error {
 			obType := ""
-			pub.OnObject(act.Object, func(ob *pub.Object) error {
-				obType = ob.GetType().AsTypes().String()
+			_ = pub.OnObject(act.Object, func(ob *pub.Object) error {
+				if tt := ob.GetType(); tt != nil {
+					obType = tt.AsTypes().String()
+				}
 				return nil
 			})
 			if len(obType) > 0 {
@@ -317,7 +321,9 @@ func getNameFromItem(it pub.Item) string {
 			if nm := name(ob); len(nm) > 0 {
 				n = fmt.Sprintf("%s[%s]", nm, typ)
 			} else {
-				n = typ.AsTypes().String()
+				if typ != nil {
+					n = typ.AsTypes().String()
+				}
 			}
 			return nil
 		})

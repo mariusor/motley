@@ -54,6 +54,7 @@ require (
 	github.com/dgraph-io/badger/v4 v4.9.1 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/go-ap/auth v0.0.0-20260309180753-4901405ccf4d // indirect
 	github.com/go-ap/cache v0.0.0-20260309180527-f2e7bd7e14c5 // indirect
 	github.com/go-ap/client v0.0.0-20260309180706-01fff3db8146 // indirect
 	github.com/go-ap/jsonld v0.0.0-20251216162253-e38fa664ea77 // indirect
