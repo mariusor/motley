@@ -72,16 +72,16 @@ func (p *pagerModel) updateModel(it vocab.Item) error {
 		return vocab.OnItemCollection(it, p.updateItems)
 	}
 	typ := it.GetType()
-	if vocab.IntransitiveActivityTypes.Contains(typ) {
+	if vocab.IntransitiveActivityTypes.Match(typ) {
 		return vocab.OnIntransitiveActivity(it, p.updateIntransitiveActivity)
 	}
-	if vocab.ActivityTypes.Contains(typ) {
+	if vocab.ActivityTypes.Match(typ) {
 		return vocab.OnActivity(it, p.updateActivity)
 	}
-	if vocab.ActorTypes.Contains(typ) {
+	if vocab.ActorTypes.Match(typ) {
 		return vocab.OnActor(it, p.updateActor)
 	}
-	if vocab.ObjectTypes.Contains(typ) || typ == "" {
+	if vocab.ObjectTypes.Match(typ) || vocab.NilType.Match(typ) {
 		return vocab.OnObject(it, p.updateObject)
 	}
 	return fmt.Errorf("unknown activitypub object of type %T", it)
@@ -168,7 +168,7 @@ func (p pagerModel) Update(msg tea.Msg) tea.Cmd {
 }
 
 func ItemType(o vocab.Item) string {
-	if typ := string(o.GetType()); typ != "" {
+	if typ := o.GetType().AsTypes().String(); typ != "" {
 		return typ
 	}
 	return "Unknown"

@@ -86,7 +86,7 @@ func (o ObjectModel) View() string {
 		pieces = append(pieces, summary)
 	}
 
-	if !binContentTypes.Contains(o.GetType()) && !mimeIsBinary(o.MediaType) {
+	if !binContentTypes.Match(o.GetType()) && !mimeIsBinary(o.MediaType) {
 		if content := o.Content.View(); len(content) > 0 {
 			pieces = append(pieces, content)
 		}

@@ -285,26 +285,26 @@ func getNameFromItem(it pub.Item) string {
 	var err error
 	typ := it.GetType()
 	switch {
-	case pub.LinkTypes.Contains(typ):
+	case pub.LinkTypes.Match(typ):
 		err = pub.OnLink(it, func(l *pub.Link) error {
 			if nm := name(l); len(nm) > 0 {
 				n = fmt.Sprintf("%s[%s]", nm, typ)
 			}
 			return nil
 		})
-	case pub.ActorTypes.Contains(typ):
+	case pub.ActorTypes.Match(typ):
 		err = pub.OnActor(it, func(act *pub.Actor) error {
 			if nm := name(act); len(nm) > 0 {
 				n = fmt.Sprintf("%s[%s]", nm, typ)
 			}
 			return nil
 		})
-	case pub.ActivityTypes.Contains(typ), pub.IntransitiveActivityTypes.Contains(typ):
-		n = string(typ)
+	case pub.ActivityTypes.Match(typ), pub.IntransitiveActivityTypes.Match(typ):
+		n = typ.AsTypes().String()
 		err = pub.OnActivity(it, func(act *pub.Activity) error {
 			obType := ""
 			pub.OnObject(act.Object, func(ob *pub.Object) error {
-				obType = string(ob.GetType())
+				obType = ob.GetType().AsTypes().String()
 				return nil
 			})
 			if len(obType) > 0 {
@@ -312,16 +312,16 @@ func getNameFromItem(it pub.Item) string {
 			}
 			return nil
 		})
-	case pub.ObjectTypes.Contains(typ):
+	case pub.ObjectTypes.Match(typ):
 		err = pub.OnObject(it, func(ob *pub.Object) error {
 			if nm := name(ob); len(nm) > 0 {
 				n = fmt.Sprintf("%s[%s]", nm, typ)
 			} else {
-				n = string(typ)
+				n = typ.AsTypes().String()
 			}
 			return nil
 		})
-	case typ == "":
+	case pub.NilType.Match(typ):
 		err = pub.OnObject(it, func(ob *pub.Object) error {
 			if nm := name(ob); len(nm) > 0 {
 				n = nm
@@ -409,13 +409,13 @@ func getItemElements(parent *n) []*n {
 			return nil
 		})
 	}
-	if pub.ActorTypes.Contains(it.GetType()) {
+	if pub.ActorTypes.Match(it.GetType()) {
 		_ = pub.OnActor(it, func(act *pub.Actor) error {
 			result = append(result, getActorElements(*act, parent)...)
 			return nil
 		})
 	}
-	if pub.ActivityTypes.Contains(it.GetType()) || pub.ObjectTypes.Contains(it.GetType()) {
+	if pub.ActivityTypes.Match(it.GetType()) || pub.ObjectTypes.Match(it.GetType()) {
 		_ = pub.OnObject(it, func(act *pub.Object) error {
 			result = append(result, getObjectElements(*act, parent)...)
 			return nil
@@ -583,11 +583,11 @@ func dereferenceItemProperties(ctx context.Context, f *fedbox, it *pub.Item) err
 	if pub.IsObject(ob) {
 		typ := ob.GetType()
 		switch {
-		case pub.ObjectTypes.Contains(typ), pub.ActorTypes.Contains(typ), typ == "":
+		case pub.ObjectTypes.Match(typ), pub.ActorTypes.Match(typ), pub.NilType.Match(typ):
 			return pub.OnObject(*it, dereferenceObjectProperties(ctx, f))
-		case pub.IntransitiveActivityTypes.Contains(typ):
+		case pub.IntransitiveActivityTypes.Match(typ):
 			return pub.OnIntransitiveActivity(*it, dereferenceIntransitiveActivityProperties(ctx, f))
-		case pub.ActivityTypes.Contains(typ):
+		case pub.ActivityTypes.Match(typ):
 			return pub.OnActivity(*it, dereferenceActivityProperties(ctx, f))
 		}
 	}
@@ -734,7 +734,7 @@ func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iri pub.IRI, ff 
 
 func name(it pub.Item) string {
 	n := ""
-	pub.OnActor(it, func(a *pub.Actor) error {
+	_ = pub.OnActor(it, func(a *pub.Actor) error {
 		if a.PreferredUsername != nil {
 			n = a.PreferredUsername.First().String()
 		}
@@ -743,7 +743,7 @@ func name(it pub.Item) string {
 	if n != "" {
 		return n
 	}
-	pub.OnObject(it, func(o *pub.Object) error {
+	_ = pub.OnObject(it, func(o *pub.Object) error {
 		if o.Name != nil {
 			n = o.Name.First().String()
 			return nil
@@ -763,7 +763,7 @@ func name(it pub.Item) string {
 	if n != "" {
 		return n
 	}
-	pub.OnLink(it, func(l *pub.Link) error {
+	_ = pub.OnLink(it, func(l *pub.Link) error {
 		if l.Name != nil {
 			n = l.Name.First().String()
 		}
