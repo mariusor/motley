@@ -429,9 +429,10 @@ func renderTree(t treeModel) string {
 	if t.width() <= 0 || t.height() <= 0 {
 		return ""
 	}
-	scr := newRenderer(t.width(), t.height())
-	t.View().Content.Draw(scr, scr.Bounds())
-	return scr.String()
+	return t.View().Content
+	//scr := newRenderer(t.width(), t.height())
+	//t.View().Content.Draw(scr, scr.Bounds())
+	//return scr.String()
 }
 
 func (m *model) View() tea.View {
