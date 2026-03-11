@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	charm.land/bubbles/v2 v2.0.0
 	charm.land/bubbletea/v2 v2.0.2
-	charm.land/lipgloss/v2 v2.0.1
+	charm.land/lipgloss/v2 v2.0.2
 	git.sr.ht/~mariusor/lw v0.0.0-20250325163623-1639f3fb0e0d
 	git.sr.ht/~mariusor/storage-all v0.0.0-20260309181541-49fd924f6154
 	github.com/alecthomas/kong v0.9.0
@@ -21,14 +21,14 @@ require (
 	github.com/go-ap/storage-fs v0.0.0-20260309181001-e2bbeb17a6b2
 	github.com/go-ap/storage-sqlite v0.0.0-20260309181118-d2c26610582b
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20251209123111-a799f65926a6
+	github.com/mariusor/bubbles-tree v0.0.0-20260311173210-47c4805188a4
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.21
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
 	github.com/openshift/osin v1.0.2-0.20220317075346-0f4d38c6e53f
 	golang.org/x/sync v0.20.0
-	golang.org/x/text v0.34.0
+	golang.org/x/text v0.35.0
 )
 
 require (

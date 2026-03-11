@@ -18,7 +18,7 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 
 	return treeModel{
 		commonModel: common,
-		list:        &ls,
+		list:        ls,
 	}
 }
 
@@ -95,7 +95,7 @@ func (t *treeModel) Advance(current *n) *tree.Model {
 	newTree.SetHeight(t.list.Height())
 
 	oldTree := t.list
-	t.list = &newTree
+	t.list = newTree
 	return oldTree
 }
 

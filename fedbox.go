@@ -209,9 +209,9 @@ func nodeIsCollapsible(n *n) bool {
 	return n.s.Is(tree.NodeCollapsible)
 }
 
-func (n *n) View() string {
+func (n *n) View() tea.View {
 	if n == nil || n.s.Is(tree.NodeHidden) {
-		return ""
+		return tea.View{}
 	}
 	hints := n.s
 	annotation := ""
@@ -235,7 +235,7 @@ func (n *n) View() string {
 		}
 	}
 
-	return fmt.Sprintf("%-1s %s", annotation, st.Render(n.n))
+	return tea.NewView(fmt.Sprintf("%-1s %s", annotation, st.Render(n.n)))
 }
 
 func (n *n) Children() tree.Nodes {
@@ -250,8 +250,8 @@ func (n *n) State() tree.NodeState {
 	return n.s
 }
 
-func (n *n) Update(msg tea.Msg) tea.Cmd {
-	return noop
+func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return n, noop
 }
 
 func (n *n) setChildren(c ...*n) {
