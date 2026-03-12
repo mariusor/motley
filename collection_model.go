@@ -23,15 +23,15 @@ func (c CollectionModel) Init() tea.Cmd {
 	return noop
 }
 
-func (c CollectionModel) Update(msg tea.Msg) tea.Cmd {
-	return noop
+func (c CollectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return c, noop
 }
 
-func (c CollectionModel) View() string {
+func (c CollectionModel) View() tea.View {
 	obView := c.ObjectModel.View()
 
 	totalView := fmt.Sprintf("Total: %d", c.Total)
-	return lipgloss.JoinVertical(lipgloss.Bottom, obView, totalView)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Bottom, obView.Content, totalView))
 }
 
 func (c *CollectionModel) updateCollection(col vocab.CollectionInterface) error {

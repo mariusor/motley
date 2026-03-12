@@ -15,7 +15,7 @@ type viewModel interface {
 	View() string
 }
 
-var _ viewModel = pagerModel{}
+var _ tea.Model = pagerModel{}
 
 type pagerModel struct {
 	*commonModel
@@ -23,7 +23,7 @@ type pagerModel struct {
 	item vocab.Item
 
 	viewport viewport.Model
-	model    viewModel
+	model    tea.Model
 }
 
 func (p *pagerModel) setSize(w, h int) {
@@ -31,12 +31,12 @@ func (p *pagerModel) setSize(w, h int) {
 	p.viewport.SetWidth(w)
 }
 
-func (p pagerModel) View() string {
+func (p pagerModel) View() tea.View {
 	h := p.viewport.Height()
 	w := p.viewport.Width()
 	s := lipgloss.NewStyle().Height(h).MaxHeight(h).MaxWidth(w).Width(w)
-	p.viewport.SetContent(s.Render(p.model.View()))
-	return p.viewport.View()
+	p.viewport.SetContent(s.Render(p.model.View().Content))
+	return tea.NewView(p.viewport.View())
 }
 
 func (p *pagerModel) updateIntransitiveActivity(a *vocab.IntransitiveActivity) error {
@@ -104,32 +104,32 @@ func (p pagerModel) Init() tea.Cmd {
 	return noop
 }
 
-func (p pagerModel) updateAsModel(msg tea.Msg) tea.Cmd {
+func (p *pagerModel) updateAsModel(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	switch mm := msg.(type) {
 	case tea.WindowSizeMsg:
 		p.logFn("item resize: %+v", msg)
 	case nodeUpdateMsg:
-		var content viewModel = M
+		var content tea.Model = M
 		p.item = mm.Item
-		//if vocab.IsIRI(p.item) {
-		//}
-		//if vocab.IsItemCollection(p.item) {
-		//}
+		if vocab.IsIRI(p.item) {
+		}
+		if vocab.IsItemCollection(p.item) {
+		}
 		if vocab.IsObject(p.item) {
 			t := p.item.GetType()
-			switch t {
-			case vocab.AcceptType, vocab.AddType, vocab.AnnounceType, vocab.BlockType, vocab.CreateType,
+			switch {
+			case vocab.ActivityVocabularyTypes{vocab.AcceptType, vocab.AddType, vocab.AnnounceType, vocab.BlockType, vocab.CreateType,
 				vocab.DeleteType, vocab.DislikeType, vocab.FlagType, vocab.FollowType, vocab.IgnoreType,
 				vocab.InviteType, vocab.JoinType, vocab.LeaveType, vocab.LikeType, vocab.ListenType,
 				vocab.MoveType, vocab.OfferType, vocab.RejectType, vocab.ReadType, vocab.RemoveType,
-				vocab.TentativeRejectType, vocab.TentativeAcceptType, vocab.UndoType, vocab.UpdateType, vocab.ViewType:
+				vocab.TentativeRejectType, vocab.TentativeAcceptType, vocab.UndoType, vocab.UpdateType, vocab.ViewType}.Match(t):
 				ob := newActivityModel()
 				if err := vocab.OnActivity(p.item, ob.updateActivity); err != nil {
 					cmds = append(cmds, errCmd(err))
 				}
 				content = ob
-			case vocab.OrderedCollectionPageType, vocab.CollectionPageType, vocab.OrderedCollectionType, vocab.CollectionType:
+			case vocab.ActivityVocabularyTypes{vocab.OrderedCollectionPageType, vocab.CollectionPageType, vocab.OrderedCollectionType, vocab.CollectionType}.Match(t):
 				ob := newCollectionModel()
 				if err := vocab.OnCollectionIntf(p.item, ob.updateCollection); err != nil {
 					cmds = append(cmds, errCmd(err))
@@ -163,13 +163,15 @@ func (p pagerModel) updateAsModel(msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (p pagerModel) Update(msg tea.Msg) tea.Cmd {
-	return p.updateAsModel(msg)
+func (p pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmd := p.updateAsModel(msg)
+	return p, cmd
 }
 
 func ItemType(o vocab.Item) string {
-	if typ := o.GetType().AsTypes().String(); typ != "" {
-		return typ
+	typ := o.GetType()
+	if typ != nil {
+		return typ.AsTypes().String()
 	}
 	return "Unknown"
 }

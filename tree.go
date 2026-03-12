@@ -15,6 +15,7 @@ type treeModel struct {
 func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 	ls := tree.New(t)
 	ls.Symbols = tree.RoundedSymbols()
+	ls.KeyMap = tree.DefaultKeyMap()
 
 	return treeModel{
 		commonModel: common,

@@ -21,27 +21,27 @@ func (l ActivityModel) Init() tea.Cmd {
 	return noop
 }
 
-func (l ActivityModel) Update(msg tea.Msg) tea.Cmd {
-	return noop
+func (l ActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return l, noop
 }
 
-func (l ActivityModel) View() string {
+func (l ActivityModel) View() tea.View {
 	selfView := l.ObjectModel.View()
 
 	obView := l.Object.View()
 	actView := l.Actor.View()
 
-	return lipgloss.JoinVertical(lipgloss.Top, selfView, actView, obView)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, selfView.Content, actView.Content, obView.Content))
 }
 
 func (l *ActivityModel) updateActivity(act *vocab.Activity) error {
-	vocab.OnObject(act, func(ob *vocab.Object) error {
+	_ = vocab.OnObject(act, func(ob *vocab.Object) error {
 		return l.ObjectModel.updateObject(ob)
 	})
-	vocab.OnObject(act.Object, func(ob *vocab.Object) error {
+	_ = vocab.OnObject(act.Object, func(ob *vocab.Object) error {
 		return l.Object.updateObject(ob)
 	})
-	vocab.OnObject(act.Actor, func(ob *vocab.Object) error {
+	_ = vocab.OnObject(act.Actor, func(ob *vocab.Object) error {
 		return l.Actor.updateObject(ob)
 	})
 	return nil

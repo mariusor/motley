@@ -101,6 +101,12 @@ func Launch(conf config.Options, l lw.Logger) error {
 var _ tea.Model = new(model)
 
 func Model(l lw.Logger, st ...Store) *model {
+	if HasDarkBackground {
+		GlamourStyle = "dark"
+	} else {
+		GlamourStyle = "light"
+	}
+
 	m := new(model)
 	m.commonModel = new(commonModel)
 	m.commonModel.logFn = l.Debugf
@@ -124,7 +130,7 @@ func newModel(conf config.Options, l lw.Logger) *model {
 
 	m := new(model)
 	m.commonModel = new(commonModel)
-	m.commonModel.logFn = l.Infof
+	m.commonModel.logFn = l.Debugf
 
 	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
@@ -298,7 +304,9 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 }
 
 func (m *model) updatePager(msg tea.Msg) tea.Cmd {
-	return m.pager.Update(msg)
+	mp, cmd := m.pager.Update(msg)
+	m.pager, _ = mp.(pagerModel)
+	return cmd
 }
 
 func (m *model) updateTree(msg tea.Msg) tea.Cmd {
@@ -457,7 +465,7 @@ func (m *model) View() tea.View {
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			renderedTree,
-			renderWithBorder(m.pager.View(), !m.tree.list.Focused()),
+			renderWithBorder(m.pager.View().Content, !m.tree.list.Focused()),
 		),
 		lipgloss.NewStyle().Render(m.status.View()),
 	))
@@ -516,13 +524,13 @@ func (m motelyPager) Init() tea.Cmd {
 	return noop
 }
 
-func (m motelyPager) Update(msg tea.Msg) tea.Cmd {
-	return noop
+func (m motelyPager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m, noop
 }
 
-func (m motelyPager) View() string {
+func (m motelyPager) View() tea.View {
 	tit := figure.NewFigure(m.Title, "", true)
-	return tit.String()
+	return tea.NewView(tit.String())
 }
 
 var M = motelyPager{Title: "Motley"}

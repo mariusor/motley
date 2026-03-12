@@ -110,7 +110,7 @@ func fedBOX(rootIRIs []string, st []config.Storage, l lw.Logger) (*fedbox, error
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
 	}
-	return &fedbox{tree: make(map[pub.IRI]pub.Item), stores: stores, logFn: l.Infof}, nil
+	return &fedbox{tree: make(map[pub.IRI]pub.Item), stores: stores, logFn: l.Debugf}, nil
 }
 
 func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {
@@ -138,14 +138,14 @@ func (f *fedbox) getRootNodes() pub.ItemCollection {
 
 func initNodes(f *fedbox) tree.Nodes {
 	nodes := make(tree.Nodes, 0)
-	var state tree.NodeState
+	var st tree.NodeState
 	if len(f.getRootNodes()) == 1 {
-		state = tree.NodeLastChild
+		st = tree.NodeLastChild
 	}
 	for _, root := range f.getRootNodes() {
 		nodes = append(nodes, node(
 			root,
-			withState(state),
+			withState(st),
 		))
 	}
 	return nodes
@@ -251,6 +251,10 @@ func (n *n) State() tree.NodeState {
 }
 
 func (n *n) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch mt := msg.(type) {
+	case tree.NodeState:
+		n.s = mt
+	}
 	return n, noop
 }
 

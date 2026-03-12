@@ -15,51 +15,39 @@ require (
 	github.com/go-ap/activitypub v0.0.0-20260309180253-5f9949892033
 	github.com/go-ap/errors v0.0.0-20260208110149-e1b309365966
 	github.com/go-ap/filters v0.0.0-20260309180622-bea723110f0f
-	github.com/go-ap/processing v0.0.0-20260309180917-5c7d4a0cc841
-	github.com/go-ap/storage-badger v0.0.0-20260309181317-4c4d135ae5e6
-	github.com/go-ap/storage-boltdb v0.0.0-20260309181210-263855a593dd
-	github.com/go-ap/storage-fs v0.0.0-20260309181001-e2bbeb17a6b2
-	github.com/go-ap/storage-sqlite v0.0.0-20260309181118-d2c26610582b
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20260311173210-47c4805188a4
+	github.com/mariusor/bubbles-tree v0.0.0-20260312152406-21329fb3c429
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.21
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
-	github.com/openshift/osin v1.0.2-0.20220317075346-0f4d38c6e53f
 	golang.org/x/sync v0.20.0
 	golang.org/x/text v0.35.0
 )
 
 require (
-	git.sr.ht/~mariusor/cache v0.0.0-20250616110250-18a60a6f9473 // indirect
 	git.sr.ht/~mariusor/go-xsd-duration v0.0.0-20220703122237-02e73435a078 // indirect
 	git.sr.ht/~mariusor/mask v0.0.0-20250114195353-98705a6977b7 // indirect
-	git.sr.ht/~mariusor/ssm v0.0.0-20260220115209-1adc83acc174 // indirect
 	github.com/RoaringBitmap/roaring v1.9.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/charmbracelet/bubbles/v2 v2.0.0-beta.1 // indirect
-	github.com/charmbracelet/bubbletea/v2 v2.0.0-beta.6 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta1 // indirect
-	github.com/charmbracelet/x/cellbuf v0.0.15 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
-	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dgraph-io/badger/v4 v4.9.1 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/go-ap/auth v0.0.0-20260309180753-4901405ccf4d // indirect
 	github.com/go-ap/cache v0.0.0-20260309180527-f2e7bd7e14c5 // indirect
-	github.com/go-ap/client v0.0.0-20260309180706-01fff3db8146 // indirect
 	github.com/go-ap/jsonld v0.0.0-20251216162253-e38fa664ea77 // indirect
+	github.com/go-ap/storage-badger v0.0.0-20260309181317-4c4d135ae5e6 // indirect
+	github.com/go-ap/storage-boltdb v0.0.0-20260309181210-263855a593dd // indirect
+	github.com/go-ap/storage-fs v0.0.0-20260309181001-e2bbeb17a6b2 // indirect
+	github.com/go-ap/storage-sqlite v0.0.0-20260309181118-d2c26610582b // indirect
 	github.com/go-chi/chi/v5 v5.2.5 // indirect
-	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
@@ -73,6 +61,7 @@ require (
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/openshift/osin v1.0.2-0.20220317075346-0f4d38c6e53f // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -86,10 +75,8 @@ require (
 	go.opentelemetry.io/otel v1.42.0 // indirect
 	go.opentelemetry.io/otel/metric v1.42.0 // indirect
 	go.opentelemetry.io/otel/trace v1.42.0 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/neurosnap/sentences.v1 v1.0.7 // indirect

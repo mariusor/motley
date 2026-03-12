@@ -20,13 +20,13 @@ func (l LinkModel) Init() tea.Cmd {
 	return noop
 }
 
-func (l LinkModel) Update(msg tea.Msg) tea.Cmd {
-	return noop
+func (l LinkModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return l, noop
 }
 
-func (l LinkModel) View() string {
+func (l LinkModel) View() tea.View {
 	if l.ID == "" {
-		return ""
+		return tea.NewView("")
 	}
 	pieces := make([]string, 0)
 
@@ -45,7 +45,7 @@ func (l LinkModel) View() string {
 		pieces = append(pieces, name)
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Top, pieces...)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, pieces...))
 }
 
 func (l *LinkModel) updateLink(lnk *vocab.Link) error {

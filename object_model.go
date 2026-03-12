@@ -9,7 +9,7 @@ import (
 	vocab "github.com/go-ap/activitypub"
 )
 
-var _ viewModel = ObjectModel{}
+var _ tea.Model = ObjectModel{}
 
 // ObjectModel
 // We need to group different properties which serve similar purposes into the same controls
@@ -32,8 +32,8 @@ func (o ObjectModel) Init() tea.Cmd {
 	return noop
 }
 
-func (o ObjectModel) Update(msg tea.Msg) tea.Cmd {
-	return noop
+func (o ObjectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return o, noop
 }
 
 func mimeIsBinary(mimeType vocab.MimeType) bool {
@@ -56,9 +56,9 @@ var binContentTypes = vocab.ActivityVocabularyTypes{
 	vocab.VideoType,
 }
 
-func (o ObjectModel) View() string {
+func (o ObjectModel) View() tea.View {
 	if o.ID == "" {
-		return ""
+		return tea.NewView("")
 	}
 	pieces := make([]string, 0)
 
@@ -92,7 +92,7 @@ func (o ObjectModel) View() string {
 		}
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Top, pieces...)
+	return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, pieces...))
 }
 
 func (o *ObjectModel) updateObject(ob *vocab.Object) error {
