@@ -40,6 +40,10 @@ func (c *CollectionModel) updateCollection(col vocab.CollectionInterface) error 
 		return nil
 	})
 
-	c.Total = col.Count()
+	_ = vocab.OnOrderedCollection(col, func(col *vocab.OrderedCollection) error {
+		c.Total = col.TotalItems
+		return nil
+	})
+
 	return nil
 }

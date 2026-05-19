@@ -119,9 +119,7 @@ func (t *treeModel) startedLoading() tea.Msg {
 }
 
 func (t *treeModel) stoppedLoading() tea.Msg {
-	if t.state.Is(stateBusy) {
-		t.state ^= stateBusy
-	}
+	t.state ^= stateBusy
 	t.logFn("stopped loading")
 	return t.state
 }

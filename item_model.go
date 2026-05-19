@@ -2,6 +2,7 @@ package motley
 
 import (
 	"fmt"
+	"time"
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"

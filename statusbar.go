@@ -145,17 +145,17 @@ func (a statusNode) View() string {
 }
 
 func (s *statusModel) Update(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
+	cmds := make([]tea.Cmd, 0)
 
 	switch mm := msg.(type) {
 	case error:
-		cmd = s.showError(mm)
+		cmds = append(cmds, s.showError(mm))
 	case spinner.TickMsg:
 		if s.state.Is(statusBusy) {
-			cmd = s.spin(msg)
+			cmds = append(cmds, s.spin(msg))
 		}
 	case nodeUpdateMsg:
-		cmd = s.showStatusMessage(statusNode(mm).View())
+		cmds = append(cmds, s.showStatusMessage(statusNode(mm).View()))
 	case statusState:
 		s.state |= mm
 		if !s.state.Is(statusBusy) {
@@ -166,7 +166,7 @@ func (s *statusModel) Update(msg tea.Msg) tea.Cmd {
 		s.percent = float64(mm) * 100.0
 	}
 
-	return cmd
+	return tea.Batch(cmds...)
 }
 
 func (s *statusModel) View() string {

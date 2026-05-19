@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -226,13 +227,13 @@ func (n *n) View() tea.View {
 		if hints.Is(tree.NodeCollapsed) {
 			annotation = Collapsed
 		}
-		if len(n.c) == 0 {
+		if len(n.c) == 0 && hints.Is(NodeSynced) {
 			annotation = Unexpandable
 			st = st.Faint(true)
 		}
-		if n.s.Is(NodeSyncing) {
-			annotation = Attention
-		}
+		//if n.s.Is(NodeSyncing) {
+		//	annotation = Attention
+		//}
 	}
 
 	return tea.NewView(fmt.Sprintf("%-1s %s", annotation, st.Render(n.n)))
@@ -443,26 +444,35 @@ func getItemElements(parent *n) []*n {
 	return result
 }
 
-func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
-	if nodeIsSynced(node) {
-		m.logFn("Node already loaded: %s", node.n)
-		return nil
-	}
-	node.startedSyncing()
-	defer func() {
-		node.s |= NodeSynced
-		node.stoppedSyncing()
-		m.logFn("Node loaded: %s", node.n)
-	}()
+var defaultDurationBeforeLoad = 2 * time.Second
 
+func (m *model) loadNodeItem(ctx context.Context, node *n) tea.Cmd {
+	m.nodeLoading(node)
 	if err := dereferenceItemProperties(ctx, m.f, &node.Item); err != nil {
 		m.logFn("error while loading attributes %s", err)
 		node.s |= NodeError
 	}
+	return m.tree.stoppedLoading
+}
 
-	if node.s.Is(tree.NodeCollapsible) && len(node.c) == 0 {
-		count := filters.WithMaxCount(m.height)
-		if err := m.loadNode(ctx, node, count); err != nil {
+func (m *model) nodeLoading(node *n) {
+	m.tree.state |= stateBusy
+	node.startedSyncing()
+}
+
+func (m *model) loadNodeCollection(ctx context.Context, node *n) tea.Cmd {
+	if !node.s.Is(tree.NodeCollapsible) {
+		return noop
+	}
+
+	if len(node.c) == 0 {
+		m.nodeLoading(node)
+		defer func() {
+			node.stoppedSyncing()
+			m.logFn("Node loaded: %s", node.n)
+		}()
+
+		if err := m.loadCollectionChildren(ctx, node, filters.WithMaxCount(m.height)); err != nil {
 			m.logFn("error while loading children %s", err)
 			node.s |= NodeError
 		}
@@ -471,7 +481,7 @@ func (m *model) loadDepsForNode(ctx context.Context, node *n) tea.Cmd {
 	return m.tree.stoppedLoading
 }
 
-func (m *model) loadNode(ctx context.Context, nn *n, ff ...filters.Check) error {
+func (m *model) loadCollectionChildren(ctx context.Context, nn *n, ff ...filters.Check) error {
 	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
 		return func(ctx context.Context, col pub.CollectionInterface) error {
 			for _, it := range col.Collection() {
@@ -529,7 +539,7 @@ func dereferenceIRI(ctx context.Context, f *fedbox, it pub.Item) pub.Item {
 		it = col
 		return nil
 	}
-	accumFn(loadFn).LoadFromSearch(ctx, f, it.GetLink())
+	accumFn(loadFn).LoadFromSearch(ctx, f, it.GetLink(), filters.WithMaxCount(0))
 
 	return it
 }
@@ -611,12 +621,6 @@ func dereferenceItemProperties(ctx context.Context, f *fedbox, it *pub.Item) err
 		}
 	}
 
-	if pub.IsItemCollection(ob) {
-		return pub.OnItemCollection(*it, func(col *pub.ItemCollection) error {
-			*it = dereferenceIRIs(ctx, f, *col)
-			return nil
-		})
-	}
 	return nil
 }
 

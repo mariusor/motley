@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"os"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -100,27 +101,6 @@ func Launch(conf config.Options, l lw.Logger) error {
 
 var _ tea.Model = new(model)
 
-func Model(l lw.Logger, st ...Store) *model {
-	if HasDarkBackground {
-		GlamourStyle = "dark"
-	} else {
-		GlamourStyle = "light"
-	}
-
-	m := new(model)
-	m.commonModel = new(commonModel)
-	m.commonModel.logFn = l.Debugf
-
-	m.pager = newItemModel(m.commonModel)
-	m.status = newStatusModel(m.commonModel)
-
-	m.f = new(fedbox)
-	m.f.stores = st
-	m.f.logFn = l.Debugf
-	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
-	return m
-}
-
 func newModel(conf config.Options, l lw.Logger) *model {
 	if HasDarkBackground {
 		GlamourStyle = "dark"
@@ -163,7 +143,8 @@ type model struct {
 
 	currentNode         *n
 	currentNodePosition int
-	breadCrumbs         []*tree.Model
+
+	breadCrumbs []*tree.Model
 
 	tree   treeModel
 	pager  pagerModel
@@ -213,13 +194,16 @@ func nodeUpdateCmd(n n) tea.Cmd {
 }
 
 func skipMessageFromLogs(msg tea.Msg) bool {
-	if _, ok := msg.(*n); ok {
-		return true
-	}
-	if _, ok := msg.(n); ok {
-		return true
-	}
-	if _, ok := msg.(advanceMsg); ok {
+	//if _, ok := msg.(*n); ok {
+	//	return true
+	//}
+	//if _, ok := msg.(n); ok {
+	//	return true
+	//}
+	//if _, ok := msg.(advanceMsg); ok {
+	//	return true
+	//}
+	if _, ok := msg.(percentageMsg); ok {
 		return true
 	}
 	if _, ok := msg.(nodeUpdateMsg); ok {
@@ -240,14 +224,12 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*300)
 	defer cancel()
 
-	m.logMessage(msg)
+	//m.logMessage(msg)
 	switch mm := msg.(type) {
 	case *n:
 		if mm != nil {
 			m.currentNodePosition = m.tree.list.Cursor()
 			m.currentNode = mm
-			m.tree.state |= stateBusy
-			cmd := m.loadDepsForNode(ctx, m.currentNode)
 			for _, st := range m.f.stores {
 				if mm.GetLink().Contains(st.root.GetLink(), true) {
 					m.root = st.root
@@ -255,9 +237,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 					break
 				}
 			}
-			m.logFn("Moved to node[%d]: %s:%s, is collection: %t", m.currentNodePosition, mm.n, mm.s, mm.IsCollection())
-			cmds = append(cmds, nodeUpdateCmd(*m.currentNode), cmd)
+			m.logFn("Moved to node[%d]: %s:%v, is collection: %t", m.currentNodePosition, mm.n, mm.s, mm.IsCollection())
+			cmds = append(cmds, m.loadNodeItem(ctx, m.currentNode), nodeUpdateCmd(*m.currentNode))
 		}
+	case tree.ExpandedMsg:
+		cmds = append(cmds, m.loadNodeCollection(ctx, m.currentNode), nodeUpdateCmd(*m.currentNode))
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(mm))
 	case tea.KeyMsg:
@@ -285,7 +269,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			if parent != nil && parent.IsCollection() {
 				count := filters.WithMaxCount(m.height)
 				after := filters.After(filters.SameID(m.currentNode.GetLink()))
-				_ = m.loadNode(ctx, parent, after, count)
+				_ = m.loadCollectionChildren(ctx, parent, after, count)
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -392,7 +376,7 @@ func (m *model) Advance(msg advanceMsg) tea.Cmd {
 	newNode := node(msg.Item, withParent(&nn), withName(name))
 
 	count := filters.WithMaxCount(m.height)
-	if err := m.loadNode(context.Background(), newNode, count); err != nil {
+	if err := m.loadCollectionChildren(context.Background(), newNode, count); err != nil {
 		return errCmd(fmt.Errorf("unable to advance to %q: %w", nn.n, err))
 	}
 	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
@@ -453,9 +437,6 @@ func renderTree(t treeModel) string {
 		return ""
 	}
 	return t.View().Content
-	//scr := newRenderer(t.width(), t.height())
-	//t.View().Content.Draw(scr, scr.Bounds())
-	//return scr.String()
 }
 
 func (m *model) View() tea.View {
@@ -534,3 +515,27 @@ func (m motelyPager) View() tea.View {
 }
 
 var M = motelyPager{Title: "Motley"}
+
+func (s *motelyPager) statusHelpView(b *strings.Builder) {
+	// TODO(marius): this help message can be probably generated from the default key bindings.
+	ss := ""
+	col1 := []string{
+		"g/home  go to top",
+		"G/end   go to bottom",
+		"",
+		"esc     back to files",
+		"q       quit",
+	}
+	ss += "\n"
+	ss += "k/↑      up                  " + col1[0] + "\n"
+	ss += "j/↓      down                " + col1[1] + "\n"
+	ss += "b/pgup   page up             " + col1[2] + "\n"
+	ss += "f/pgdn   page down           " + col1[3] + "\n"
+	ss += "u        ½ page up           " + col1[4] + "\n"
+	ss += "d        ½ page down         "
+	if len(col1) > 5 {
+		ss += col1[5]
+	}
+
+	indent(b, helpViewStyle(ss), 2)
+}
