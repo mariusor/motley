@@ -16,7 +16,7 @@ require (
 	github.com/go-ap/errors v0.0.0-20260208110149-e1b309365966
 	github.com/go-ap/filters v0.0.0-20260416122840-724cb3c8974c
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20260519101943-8e6c7dfdadc0
+	github.com/mariusor/bubbles-tree v0.0.0-20260519151908-a3185afecf1e
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/muesli/reflow v0.3.0

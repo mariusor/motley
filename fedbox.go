@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -443,8 +442,6 @@ func getItemElements(parent *n) []*n {
 	}
 	return result
 }
-
-var defaultDurationBeforeLoad = 2 * time.Second
 
 func (m *model) loadNodeItem(ctx context.Context, node *n) tea.Cmd {
 	m.nodeLoading(node)

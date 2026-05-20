@@ -21,7 +21,8 @@ var _ tea.Model = pagerModel{}
 type pagerModel struct {
 	*commonModel
 
-	item vocab.Item
+	item                   vocab.Item
+	currentNodeChangeTimer *time.Timer
 
 	viewport viewport.Model
 	model    tea.Model

@@ -137,7 +137,7 @@ type commonModel struct {
 
 type model struct {
 	*commonModel
-
+	timer  *time.Timer
 	width  int
 	height int
 
@@ -154,6 +154,7 @@ type model struct {
 func (m *model) Init() tea.Cmd {
 	m.logFn("UI init")
 	m.breadCrumbs = make([]*tree.Model, 0)
+	m.timer = time.NewTimer(defaultDurationBeforeLoad)
 
 	return tea.Batch(m.tree.Init(), m.pager.Init(), m.status.Init())
 }
@@ -193,40 +194,42 @@ func nodeUpdateCmd(n n) tea.Cmd {
 	}
 }
 
-func skipMessageFromLogs(msg tea.Msg) bool {
-	//if _, ok := msg.(*n); ok {
-	//	return true
-	//}
-	//if _, ok := msg.(n); ok {
-	//	return true
-	//}
-	//if _, ok := msg.(advanceMsg); ok {
-	//	return true
-	//}
-	if _, ok := msg.(percentageMsg); ok {
-		return true
-	}
-	if _, ok := msg.(nodeUpdateMsg); ok {
-		return true
-	}
-	return false
+type timedNodeMsg struct {
+	node  *n
+	timer *time.Timer
 }
 
-func (m *model) logMessage(msg tea.Msg) {
-	if !skipMessageFromLogs(msg) {
-		m.logFn("update: %T: %s", msg, msg)
+func waitCmd(msg timedNodeMsg) tea.Cmd {
+	return func() tea.Msg {
+		return msg
+	}
+}
+
+var defaultDurationBeforeLoad = 700 * time.Millisecond
+
+func delayedNodeLoad(n *n, timer *time.Timer) tea.Cmd {
+	timer.Reset(defaultDurationBeforeLoad)
+	m := timedNodeMsg{node: n, timer: timer}
+	return func() tea.Msg {
+		return m
 	}
 }
 
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*300)
-	defer cancel()
-
-	//m.logMessage(msg)
+	ctx := context.Background()
 	switch mm := msg.(type) {
+	case timedNodeMsg:
+		select {
+		case <-mm.timer.C:
+			m.logFn("Loading node[%d]: %s:%v, is collection: %t", m.currentNodePosition, mm.node.n, mm.node.s, mm.node.IsCollection())
+			cmds = append(cmds, m.loadNodeItem(ctx, m.currentNode), m.loadNodeCollection(ctx, m.currentNode), nodeUpdateCmd(*m.currentNode))
+		default:
+			cmds = append(cmds, waitCmd(mm))
+		}
 	case *n:
+		// NOTE(marius): the cursor has moved to the new entry, we return a delayed node command
 		if mm != nil {
 			m.currentNodePosition = m.tree.list.Cursor()
 			m.currentNode = mm
@@ -238,10 +241,10 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 				}
 			}
 			m.logFn("Moved to node[%d]: %s:%v, is collection: %t", m.currentNodePosition, mm.n, mm.s, mm.IsCollection())
-			cmds = append(cmds, m.loadNodeItem(ctx, m.currentNode), nodeUpdateCmd(*m.currentNode))
 		}
+		cmds = append(cmds, delayedNodeLoad(mm, m.timer))
 	case tree.ExpandedMsg:
-		cmds = append(cmds, m.loadNodeCollection(ctx, m.currentNode), nodeUpdateCmd(*m.currentNode))
+		//cmds = append(cmds, nodeUpdateCmd(*m.currentNode))
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(mm))
 	case tea.KeyMsg:
