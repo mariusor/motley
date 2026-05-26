@@ -30,6 +30,7 @@ func (t *treeModel) Init() tea.Cmd {
 	return t.list.Init()
 }
 
+/*
 type percentageMsg float64
 
 func percentageChanged(f float64) func() tea.Msg {
@@ -37,6 +38,7 @@ func percentageChanged(f float64) func() tea.Msg {
 		return percentageMsg(f)
 	}
 }
+*/
 
 func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch mm := msg.(type) {
@@ -46,7 +48,7 @@ func (t *treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m, cmd := t.list.Update(msg); cmd != nil {
 		t.list = m.(*tree.Model)
-		return t, tea.Batch(cmd, percentageChanged(t.list.ScrollPercent()))
+		return t, cmd //tea.Batch(cmd, percentageChanged(t.list.ScrollPercent()))
 	}
 
 	return t, noop

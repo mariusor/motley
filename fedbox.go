@@ -453,7 +453,7 @@ func (m *model) loadNodeItem(ctx context.Context, node *n) tea.Cmd {
 }
 
 func (m *model) nodeLoading(node *n) {
-	m.tree.state |= stateBusy
+	m.tree.startedLoading()
 	node.startedSyncing()
 }
 

@@ -3,7 +3,6 @@ package motley
 import (
 	"fmt"
 	"image/color"
-	"math"
 	"strings"
 	"time"
 
@@ -46,7 +45,7 @@ type statusModel struct {
 	env   env.Type
 
 	spinner spinner.Model
-	percent float64
+	//percent float64
 
 	error   error
 	message string
@@ -97,14 +96,14 @@ func ucfirst(s string) string {
 }
 
 func (s *statusModel) statusBarView(b *strings.Builder) {
-	percent := clamp(int(math.Round(s.percent)), 0, 100)
-	scrollPercent := fmt.Sprintf(" %d%% ", percent)
+	//percent := clamp(int(math.Round(s.percent)), 0, 100)
+	//scrollPercent := fmt.Sprintf(" %d%% ", percent)
 
 	spinner := s.spinner.View()
 	logo := logoView(name(s.root), s.env)
 
 	// Empty space
-	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(logo)-lipgloss.Width(scrollPercent)-1)
+	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(logo) /*-lipgloss.Width(scrollPercent)*/ -1)
 
 	render := statusBarMessageStyle
 	message := truncate.StringWithTail(s.message, uint(w), ellipsis)
@@ -117,7 +116,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	b.WriteString(render(
 		lipgloss.JoinHorizontal(lipgloss.Left,
 			margin.String(message, uint(w), 1),
-			scrollPercent,
+			//scrollPercent,
 			margin.String(spinner, 3, 0),
 		),
 	))
@@ -162,8 +161,10 @@ func (s *statusModel) Update(msg tea.Msg) tea.Cmd {
 			s.logFn("resetting spinner")
 			s.spinner = initializeSpinner()
 		}
-	case percentageMsg:
-		s.percent = float64(mm) * 100.0
+		/*
+			case percentageMsg:
+				s.percent = float64(mm) * 100.0
+		*/
 	}
 
 	return tea.Batch(cmds...)
