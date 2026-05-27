@@ -3,8 +3,6 @@ package motley
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"path"
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
@@ -17,8 +15,6 @@ import (
 	"github.com/go-ap/errors"
 	"github.com/go-ap/filters"
 	tree "github.com/mariusor/bubbles-tree"
-	"github.com/mariusor/qstring"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -162,11 +158,12 @@ type n struct {
 
 func (n *n) startedSyncing() {
 	n.s |= NodeSyncing
-
+	n.s ^= NodeSynced
 }
 
 func (n *n) stoppedSyncing() {
 	n.s ^= NodeSyncing
+	n.s |= NodeSynced
 }
 
 func (n *n) Parent() tree.Node {
@@ -218,7 +215,7 @@ func (n *n) View() tea.View {
 	st := lipgloss.NewStyle()
 	if nodeIsError(n) {
 		st = faintRedFg
-		annotation = Attention
+		//annotation = Attention
 	}
 
 	if n.Item != nil && nodeIsCollapsible(n) {
@@ -226,13 +223,14 @@ func (n *n) View() tea.View {
 		if hints.Is(tree.NodeCollapsed) {
 			annotation = Collapsed
 		}
-		if len(n.c) == 0 && hints.Is(NodeSynced) {
-			annotation = Unexpandable
+		if len(n.c) == 0 {
+			//annotation = Unexpandable
 			st = st.Faint(true)
 		}
-		//if n.s.Is(NodeSyncing) {
-		//	annotation = Attention
-		//}
+	}
+	if n.s.Is(NodeSyncing) {
+		//annotation = Attention
+		st = st.Blink(true)
 	}
 
 	return tea.NewView(fmt.Sprintf("%-1s %s", annotation, st.Render(n.n)))
@@ -443,313 +441,55 @@ func getItemElements(parent *n) []*n {
 	return result
 }
 
-func (m *model) loadNodeItem(ctx context.Context, node *n) tea.Cmd {
+func (m *model) loadNodeProperties(ctx context.Context, node *n) tea.Cmd {
 	m.nodeLoading(node)
-	if err := dereferenceItemProperties(ctx, m.f, &node.Item); err != nil {
+
+	if err := m.f.loadItemProperties(ctx, &node.Item); err != nil {
 		m.logFn("error while loading attributes %s", err)
 		node.s |= NodeError
 	}
-	return m.tree.stoppedLoading
+
+	m.logFn("Node properties loaded: %s", node.n)
+	if m.timer != nil {
+		m.timer.Stop()
+	}
+
+	node.stoppedSyncing()
+
+	return noop
 }
 
 func (m *model) nodeLoading(node *n) {
-	m.tree.startedLoading()
 	node.startedSyncing()
 }
 
-func (m *model) loadNodeCollection(ctx context.Context, node *n) tea.Cmd {
-	if !node.s.Is(tree.NodeCollapsible) {
+func (m *model) loadNodeCollection(ctx context.Context, nd *n) tea.Cmd {
+	if !nd.IsCollection() {
 		return noop
 	}
 
-	if len(node.c) == 0 {
-		m.nodeLoading(node)
-		defer func() {
-			node.stoppedSyncing()
-			m.logFn("Node loaded: %s", node.n)
-		}()
-
-		if err := m.loadCollectionChildren(ctx, node, filters.WithMaxCount(m.height)); err != nil {
-			m.logFn("error while loading children %s", err)
-			node.s |= NodeError
+	defer func() {
+		m.logFn("Collection node loaded: %s", nd.n)
+		nd.stoppedSyncing()
+		if m.timer != nil {
+			m.timer.Stop()
 		}
-	}
+	}()
 
-	return m.tree.stoppedLoading
-}
+	m.nodeLoading(nd)
+	col, err := m.f.loadCollectionItems(ctx, nd, filters.WithMaxCount(m.height))
+	if err != nil {
+		m.logFn("error while loading children %s", err)
+		nd.s |= NodeError
+		return errCmd(err)
+	}
+	children := make([]*n, 0)
+	for _, it := range col.Collection() {
+		children = append(children, node(it, withState(tree.NodeCollapsed)))
+	}
+	nd.setChildren(children...)
 
-func (m *model) loadCollectionChildren(ctx context.Context, nn *n, ff ...filters.Check) error {
-	accum := func(children *[]*n) func(ctx context.Context, col pub.CollectionInterface) error {
-		return func(ctx context.Context, col pub.CollectionInterface) error {
-			for _, it := range col.Collection() {
-				*children = append(*children, node(it, withState(tree.NodeCollapsed)))
-			}
-			return nil
-		}
-	}
-
-	if len(nn.c) == 0 {
-		children := make([]*n, 0)
-		_ = pub.OnCollectionIntf(nn.Item, func(col pub.CollectionInterface) error {
-			return accum(&children)(ctx, col)
-		})
-		if len(children) == 0 {
-			iri := nn.Item.GetLink()
-			if err := accumFn(accum(&children)).LoadFromSearch(ctx, m.f, iri, ff...); err != nil {
-				return err
-			}
-		}
-		nn.setChildren(children...)
-	}
-	return nil
-}
-
-func dereferenceIRIs(ctx context.Context, f *fedbox, iris pub.ItemCollection) pub.ItemCollection {
-	if len(iris) == 0 {
-		return nil
-	}
-	items := make(pub.ItemCollection, 0, len(iris))
-	for _, it := range iris {
-		if deref := dereferenceIRI(ctx, f, it); pub.IsItemCollection(deref) {
-			_ = pub.OnItemCollection(deref, func(col *pub.ItemCollection) error {
-				items = append(items, pub.ItemCollectionDeduplication(col)...)
-				return nil
-			})
-		} else {
-			items = append(items, deref)
-		}
-	}
-	return items
-}
-
-func dereferenceIRI(ctx context.Context, f *fedbox, it pub.Item) pub.Item {
-	if pub.IsNil(it) {
-		return nil
-	}
-	if !pub.IsIRI(it) {
-		return it
-	}
-	if pub.PublicNS.Equals(it.GetLink(), false) {
-		return it
-	}
-	loadFn := func(ctx context.Context, col pub.CollectionInterface) error {
-		it = col
-		return nil
-	}
-	accumFn(loadFn).LoadFromSearch(ctx, f, it.GetLink(), filters.WithMaxCount(0))
-
-	return it
-}
-
-func dereferenceIntransitiveActivityProperties(ctx context.Context, f *fedbox) func(act *pub.IntransitiveActivity) error {
-	if f == nil {
-		return func(act *pub.IntransitiveActivity) error { return fmt.Errorf("invalid fedbox storage") }
-	}
-	return func(act *pub.IntransitiveActivity) error {
-		g, gtx := errgroup.WithContext(ctx)
-		g.Go(func() error {
-			pub.OnObject(act, dereferenceObjectProperties(gtx, f))
-			act.Actor = dereferenceIRI(gtx, f, act.Actor)
-			act.Target = dereferenceIRI(gtx, f, act.Target)
-			act.Instrument = dereferenceIRI(gtx, f, act.Instrument)
-			act.Result = dereferenceIRI(gtx, f, act.Result)
-			return nil
-		})
-		return g.Wait()
-	}
-}
-
-func dereferenceActivityProperties(ctx context.Context, f *fedbox) func(act *pub.Activity) error {
-	if f == nil {
-		return func(act *pub.Activity) error { return fmt.Errorf("invalid fedbox storage") }
-	}
-	return func(act *pub.Activity) error {
-		g, gtx := errgroup.WithContext(ctx)
-		g.Go(func() error {
-			pub.OnIntransitiveActivity(act, dereferenceIntransitiveActivityProperties(ctx, f))
-			act.Actor = dereferenceIRI(gtx, f, act.Actor)
-			return nil
-		})
-		return g.Wait()
-	}
-}
-
-func dereferenceObjectProperties(ctx context.Context, f *fedbox) func(ob *pub.Object) error {
-	if f == nil {
-		return func(ob *pub.Object) error { return fmt.Errorf("invalid fedbox storage") }
-	}
-	return func(ob *pub.Object) error {
-		g, gtx := errgroup.WithContext(ctx)
-		g.Go(func() error {
-			ob.AttributedTo = dereferenceIRI(gtx, f, ob.AttributedTo)
-			ob.InReplyTo = dereferenceIRI(gtx, f, ob.InReplyTo)
-			ob.Tag = dereferenceIRIs(gtx, f, ob.Tag)
-			ob.To = dereferenceIRIs(ctx, f, ob.To)
-			ob.CC = dereferenceIRIs(ctx, f, ob.CC)
-			ob.Bto = dereferenceIRIs(ctx, f, ob.Bto)
-			ob.BCC = dereferenceIRIs(ctx, f, ob.BCC)
-			ob.Audience = dereferenceIRIs(ctx, f, ob.Audience)
-			return nil
-		})
-		return g.Wait()
-	}
-}
-
-type StopLoad struct{}
-
-func (s StopLoad) Error() string {
-	return "stop load"
-}
-
-func dereferenceItemProperties(ctx context.Context, f *fedbox, it *pub.Item) error {
-	ob := *it
-	if pub.IsIRI(ob) {
-		*it = dereferenceIRI(ctx, f, ob.GetLink())
-	}
-	if pub.IsObject(ob) {
-		typ := ob.GetType()
-		switch {
-		case pub.ObjectTypes.Match(typ), pub.ActorTypes.Match(typ), pub.NilType.Match(typ):
-			return pub.OnObject(*it, dereferenceObjectProperties(ctx, f))
-		case pub.IntransitiveActivityTypes.Match(typ):
-			return pub.OnIntransitiveActivity(*it, dereferenceIntransitiveActivityProperties(ctx, f))
-		case pub.ActivityTypes.Match(typ):
-			return pub.OnActivity(*it, dereferenceActivityProperties(ctx, f))
-		}
-	}
-
-	return nil
-}
-
-func getCollectionPrevNext(col pub.Item) (prev, next pub.IRI) {
-	qFn := func(i pub.Item) url.Values {
-		if i == nil {
-			return url.Values{}
-		}
-		if u, err := i.GetLink().URL(); err == nil {
-			return u.Query()
-		}
-		return url.Values{}
-	}
-	beforeFn := func(i pub.Item) pub.IRI {
-		return pub.IRI(qFn(i).Get("before"))
-	}
-	afterFn := func(i pub.Item) pub.IRI {
-		return pub.IRI(qFn(i).Get("after"))
-	}
-	nextFromLastFn := func(i pub.Item) pub.IRI {
-		if u, err := i.GetLink().URL(); err == nil {
-			_, next := path.Split(u.Path)
-			return pub.IRI(next)
-		}
-		return ""
-	}
-	switch col.GetType() {
-	case pub.OrderedCollectionPageType:
-		if c, ok := col.(*pub.OrderedCollectionPage); ok {
-			prev = beforeFn(c.Prev)
-			if int(c.TotalItems) > len(c.OrderedItems) {
-				next = afterFn(c.Next)
-			}
-		}
-	case pub.OrderedCollectionType:
-		if c, ok := col.(*pub.OrderedCollection); ok {
-			if len(c.OrderedItems) > 0 && int(c.TotalItems) > len(c.OrderedItems) {
-				next = nextFromLastFn(c.OrderedItems[len(c.OrderedItems)-1])
-			}
-		}
-	case pub.CollectionPageType:
-		if c, ok := col.(*pub.CollectionPage); ok {
-			prev = beforeFn(c.Prev)
-			if int(c.TotalItems) > len(c.Items) {
-				next = afterFn(c.Next)
-			}
-		}
-	case pub.CollectionType:
-		if c, ok := col.(*pub.Collection); ok {
-			if len(c.Items) > 0 && int(c.TotalItems) > len(c.Items) {
-				next = nextFromLastFn(c.Items[len(c.Items)-1])
-			}
-		}
-	}
-	// NOTE(marius): we check if current Collection id contains a cursor, and if `next` points to the same URL
-	//   we don't take it into consideration.
-	if next != "" {
-		f := struct {
-			Next pub.IRI `qstring:"after"`
-		}{}
-		if err := qstring.Unmarshal(qFn(col.GetLink()), &f); err == nil && next.Equals(f.Next, false) {
-			next = ""
-		}
-	}
-	return prev, next
-}
-
-type accumFn func(context.Context, pub.CollectionInterface) error
-
-func (f *fedbox) searchFn(ctx context.Context, g *errgroup.Group, loadIRI pub.IRI, accumFn accumFn, ff ...filters.Check) func() error {
-	return func() error {
-		col, err := f.Load(loadIRI, ff...)
-		if err != nil {
-			return errors.Annotatef(err, "failed to load search: %s", loadIRI)
-		}
-
-		if col.IsCollection() {
-			maxItems := 0
-			err = pub.OnCollectionIntf(col, func(c pub.CollectionInterface) error {
-				maxItems = int(c.Count())
-				return accumFn(ctx, c)
-			})
-			if err != nil {
-				return err
-			}
-
-			count := filters.MaxCount(ff...)
-			if count < 0 {
-				count = 0
-			}
-			if maxItems <= count {
-				return StopLoad{}
-			}
-			before, next := getCollectionPrevNext(col)
-			if len(next) > 0 {
-				ff = append(ff, filters.After(filters.SameID(next)))
-			}
-			if len(before) > 0 {
-				ff = append(ff, filters.Before(filters.SameID(before)))
-			}
-			if len(next)+len(before) > 0 {
-				g.Go(f.searchFn(ctx, g, loadIRI, accumFn, ff...))
-			}
-			return nil
-		}
-		return emptyAccum(ctx, nil) //accumFn(ctx, &pub.ItemCollection{col})
-	}
-}
-
-func emptyAccum(_ context.Context, _ pub.CollectionInterface) error {
-	return nil
-}
-
-func (a accumFn) LoadFromSearch(ctx context.Context, f *fedbox, iri pub.IRI, ff ...filters.Check) error {
-	var cancel func()
-	var g *errgroup.Group
-
-	g, ctx = errgroup.WithContext(ctx)
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
-
-	g.Go(f.searchFn(ctx, g, iri, a, ff...))
-
-	if err := g.Wait(); err != nil {
-		if errors.Is(err, StopLoad{}) {
-			f.logFn("stopped loading search")
-		} else {
-			f.logFn("failed to load search %+s", err)
-			return err
-		}
-	}
-	return nil
+	return noop
 }
 
 func name(it pub.Item) string {

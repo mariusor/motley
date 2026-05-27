@@ -132,12 +132,13 @@ type commonModel struct {
 	f    *fedbox
 	root vocab.Item
 
+	timer *time.Timer
+
 	logFn func(string, ...interface{})
 }
 
 type model struct {
 	*commonModel
-	timer  *time.Timer
 	width  int
 	height int
 
@@ -154,7 +155,6 @@ type model struct {
 func (m *model) Init() tea.Cmd {
 	m.logFn("UI init")
 	m.breadCrumbs = make([]*tree.Model, 0)
-	m.timer = time.NewTimer(defaultDurationBeforeLoad)
 
 	return tea.Batch(m.tree.Init(), m.pager.Init(), m.status.Init())
 }
@@ -195,20 +195,31 @@ func nodeUpdateCmd(n n) tea.Cmd {
 }
 
 type timedNodeMsg struct {
-	node  *n
-	timer *time.Timer
+	node   *n
+	loaded bool
+	timer  *time.Timer
 }
 
 func waitCmd(msg timedNodeMsg) tea.Cmd {
 	return func() tea.Msg {
+		time.Sleep(defaultFrameDuration)
 		return msg
 	}
 }
 
-var defaultDurationBeforeLoad = 700 * time.Millisecond
+const (
+	// defaultDurationBeforeLoad is the wait duration before loading an item after the user has stopped moving the cursor.
+	defaultDurationBeforeLoad = 600 * time.Millisecond
+
+	// defaultFrameDuration is the wait time before triggering another wait event while the UI is waiting
+	// for the defaultDurationBeforeLoad to expire.
+	defaultFrameDuration = defaultDurationBeforeLoad / 20
+)
+
+var startTime = time.Now().UTC().Truncate(time.Microsecond)
 
 func delayedNodeLoad(n *n, timer *time.Timer) tea.Cmd {
-	timer.Reset(defaultDurationBeforeLoad)
+	timer = time.NewTimer(defaultDurationBeforeLoad)
 	m := timedNodeMsg{node: n, timer: timer}
 	return func() tea.Msg {
 		return m
@@ -217,16 +228,25 @@ func delayedNodeLoad(n *n, timer *time.Timer) tea.Cmd {
 
 func (m *model) update(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
+	defer func() {
+		startTime = time.Now().UTC().Truncate(time.Microsecond)
+	}()
 
+	m.logFn("%s received msg: %T", time.Since(startTime), msg)
 	ctx := context.Background()
 	switch mm := msg.(type) {
 	case timedNodeMsg:
+		// NOTE(marius): the cursor was moved to a new element in the node tree, we wait out the timer,
+		// and then we load the ActivityPub item corresponding to it.
 		select {
 		case <-mm.timer.C:
-			m.logFn("Loading node[%d]: %s:%v, is collection: %t", m.currentNodePosition, mm.node.n, mm.node.s, mm.node.IsCollection())
-			cmds = append(cmds, m.loadNodeItem(ctx, m.currentNode), m.loadNodeCollection(ctx, m.currentNode), nodeUpdateCmd(*m.currentNode))
+			m.logFn("Loading node at pos %d: %s", m.currentNodePosition, mm.node.GetLink())
+			m.loadNodeProperties(ctx, m.currentNode)
+			cmds = append(cmds, m.loadNodeCollection(ctx, m.currentNode))
 		default:
-			cmds = append(cmds, waitCmd(mm))
+			if m.tree.IsSyncing() {
+				cmds = append(cmds, waitCmd(mm))
+			}
 		}
 	case *n:
 		// NOTE(marius): the cursor has moved to the new entry, we return a delayed node command
@@ -240,11 +260,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 					break
 				}
 			}
-			m.logFn("Moved to node[%d]: %s:%v, is collection: %t", m.currentNodePosition, mm.n, mm.s, mm.IsCollection())
+			m.logFn("Moved to node[%d]: %s, is collection: %t", m.currentNodePosition, mm.n, mm.IsCollection())
 		}
-		cmds = append(cmds, delayedNodeLoad(mm, m.timer))
+		cmds = append(cmds, delayedNodeLoad(mm, m.timer), m.tree.startedLoading)
 	case tree.ExpandedMsg:
-		//cmds = append(cmds, nodeUpdateCmd(*m.currentNode))
+		cmds = append(cmds, nodeUpdateCmd(*m.currentNode))
 	case advanceMsg:
 		cmds = append(cmds, m.Advance(mm))
 	case tea.KeyMsg:
@@ -272,7 +292,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 			if parent != nil && parent.IsCollection() {
 				count := filters.WithMaxCount(m.height)
 				after := filters.After(filters.SameID(m.currentNode.GetLink()))
-				_ = m.loadCollectionChildren(ctx, parent, after, count)
+				_, _ = m.f.loadCollectionItems(ctx, parent, after, count)
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -375,15 +395,16 @@ func (m *model) Advance(msg advanceMsg) tea.Cmd {
 		return errCmd(fmt.Errorf("error: %s", nn.n))
 	}
 
-	name := getRootNodeName(&nn)
-	newNode := node(msg.Item, withParent(&nn), withName(name))
+	rootName := getRootNodeName(&nn)
+	newNode := node(msg.Item, withParent(&nn), withName(rootName))
 
 	count := filters.WithMaxCount(m.height)
-	if err := m.loadCollectionChildren(context.Background(), newNode, count); err != nil {
+	_, err := m.f.loadCollectionItems(context.Background(), newNode, count)
+	if err != nil {
 		return errCmd(fmt.Errorf("unable to advance to %q: %w", nn.n, err))
 	}
 	if newNode.s.Is(tree.NodeCollapsible) && len(newNode.c) == 0 {
-		return errCmd(fmt.Errorf("no items in collection %s", name))
+		return errCmd(fmt.Errorf("no items in collection %s", rootName))
 	}
 	oldTree := m.tree.Advance(newNode)
 	m.breadCrumbs = append(m.breadCrumbs, oldTree)

@@ -54,16 +54,15 @@ type statusModel struct {
 }
 
 func initializeSpinner() spinner.Model {
-	sp := spinner.New()
-	sp.Style = lipgloss.NewStyle().Bold(true)
-	sp.Spinner = spinner.Ellipsis
-	sp.Spinner.FPS = time.Second / 4
+	sp := spinner.New(spinner.WithSpinner(spinner.Ellipsis), spinner.WithStyle(lipgloss.NewStyle().Bold(true)))
+	sp.Spinner.FPS = defaultFrameDuration
 	return sp
 }
 
 func newStatusModel(common *commonModel) statusModel {
 	return statusModel{
 		commonModel: common,
+		message:     "OK",
 		spinner:     initializeSpinner(),
 	}
 }
@@ -103,7 +102,7 @@ func (s *statusModel) statusBarView(b *strings.Builder) {
 	logo := logoView(name(s.root), s.env)
 
 	// Empty space
-	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(logo) /*-lipgloss.Width(scrollPercent)*/ -1)
+	w := max(0, s.width-lipgloss.Width(spinner)-lipgloss.Width(logo) /*-lipgloss.Width(scrollPercent) -1*/)
 
 	render := statusBarMessageStyle
 	message := truncate.StringWithTail(s.message, uint(w), ellipsis)
