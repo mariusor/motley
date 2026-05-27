@@ -101,6 +101,28 @@ func Launch(conf config.Options, l lw.Logger) error {
 
 var _ tea.Model = new(model)
 
+// Model is a way for the motley main model to be initialized from calling code.
+func Model(l lw.Logger, st ...Store) *model {
+	if HasDarkBackground {
+		GlamourStyle = "dark"
+	} else {
+		GlamourStyle = "light"
+	}
+
+	m := new(model)
+	m.commonModel = new(commonModel)
+	m.commonModel.logFn = l.Debugf
+
+	m.pager = newItemModel(m.commonModel)
+	m.status = newStatusModel(m.commonModel)
+
+	m.f = new(fedbox)
+	m.f.stores = st
+	m.f.logFn = l.Debugf
+	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
+	return m
+}
+
 func newModel(conf config.Options, l lw.Logger) *model {
 	if HasDarkBackground {
 		GlamourStyle = "dark"
