@@ -18,14 +18,15 @@ import (
 	"git.sr.ht/~mariusor/motley/internal/env"
 	"git.sr.ht/~mariusor/storage-all"
 	"github.com/alecthomas/kong"
+	pub "github.com/go-ap/activitypub"
 )
 
 var version = "HEAD"
 
 var Motley struct {
 	Version kong.VersionFlag
-	Path    []string `flag:"" name:"path" help:"Storage DSN strings of form type:/path/to/storage. Possible types: ${types}"`
-	URL     []string `flag:"" name:"url" help:"The url used by the application."`
+	Path    []string  `flag:"" name:"path" help:"Storage DSN strings of form type:/path/to/storage. Possible types: ${types}"`
+	URL     []pub.IRI `flag:"" name:"url" help:"The url used by the application."`
 }
 
 func openlog(name string) io.Writer {
@@ -97,7 +98,7 @@ func loadArguments(conf *config.Options) ([]storage.FullStorage, error) {
 		if u == "" {
 			continue
 		}
-		_, err := url.ParseRequestURI(u)
+		_, err := url.ParseRequestURI(string(u))
 		if err != nil {
 			errs = append(errs, fmt.Errorf("invalid url passed: %s", err))
 			continue

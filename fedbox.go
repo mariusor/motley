@@ -45,7 +45,6 @@ type Store struct {
 }
 
 type fedbox struct {
-	tree   map[pub.IRI]pub.Item
 	items  pub.IRIs
 	stores []Store
 	logFn  loggerFn
@@ -59,54 +58,36 @@ func WithStore(st storage.FullStorage, root pub.Item, environment string) Store 
 	}
 }
 
-func fedBOX(rootIRIs []string, st []config.Storage, l lw.Logger) (*fedbox, error) {
+func fedBOX(rootIRIs []pub.IRI, st []config.Storage, l lw.Logger) (*fedbox, error) {
 	logFn = l.Infof
-	stores := make([]Store, 0)
-	var appendStore = func(stores *[]Store, db storage.FullStorage, e env.Type, it pub.Item) {
-		if pub.IsNil(it) {
-			return
-		}
-		*stores = append(*stores, Store{root: it, s: db, env: e})
-	}
-	errs := make([]error, 0)
+	stores := make([]Store, 0, len(st))
+	errs := make([]error, 0, len(st))
+
 	for _, s := range st {
-		found := false
+		db, err := config.Open(s, s.Env, l)
+		if err != nil {
+			l.Debugf("unable to initialize %s storage %s: %+v", s.Type, s.Path, err)
+			errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))
+			continue
+		}
+		if opener, ok := db.(interface{ Open() error }); ok {
+			_ = opener.Open()
+		}
+		curStore := Store{s: db, env: s.Env}
 		for _, iri := range rootIRIs {
-			s.Host = iri
-			db, err := config.Open(s, s.Env, l)
-			if err != nil {
-				l.Debugf("unable to initialize %s storage %s: %+v", s.Type, s.Path, err)
-				errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))
-				continue
+			// NOTE(marius): this can overreach, as due to how storage works in GoActivityPub the IRI could be found
+			// in multiple backends, even though it's not its root node. I'm not sure how to solve this.
+			if it, err := db.Load(iri); err == nil {
+				curStore.root = it
+				stores = append(stores, curStore)
 			}
-			if opener, ok := db.(interface{ Open() error }); ok {
-				_ = opener.Open()
-			}
-			it, err := db.Load(pub.IRI(iri))
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-			if it.IsCollection() {
-				_ = pub.OnCollectionIntf(it, func(col pub.CollectionInterface) error {
-					for _, it := range col.Collection() {
-						appendStore(&stores, db, s.Env, it)
-					}
-					return nil
-				})
-			} else {
-				appendStore(&stores, db, s.Env, it)
-			}
-			found = true
 		}
-		if !found {
-			l.Debugf("unable to load main Actor for storage[%s] %s", s.Type, s.Path)
+		if curStore.root == nil {
+			db.Close()
 		}
 	}
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
-	}
-	return &fedbox{tree: make(map[pub.IRI]pub.Item), stores: stores, logFn: l.Debugf}, nil
+
+	return &fedbox{stores: stores, logFn: l.Debugf}, errors.Join(errs...)
 }
 
 func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {

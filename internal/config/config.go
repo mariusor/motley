@@ -12,6 +12,7 @@ import (
 
 	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/env"
+	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
 	"github.com/joho/godotenv"
 )
@@ -36,7 +37,7 @@ type Storage struct {
 
 type Options struct {
 	LogLevel lw.Level
-	URLs     []string
+	URLs     []pub.IRI
 	Storage  []Storage
 }
 
@@ -214,7 +215,7 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 		e = env.Type(loadKeyFromEnv(KeyENV, "dev"))
 	}
 	if host := loadKeyFromEnv(KeyHostname, ""); host != "" {
-		conf.URLs = append(conf.URLs, fmt.Sprintf("https://%s", host))
+		conf.URLs = append(conf.URLs, pub.IRI(fmt.Sprintf("https://%s", host)))
 	}
 
 	envStorage := loadKeyFromEnv(KeyStorage, string(StorageFS))

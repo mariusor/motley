@@ -124,30 +124,11 @@ func Model(l lw.Logger, st ...Store) *model {
 }
 
 func newModel(conf config.Options, l lw.Logger) *model {
-	if HasDarkBackground {
-		GlamourStyle = "dark"
-	} else {
-		GlamourStyle = "light"
-	}
-
-	m := new(model)
-	m.commonModel = new(commonModel)
-	m.commonModel.logFn = l.Debugf
-
-	m.pager = newItemModel(m.commonModel)
-	m.status = newStatusModel(m.commonModel)
-
-	var err error
-	var nodes tree.Nodes
-
-	m.f, err = fedBOX(conf.URLs, conf.Storage, l)
+	f, err := fedBOX(conf.URLs, conf.Storage, l)
 	if err != nil {
-		m.status.showError(err)
-	} else {
-		nodes = initNodes(m.f)
+		l.Errorf("Not all storage paths could be used: %s", err)
 	}
-	m.tree = newTreeModel(m.commonModel, nodes)
-	return m
+	return Model(l, f.stores...)
 }
 
 type commonModel struct {
