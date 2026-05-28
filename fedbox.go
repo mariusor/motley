@@ -432,7 +432,7 @@ func (m *model) loadNodeProperties(ctx context.Context, node *n) tea.Cmd {
 
 	node.stoppedSyncing()
 
-	return noop
+	return nodeUpdateCmd(*node)
 }
 
 func (m *model) nodeLoading(node *n) {
@@ -464,6 +464,7 @@ func (m *model) loadNodeCollection(ctx context.Context, nd *n) tea.Cmd {
 		if m.timer != nil {
 			m.timer.Stop()
 		}
+		cmdCh <- nodeUpdateCmd(*nd)
 	}()
 
 	select {

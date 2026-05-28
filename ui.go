@@ -245,8 +245,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		select {
 		case <-mm.timer.C:
 			m.l.With(slog.Int("pos", m.currentNodePosition), slog.String("URL", string(mm.node.GetLink()))).Debug("Loading node")
-			m.loadNodeProperties(ctx, m.currentNode)
-			cmds = append(cmds, m.loadNodeCollection(ctx, m.currentNode))
+			cmd := m.loadNodeProperties(ctx, m.currentNode)
+			if m.currentNode.IsCollection() {
+				cmd = m.loadNodeCollection(ctx, m.currentNode)
+			}
+			cmds = append(cmds, cmd)
 		default:
 			if m.tree.IsSyncing() {
 				cmds = append(cmds, waitCmd(mm))
@@ -307,9 +310,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	}
 
 	cmds = append(cmds, m.updateTree(msg))
-	if !m.tree.IsSyncing() {
-		cmds = append(cmds, m.updatePager(msg))
-	}
+	cmds = append(cmds, m.updatePager(msg))
 	cmds = append(cmds, m.updateStatusBar(msg))
 	return tea.Batch(cmds...)
 }
