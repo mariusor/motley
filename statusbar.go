@@ -68,7 +68,7 @@ func newStatusModel(common *commonModel) statusModel {
 }
 
 func (s *statusModel) Init() tea.Cmd {
-	s.logFn("Status Bar init")
+	s.l.Debug("status bar init")
 	return noop
 }
 
@@ -157,7 +157,7 @@ func (s *statusModel) Update(msg tea.Msg) tea.Cmd {
 	case statusState:
 		s.state |= mm
 		if !s.state.Is(statusBusy) {
-			s.logFn("resetting spinner")
+			s.l.Debug("resetting spinner")
 			s.spinner = initializeSpinner()
 		}
 		/*

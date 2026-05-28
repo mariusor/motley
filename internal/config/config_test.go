@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"git.sr.ht/~mariusor/motley/internal/env"
+	vocab "github.com/go-ap/activitypub"
 )
 
 const (
@@ -34,11 +34,8 @@ func TestLoadFromEnv(t *testing.T) {
 		os.Setenv(KeyLogLevel, logLvl)
 		os.Setenv(KeyStorage, pgSQL)
 
-		var baseURL = fmt.Sprintf("https://%s", hostname)
-		c, err := LoadFromEnv(".", env.TEST, time.Second)
-		if err != nil {
-			t.Errorf("Error loading env: %s", err)
-		}
+		var baseURL = vocab.IRI(fmt.Sprintf("https://%s", hostname))
+		c := LoadFromEnv(".")
 		// @todo(marius): we're no longer loading SQL db config env variables
 		db := BackendConfig{}
 		if db.Host != dbHost {
@@ -70,10 +67,7 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 	{
 		os.Setenv(KeyStorage, boltDB)
-		c, err := LoadFromEnv(".", env.TEST, time.Second)
-		if err != nil {
-			t.Errorf("Error loading env: %s", err)
-		}
+		c := LoadFromEnv(".")
 		var tmp = strings.TrimRight(os.TempDir(), "/")
 		for _, st := range c.Storage {
 			if strings.TrimRight(st.Path, "/") != tmp {

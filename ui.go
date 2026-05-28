@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"image/color"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"github.com/common-nighthawk/go-figure"
 	vocab "github.com/go-ap/activitypub"
@@ -94,7 +94,7 @@ var (
 	helpViewStyle         = newStyle(statusBarNoteFg, NewColorPair("#1B1B1B", "#f2f2f2"), false)
 )
 
-func Launch(conf config.Options, l lw.Logger) error {
+func Launch(conf config.Options, l *slog.Logger) error {
 	_, err := tea.NewProgram(newModel(conf, l)).Run()
 	return err
 }
@@ -102,7 +102,7 @@ func Launch(conf config.Options, l lw.Logger) error {
 var _ tea.Model = new(model)
 
 // Model is a way for the motley main model to be initialized from calling code.
-func Model(l lw.Logger, st ...Store) *model {
+func Model(l *slog.Logger, st ...Store) *model {
 	if HasDarkBackground {
 		GlamourStyle = "dark"
 	} else {
@@ -111,22 +111,22 @@ func Model(l lw.Logger, st ...Store) *model {
 
 	m := new(model)
 	m.commonModel = new(commonModel)
-	m.commonModel.logFn = l.Debugf
+	m.commonModel.l = l
 
 	m.pager = newItemModel(m.commonModel)
 	m.status = newStatusModel(m.commonModel)
 
 	m.f = new(fedbox)
 	m.f.stores = st
-	m.f.logFn = l.Debugf
+	m.f.l = l
 	m.tree = newTreeModel(m.commonModel, initNodes(m.f))
 	return m
 }
 
-func newModel(conf config.Options, l lw.Logger) *model {
-	f, err := fedBOX(conf.URLs, conf.Storage, l)
+func newModel(conf config.Options, l *slog.Logger) *model {
+	f, err := fedBOX(conf.URLs, conf.Storage)
 	if err != nil {
-		l.Errorf("Not all storage paths could be used: %s", err)
+		l.With(slog.Any("err", err)).Error("Not all storage paths could be used")
 	}
 	return Model(l, f.stores...)
 }
@@ -137,11 +137,12 @@ type commonModel struct {
 
 	timer *time.Timer
 
-	logFn func(string, ...interface{})
+	l *slog.Logger
 }
 
 type model struct {
 	*commonModel
+
 	width  int
 	height int
 
@@ -156,7 +157,7 @@ type model struct {
 }
 
 func (m *model) Init() tea.Cmd {
-	m.logFn("UI init")
+	m.l.Debug("ui init")
 	m.breadCrumbs = make([]*tree.Model, 0)
 
 	return tea.Batch(m.tree.Init(), m.pager.Init(), m.status.Init())
@@ -166,7 +167,7 @@ func (m *model) setSize(w, h int) {
 	m.width = w
 	m.height = h
 
-	m.logFn("UI wxh: %dx%d", w, h)
+	m.l.With(slog.Int("w", w), slog.Int("h", h)).Debug("UI size change")
 
 	h = h - m.status.Height() - 2 // 2 for border
 	m.status.width = w
@@ -177,14 +178,14 @@ func (m *model) setSize(w, h int) {
 	m.tree.setSize(tw-1-1, h)
 	m.pager.setSize(w-tw-1-1, h)
 
-	m.logFn("Statusbar wxh: %dx%d", m.status.width, m.status.Height())
+	m.l.With(slog.Int("w", m.status.width), slog.Int("h", m.status.Height())).Debug("new statusbar size")
 
 	if m.pager.viewport.PastBottom() {
-		m.logFn("Pager is past bottom")
+		m.l.Debug("Pager is past bottom")
 		m.pager.viewport.GotoBottom()
 	}
 	if m.tree.list.PastBottom() {
-		m.logFn("Tree is past bottom")
+		m.l.Debug("Tree is past bottom")
 		m.tree.list.GotoBottom()
 	}
 }
@@ -235,7 +236,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		startTime = time.Now().UTC().Truncate(time.Microsecond)
 	}()
 
-	m.logFn("%s received msg: %T", time.Since(startTime), msg)
+	m.l.With(slog.Duration("dur", time.Since(startTime)), slog.String("msg", fmt.Sprintf("%T", msg))).Debug("received msg")
 	ctx := context.Background()
 	switch mm := msg.(type) {
 	case timedNodeMsg:
@@ -243,7 +244,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		// and then we load the ActivityPub item corresponding to it.
 		select {
 		case <-mm.timer.C:
-			m.logFn("Loading node at pos %d: %s", m.currentNodePosition, mm.node.GetLink())
+			m.l.With(slog.Int("pos", m.currentNodePosition), slog.String("URL", string(mm.node.GetLink()))).Debug("Loading node")
 			m.loadNodeProperties(ctx, m.currentNode)
 			cmds = append(cmds, m.loadNodeCollection(ctx, m.currentNode))
 		default:
@@ -263,7 +264,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 					break
 				}
 			}
-			m.logFn("Moved to node[%d]: %s, is collection: %t", m.currentNodePosition, mm.n, mm.IsCollection())
+			m.l.With(slog.Int("pos", m.currentNodePosition), slog.String("name", mm.n), slog.Bool("collection?", mm.IsCollection())).Debug("moved to new node")
 		}
 		cmds = append(cmds, delayedNodeLoad(mm, m.timer), m.tree.startedLoading)
 	case tree.ExpandedMsg:
@@ -356,7 +357,7 @@ var (
 
 func (m *model) Back(msg tea.Msg) tea.Cmd {
 	if len(m.breadCrumbs) == 0 {
-		m.logFn("No previous tree to go back to.")
+		m.l.Debug("no previous tree to go back to.")
 		return noop
 	}
 	if oldTree := m.breadCrumbs[len(m.breadCrumbs)-1]; oldTree != nil {
@@ -389,7 +390,7 @@ func (m *model) shouldAdvance() bool {
 
 func (m *model) Advance(msg advanceMsg) tea.Cmd {
 	if !m.shouldAdvance() {
-		m.logFn("will not advance to top of the tree")
+		m.l.Debug("will not advance to top of the tree")
 		return noop
 	}
 

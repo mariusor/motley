@@ -3,11 +3,11 @@ package motley
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"git.sr.ht/~mariusor/motley/internal/env"
 	"git.sr.ht/~mariusor/storage-all"
@@ -34,9 +34,7 @@ const (
 	NodeError
 )
 
-type loggerFn func(string, ...interface{})
-
-var logFn = func(string, ...interface{}) {}
+type loggerFn func(string, ...any)
 
 type Store struct {
 	root pub.Item
@@ -47,7 +45,7 @@ type Store struct {
 type fedbox struct {
 	items  pub.IRIs
 	stores []Store
-	logFn  loggerFn
+	l      *slog.Logger
 }
 
 func WithStore(st storage.FullStorage, root pub.Item, environment string) Store {
@@ -58,15 +56,13 @@ func WithStore(st storage.FullStorage, root pub.Item, environment string) Store 
 	}
 }
 
-func fedBOX(rootIRIs []pub.IRI, st []config.Storage, l lw.Logger) (*fedbox, error) {
-	logFn = l.Infof
+func fedBOX(rootIRIs []pub.IRI, st []config.Storage) (*fedbox, error) {
 	stores := make([]Store, 0, len(st))
 	errs := make([]error, 0, len(st))
 
 	for _, s := range st {
-		db, err := config.Open(s, s.Env, l)
+		db, err := config.Open(s, s.Env)
 		if err != nil {
-			l.Debugf("unable to initialize %s storage %s: %+v", s.Type, s.Path, err)
 			errs = append(errs, errors.Annotatef(err, "Unable to initialize %s storage %s", s.Type, s.Path))
 			continue
 		}
@@ -86,8 +82,7 @@ func fedBOX(rootIRIs []pub.IRI, st []config.Storage, l lw.Logger) (*fedbox, erro
 			db.Close()
 		}
 	}
-
-	return &fedbox{stores: stores, logFn: l.Debugf}, errors.Join(errs...)
+	return &fedbox{stores: stores}, errors.Join(errs...)
 }
 
 func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {
@@ -97,7 +92,7 @@ func (f *fedbox) Load(iri pub.IRI, ff ...filters.Check) (pub.Item, error) {
 		}
 		col, err := st.s.Load(iri, ff...)
 		if err != nil {
-			f.logFn("Unable to load (%s)%s: %s", st.root.GetLink(), iri, err)
+			f.l.With(slog.Any("err", err), slog.String("iri", string(iri)), slog.String("root", string(st.root.GetLink()))).Warn("unable to load node")
 			continue
 		}
 		return col, nil
@@ -426,11 +421,11 @@ func (m *model) loadNodeProperties(ctx context.Context, node *n) tea.Cmd {
 	m.nodeLoading(node)
 
 	if err := m.f.loadItemProperties(ctx, &node.Item); err != nil {
-		m.logFn("error while loading attributes %s", err)
+		m.l.With(slog.Any("err", err)).Warn("unable to load attributes")
 		node.s |= NodeError
 	}
 
-	m.logFn("Node properties loaded: %s", node.n)
+	m.l.With(slog.Any("node", node.n)).Debug("node properties loaded")
 	if m.timer != nil {
 		m.timer.Stop()
 	}
@@ -450,7 +445,7 @@ func (m *model) loadNodeCollection(ctx context.Context, nd *n) tea.Cmd {
 	}
 
 	defer func() {
-		m.logFn("Collection node loaded: %s", nd.n)
+		m.l.With(slog.Any("node", nd.n)).Info("collection node loaded")
 		nd.stoppedSyncing()
 		if m.timer != nil {
 			m.timer.Stop()
@@ -460,7 +455,7 @@ func (m *model) loadNodeCollection(ctx context.Context, nd *n) tea.Cmd {
 	m.nodeLoading(nd)
 	col, err := m.f.loadCollectionItems(ctx, nd, filters.WithMaxCount(m.height))
 	if err != nil {
-		m.logFn("error while loading children %s", err)
+		m.l.With(slog.Any("err", err)).Warn("unable to load children")
 		nd.s |= NodeError
 		return errCmd(err)
 	}

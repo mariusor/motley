@@ -1,6 +1,8 @@
 package motley
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 	tree "github.com/mariusor/bubbles-tree"
 )
@@ -26,7 +28,7 @@ func newTreeModel(common *commonModel, t tree.Nodes) treeModel {
 var _ tea.Model = &treeModel{}
 
 func (t *treeModel) Init() tea.Cmd {
-	t.logFn("Tree Model init")
+	t.l.Debug("tree model init")
 	return t.list.Init()
 }
 
@@ -66,7 +68,7 @@ func (t *treeModel) View() tea.View {
 }
 
 func (t *treeModel) setSize(w, h int) {
-	t.logFn("Tree wxh: %dx%d", w, h)
+	t.l.With(slog.Int("w", w), slog.Int("h", h)).Debug("tree size change")
 
 	t.list.SetWidth(w)
 	t.list.SetHeight(h)
@@ -116,12 +118,12 @@ const stateBusy state = 1 << iota
 
 func (t *treeModel) startedLoading() tea.Msg {
 	t.state |= stateBusy
-	t.logFn("started loading node %s")
+	t.l.Debug("started loading node")
 	return t.state
 }
 
 func (t *treeModel) stoppedLoading() tea.Msg {
 	t.state &= ^stateBusy
-	t.logFn("stopped loading")
+	t.l.Debug("stopped loading")
 	return t.state
 }

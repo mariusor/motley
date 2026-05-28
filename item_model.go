@@ -2,6 +2,7 @@ package motley
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"charm.land/bubbles/v2/viewport"
@@ -102,7 +103,7 @@ func newItemModel(common *commonModel) pagerModel {
 }
 
 func (p pagerModel) Init() tea.Cmd {
-	p.logFn("Item View init")
+	p.l.Debug("item View init")
 	return noop
 }
 
@@ -110,7 +111,7 @@ func (p *pagerModel) updateAsModel(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, 0)
 	switch mm := msg.(type) {
 	case tea.WindowSizeMsg:
-		p.logFn("item resize: %+v", msg)
+		p.l.With(slog.Int("w", mm.Width), slog.Int("h", mm.Height)).Debug("item resize")
 	case nodeUpdateMsg:
 		var content tea.Model = M
 		p.item = mm.Item

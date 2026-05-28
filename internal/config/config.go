@@ -2,15 +2,14 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
-	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/env"
 	pub "github.com/go-ap/activitypub"
 	"github.com/go-ap/errors"
@@ -36,7 +35,7 @@ type Storage struct {
 }
 
 type Options struct {
-	LogLevel lw.Level
+	LogLevel slog.Level
 	URLs     []pub.IRI
 	Storage  []Storage
 }
@@ -160,37 +159,33 @@ func loadKeyFromEnv(name, def string) string {
 	return def
 }
 
-func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error) {
+func LoadFromEnv(path string) Options {
 	conf := Options{}
-	if !env.ValidType(e) {
-		e = env.Type(loadKeyFromEnv(KeyENV, ""))
-	}
+	e := env.Type(loadKeyFromEnv(KeyENV, ""))
 	lvl := loadKeyFromEnv(KeyLogLevel, "")
 	switch strings.ToLower(lvl) {
-	case "trace":
-		conf.LogLevel = lw.TraceLevel
 	case "debug":
-		conf.LogLevel = lw.DebugLevel
+		conf.LogLevel = slog.LevelDebug
 	case "warn":
-		conf.LogLevel = lw.WarnLevel
+		conf.LogLevel = slog.LevelWarn
 	case "error":
-		conf.LogLevel = lw.ErrorLevel
+		conf.LogLevel = slog.LevelError
 	case "info":
 		fallthrough
 	default:
-		conf.LogLevel = lw.InfoLevel
+		conf.LogLevel = slog.LevelInfo
 	}
 
-	if strings.Contains(base, "~") {
+	if strings.Contains(path, "~") {
 		if u, err := user.Current(); err == nil {
-			base = strings.Replace(base, "~", u.HomeDir, 1)
+			path = strings.Replace(path, "~", u.HomeDir, 1)
 		}
 	}
 	configs := []string{
-		filepath.Clean(filepath.Join(base, ".env")),
+		filepath.Clean(filepath.Join(path, ".env")),
 	}
 	appendIfFile := func(typ env.Type) {
-		envFile := filepath.Clean(filepath.Join(base, fmt.Sprintf(".env.%s", typ)))
+		envFile := filepath.Clean(filepath.Join(path, fmt.Sprintf(".env.%s", typ)))
 		if _, err := os.Stat(envFile); err == nil {
 			configs = append(configs, envFile)
 		}
@@ -208,7 +203,7 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 		loadedConfig = loadedConfig || err == nil
 	}
 	if !loadedConfig {
-		return conf, fmt.Errorf("unable to find any configuration files")
+		return conf
 	}
 
 	if !env.ValidType(e) {
@@ -225,12 +220,12 @@ func LoadFromEnv(base string, e env.Type, timeOut time.Duration) (Options, error
 		Path: loadKeyFromEnv(KeyStoragePath, ""),
 	}
 	if st.Path == "" {
-		st.Path = base
+		st.Path = path
 	}
 	st.Path = filepath.Clean(st.Path)
 	conf.Storage = append(conf.Storage, st)
 
-	return conf, nil
+	return conf
 }
 
 func ParseStorageDSN(s string) (StorageType, string) {

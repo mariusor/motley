@@ -3,6 +3,7 @@ package motley
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"path"
 
@@ -20,7 +21,7 @@ func (f *fedbox) loadCollectionItems(ctx context.Context, nn *n, ff ...filters.C
 		}
 		return items, nil
 	}
-	f.logFn("item already loaded: %s", nn.GetLink())
+	f.l.With(slog.String("IRI", string(nn.GetLink()))).Debug("item already loaded")
 	return nil, nil
 }
 

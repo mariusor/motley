@@ -4,6 +4,7 @@ import (
 	xerrors "errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	_ "net/http/pprof"
 	"net/url"
@@ -12,7 +13,6 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"git.sr.ht/~mariusor/lw"
 	"git.sr.ht/~mariusor/motley/internal/cmd"
 	"git.sr.ht/~mariusor/motley/internal/config"
 	"git.sr.ht/~mariusor/motley/internal/env"
@@ -21,16 +21,25 @@ import (
 	pub "github.com/go-ap/activitypub"
 )
 
-var version = "HEAD"
+var (
+	Motley struct {
+		Version kong.VersionFlag
+		Path    []string  `flag:"" name:"path" help:"Storage DSN strings of form type:/path/to/storage. Possible types: ${types}"`
+		URL     []pub.IRI `flag:"" name:"url" help:"The url used by the application."`
+	}
 
-var Motley struct {
-	Version kong.VersionFlag
-	Path    []string  `flag:"" name:"path" help:"Storage DSN strings of form type:/path/to/storage. Possible types: ${types}"`
-	URL     []pub.IRI `flag:"" name:"url" help:"The url used by the application."`
-}
+	version = "HEAD"
+	AppName = "motley"
 
-func openlog(name string) io.Writer {
-	f, err := os.OpenFile(filepath.Join("/var/tmp/", name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	cachePath, _ = os.UserCacheDir()
+
+	homePath, _ = os.UserHomeDir()
+	xdgDataPath = filepath.Join(homePath, ".local", "share")
+	logPath     = "/var/tmp"
+)
+
+func logFile(name string) io.Writer {
+	f, err := os.OpenFile(filepath.Join(logPath, name+".log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		return io.Discard
 	}
@@ -42,23 +51,22 @@ func perfEnabled() (string, bool) {
 	return l, len(l) > 0
 }
 
-var AppName = "motley"
-
 func main() {
 	if build, ok := debug.ReadBuildInfo(); ok && version == "HEAD" && build.Main.Version != "(devel)" {
 		version = build.Main.Version
 	}
 
-	l := lw.Dev(lw.SetOutput(openlog(AppName)), lw.SetLevel(lw.TraceLevel))
+	conf := config.LoadFromEnv(filepath.Join(xdgDataPath, AppName))
+	l := slog.New(slog.NewTextHandler(logFile(AppName), &slog.HandlerOptions{Level: conf.LogLevel}))
 
 	ktx := kong.Parse(
 		&Motley,
 		kong.Bind(l),
 		kong.Name(AppName),
-		kong.Description("Helper utility to manage a FedBOX instance"),
+		kong.Description("Helper utility to manage GoActivityPub storage backends"),
 		kong.Vars{
 			"envs":    strings.Join([]string{string(env.DEV), string(env.QA), string(env.PROD)}, ", "),
-			"types":   strings.Join([]string{string(config.StorageBoltDB), string(config.StorageBadger), string(config.StorageFS)}, ", "),
+			"types":   strings.Join([]string{string(config.StorageBoltDB), string(config.StorageBadger), string(config.StorageFS), string(config.StorageSqlite)}, ", "),
 			"version": version,
 		},
 	)
@@ -70,20 +78,17 @@ func main() {
 		}()
 	}
 
-	conf := config.Options{}
-	_, err := loadArguments(&conf)
-	if err != nil {
-		l.Errorf("%s", err)
-		_, _ = fmt.Fprintln(os.Stderr, err)
+	if _, err := loadArguments(&conf); err != nil {
+		l.With("err", err).Error("failed to parse command line arguments")
 		ktx.Exit(1)
 	}
 
-	l.Infof("Started")
+	l.Info("Started")
 	if err := cmd.ShowTui(conf, l); err != nil {
-		l.Errorf("%s", err)
+		l.With("err", err).Error("failed to start")
 		ktx.Exit(1)
 	}
-	l.Infof("Exiting")
+	l.Info("Exiting")
 	ktx.Exit(0)
 }
 

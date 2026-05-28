@@ -6,7 +6,6 @@ require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.6
 	charm.land/lipgloss/v2 v2.0.3
-	git.sr.ht/~mariusor/lw v0.0.0-20250325163623-1639f3fb0e0d
 	git.sr.ht/~mariusor/storage-all v0.0.0-20260516094705-054d0bc05cdb
 	github.com/alecthomas/kong v0.9.0
 	github.com/charmbracelet/ultraviolet v0.0.0-20260525132238-948f4557a654
@@ -21,12 +20,12 @@ require (
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
-	golang.org/x/sync v0.20.0
 	golang.org/x/text v0.37.0
 )
 
 require (
 	git.sr.ht/~mariusor/go-xsd-duration v0.0.0-20220703122237-02e73435a078 // indirect
+	git.sr.ht/~mariusor/lw v0.0.0-20250325163623-1639f3fb0e0d // indirect
 	git.sr.ht/~mariusor/mask v0.0.0-20250114195353-98705a6977b7 // indirect
 	github.com/RoaringBitmap/roaring v1.9.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -84,6 +83,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/neurosnap/sentences.v1 v1.0.7 // indirect
@@ -91,6 +91,5 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.50.1 // indirect
-	quamina.net/go/quamina v1.5.2-0.20260306081357-88daf10bf1dc // indirect
 	quamina.net/go/quamina/v2 v2.0.2 // indirect
 )
