@@ -444,28 +444,34 @@ func (m *model) loadNodeCollection(ctx context.Context, nd *n) tea.Cmd {
 		return noop
 	}
 
-	defer func() {
-		m.l.With(slog.Any("node", nd.n)).Info("collection node loaded")
+	m.nodeLoading(nd)
+
+	cmdCh := make(chan tea.Cmd)
+	go func() {
+		col, err := m.f.loadCollectionItems(ctx, nd, filters.WithMaxCount(m.height))
+		if err != nil {
+			m.l.With(slog.Any("err", err)).Warn("unable to load children")
+			nd.s |= NodeError
+			cmdCh <- errCmd(err)
+		}
+		children := make([]*n, 0)
+		for _, it := range col.Collection() {
+			children = append(children, node(it, withState(tree.NodeCollapsed)))
+		}
+		nd.setChildren(children...)
 		nd.stoppedSyncing()
+		m.l.With(slog.Any("node", nd.n)).Info("collection node loaded")
 		if m.timer != nil {
 			m.timer.Stop()
 		}
 	}()
 
-	m.nodeLoading(nd)
-	col, err := m.f.loadCollectionItems(ctx, nd, filters.WithMaxCount(m.height))
-	if err != nil {
-		m.l.With(slog.Any("err", err)).Warn("unable to load children")
-		nd.s |= NodeError
-		return errCmd(err)
+	select {
+	case res := <-cmdCh:
+		return res
+	default:
+		return waitCmd(nodeUpdateMsg(*nd))
 	}
-	children := make([]*n, 0)
-	for _, it := range col.Collection() {
-		children = append(children, node(it, withState(tree.NodeCollapsed)))
-	}
-	nd.setChildren(children...)
-
-	return noop
 }
 
 func name(it pub.Item) string {

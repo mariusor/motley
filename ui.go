@@ -204,7 +204,7 @@ type timedNodeMsg struct {
 	timer  *time.Timer
 }
 
-func waitCmd(msg timedNodeMsg) tea.Cmd {
+func waitCmd(msg tea.Msg) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(defaultFrameDuration)
 		return msg
