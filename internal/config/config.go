@@ -109,7 +109,7 @@ func fullStoragePath(o Storage, e env.Type) (string, error) {
 		return "", err
 	}
 	if !fi.IsDir() {
-		return "", errors.NotValidf("path %s is invalid for storage", dir)
+		return "", errors.Errorf("path %s is invalid for storage", dir)
 	}
 	return dir, nil
 }
