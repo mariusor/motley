@@ -6,16 +6,16 @@ require (
 	charm.land/bubbles/v2 v2.1.1
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/lipgloss/v2 v2.0.5
-	git.sr.ht/~mariusor/storage-all v0.0.0-20260730171407-df9fe516b63c
+	git.sr.ht/~mariusor/storage-all v0.0.0-20260804082242-616e682da353
 	github.com/alecthomas/kong v0.9.0
-	github.com/charmbracelet/ultraviolet v0.0.0-20260730003005-19049f296fa9
+	github.com/charmbracelet/ultraviolet v0.0.0-20260803092147-8b693049ce2a
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
-	github.com/go-ap/activitypub v0.0.0-20260730100035-a64b9d392262
+	github.com/go-ap/activitypub v0.0.0-20260803135430-cb9978486dff
 	github.com/go-ap/errors v0.0.0-20260701132509-92e5e4fd6394
-	github.com/go-ap/filters v0.0.0-20260730164443-1e2ebeb8cf42
+	github.com/go-ap/filters v0.0.0-20260803180515-dca600d1a418
 	github.com/joho/godotenv v1.5.1
-	github.com/mariusor/bubbles-tree v0.0.0-20260519151908-a3185afecf1e
+	github.com/mariusor/bubbles-tree v0.0.0-20260804092904-048968f1532d
 	github.com/mariusor/qstring v0.0.0-20200204164351-5a99d46de39d
 	github.com/mattn/go-runewidth v0.0.27
 	github.com/muesli/reflow v0.3.0
@@ -40,13 +40,13 @@ require (
 	github.com/dgraph-io/badger/v4 v4.9.5 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.4.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/go-ap/cache v0.0.0-20260730100116-cf6babfea406 // indirect
+	github.com/go-ap/cache v0.0.0-20260803141141-2249e83e921d // indirect
 	github.com/go-ap/jsonld v0.0.0-20260607140920-737b40e0ca38 // indirect
-	github.com/go-ap/storage-badger v0.0.0-20260730170950-963ad898c1d4 // indirect
-	github.com/go-ap/storage-boltdb v0.0.0-20260730170924-206d14fbeeaa // indirect
-	github.com/go-ap/storage-fs v0.0.0-20260730170634-9fed06fcc21f // indirect
-	github.com/go-ap/storage-pg v0.0.0-20260730171159-b25ad4bf6bf7 // indirect
-	github.com/go-ap/storage-sqlite v0.0.0-20260730170739-1d5f73079625 // indirect
+	github.com/go-ap/storage-badger v0.0.0-20260804081855-f066127d890e // indirect
+	github.com/go-ap/storage-boltdb v0.0.0-20260803181216-171aab2709d7 // indirect
+	github.com/go-ap/storage-fs v0.0.0-20260803180900-b2a8927022c2 // indirect
+	github.com/go-ap/storage-pg v0.0.0-20260803181345-256534129558 // indirect
+	github.com/go-ap/storage-sqlite v0.0.0-20260804081527-85e0fe76b5b2 // indirect
 	github.com/go-chi/chi/v5 v5.3.1 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -60,7 +60,7 @@ require (
 	github.com/jdkato/prose v1.2.1 // indirect
 	github.com/klauspost/compress v1.19.1 // indirect
 	github.com/leporo/sqlf v1.4.0 // indirect
-	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-sqlite3 v1.14.49 // indirect
@@ -79,9 +79,9 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.etcd.io/bbolt v1.5.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.44.0 // indirect
-	go.opentelemetry.io/otel/metric v1.44.0 // indirect
-	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	go.opentelemetry.io/otel v1.45.0 // indirect
+	go.opentelemetry.io/otel/metric v1.45.0 // indirect
+	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
@@ -91,6 +91,6 @@ require (
 	modernc.org/libc v1.74.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.55.0 // indirect
+	modernc.org/sqlite v1.56.0 // indirect
 	quamina.net/go/quamina/v2 v2.0.2 // indirect
 )

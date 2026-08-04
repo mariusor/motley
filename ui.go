@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	noteCharacterLimit   = 256             // should match server
-	statusMessageTimeout = time.Second * 2 // how long to show status messages like "stashed!"
+	noteCharacterLimit   = 256
+	statusMessageTimeout = time.Second * 2
 	ellipsis             = "…"
 
 	wrapAt = 60
@@ -246,7 +246,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		case <-mm.timer.C:
 			m.l.With(slog.Int("pos", m.currentNodePosition), slog.String("URL", string(mm.node.GetLink()))).Debug("Loading node")
 			cmd := m.loadNodeProperties(ctx, m.currentNode)
-			if m.currentNode.IsCollection() {
+			if vocab.IsCollection(m.currentNode.Item) {
 				cmd = m.loadNodeCollection(ctx, m.currentNode)
 			}
 			cmds = append(cmds, cmd)
@@ -257,7 +257,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		}
 	case *n:
 		// NOTE(marius): the cursor has moved to the new entry, we return a delayed node command
-		if mm != nil {
+		if !vocab.IsNil(mm.Item) {
 			m.currentNodePosition = m.tree.list.Cursor()
 			m.currentNode = mm
 			for _, st := range m.f.stores {
@@ -267,7 +267,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 					break
 				}
 			}
-			m.l.With(slog.Int("pos", m.currentNodePosition), slog.String("name", mm.n), slog.Bool("collection?", mm.IsCollection())).Debug("moved to new node")
+			m.l.With(slog.Int("pos", m.currentNodePosition), slog.String("name", mm.n), slog.Bool("collection?", vocab.IsCollection(mm))).Debug("moved to new node")
 		}
 		cmds = append(cmds, delayedNodeLoad(mm, m.timer), m.tree.startedLoading)
 	case tree.ExpandedMsg:
@@ -296,7 +296,7 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 
 		if m.currentNodePosition < m.height-3 && m.currentNode != nil {
 			parent := m.currentNode.p
-			if parent != nil && parent.IsCollection() {
+			if parent != nil && vocab.IsCollection(parent) {
 				count := filters.WithMaxCount(m.height)
 				after := filters.After(filters.SameID(m.currentNode.GetLink()))
 				_, _ = m.f.loadCollectionItems(ctx, parent, after, count)
@@ -506,20 +506,6 @@ func newStyle(fg, bg ColorPair, bold bool) func(...string) string {
 // Returns a new termenv style with background options only.
 func newFgStyle(c ColorPair) lipgloss.Style {
 	return lipgloss.Style{}.Foreground(c)
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func clamp(v, low, high int) int {

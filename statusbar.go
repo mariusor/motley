@@ -148,10 +148,10 @@ func (s *statusModel) Update(msg tea.Msg) tea.Cmd {
 	switch mm := msg.(type) {
 	case error:
 		cmds = append(cmds, s.showError(mm))
+	case timedNodeMsg:
+		cmds = append(cmds, s.spin(msg))
 	case spinner.TickMsg:
-		if s.state.Is(statusBusy) {
-			cmds = append(cmds, s.spin(msg))
-		}
+		cmds = append(cmds, s.spin(msg))
 	case nodeUpdateMsg:
 		cmds = append(cmds, s.showStatusMessage(statusNode(mm).View()))
 	case statusState:

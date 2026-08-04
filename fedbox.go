@@ -328,6 +328,10 @@ func getNameFromItem(it pub.Item) string {
 	return n
 }
 
+func nodes(it pub.ItemCollection, fns ...func(*n)) []*n {
+	return nil
+}
+
 func node(it pub.Item, fns ...func(*n)) *n {
 	n := &n{Item: it}
 
@@ -440,7 +444,7 @@ func (m *model) nodeLoading(node *n) {
 }
 
 func (m *model) loadNodeCollection(ctx context.Context, nd *n) tea.Cmd {
-	if !nd.IsCollection() {
+	if !pub.IsCollection(nd.Item) {
 		return noop
 	}
 
