@@ -52,7 +52,7 @@ func (f *fedbox) dereferenceObjectProperties(ctx context.Context) func(ob *pub.O
 	return func(ob *pub.Object) error {
 		ob.AttributedTo = f.dereferenceIRI(ctx, ob.AttributedTo)
 		ob.InReplyTo = f.dereferenceIRI(ctx, ob.InReplyTo)
-		ob.Tag = f.dereferenceIRIs(ctx, ob.Tag)
+		ob.Tag = f.dereferenceIRI(ctx, ob.Tag)
 		ob.To = f.dereferenceIRIs(ctx, ob.To)
 		ob.CC = f.dereferenceIRIs(ctx, ob.CC)
 		ob.Bto = f.dereferenceIRIs(ctx, ob.Bto)
